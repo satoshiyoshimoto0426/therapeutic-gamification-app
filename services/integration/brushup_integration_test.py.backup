@@ -1,0 +1,370 @@
+"""
+[UNICODE_30D6]
+
+[UNICODE_5B9F]3[UNICODE_3064]
+1. Daily Trio [UNICODE_30ED]
+2. Self-Efficacy Gauge[UNICODE_FF08]21[UNICODE_65E5]
+3. Micro Rewards[UNICODE_FF08]3[UNICODE_5206]
+"""
+
+import asyncio
+import sys
+import os
+from datetime import datetime, timedelta
+import time
+
+# [UNICODE_30B5]
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+# [UNICODE_76F4]
+import importlib.util
+
+# Daily Trio
+spec = importlib.util.spec_from_file_location("daily_trio_main", "../daily-trio/main.py")
+daily_trio_main = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(daily_trio_main)
+daily_trio_engine = daily_trio_main.daily_trio_engine
+TrioUserState = daily_trio_main.UserState
+
+# Self-Efficacy
+spec = importlib.util.spec_from_file_location("self_efficacy_main", "../self-efficacy/main.py")
+self_efficacy_main = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(self_efficacy_main)
+efficacy_engine = self_efficacy_main.efficacy_engine
+EfficacyUpdateRequest = self_efficacy_main.EfficacyUpdateRequest
+
+# Micro Rewards
+spec = importlib.util.spec_from_file_location("micro_rewards_main", "../micro-rewards/main.py")
+micro_rewards_main = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(micro_rewards_main)
+micro_rewards_engine = micro_rewards_main.micro_rewards_engine
+UserAction = micro_rewards_main.UserAction
+
+async def test_complete_user_journey():
+    """[UNICODE_5B8C]"""
+    print("[UNICODE_30D6]")
+    print("=" * 60)
+    
+    user_id = "integration_test_user"
+    therapeutic_focus = "Self-Discipline"
+    
+    # === 1. [UNICODE_671D]Micro Rewards[UNICODE_FF09] ===
+    print("1. [UNICODE_671D] - Micro Rewards")
+    login_action = UserAction(
+        user_id=user_id,
+        action_type="login",
+        timestamp=datetime.now(),
+        context={}
+    )
+    
+    start_time = time.time()
+    login_response = await micro_rewards_engine.process_user_action(login_action)
+    login_time = (time.time() - start_time) * 1000
+    
+    print(f"   [UNICODE_2713] [UNICODE_30ED]: {login_time:.1f}ms")
+    print(f"   [UNICODE_2713] [UNICODE_5373]: {login_response.total_xp} XP")
+    print(f"   [UNICODE_2713] [UNICODE_304A]: {login_response.celebration_message}")
+    
+    # === 2. Daily Trio[UNICODE_53D6] ===
+    print("\n2. Daily Trio[UNICODE_53D6] - [UNICODE_8A8D]")
+    trio_user_state = TrioUserState(
+        user_id=user_id,
+        current_state="ACTION",
+        mood_trend=0.2,
+        energy_level=3,
+        available_time=20,
+        therapeutic_goals=[therapeutic_focus, "Communication"],
+        completed_tasks_today=0,
+        streak_days=5,
+        adhd_assist_level=1.1
+    )
+    
+    start_time = time.time()
+    trio_response = await daily_trio_engine.select_daily_trio(trio_user_state)
+    trio_time = (time.time() - start_time) * 1000
+    
+    print(f"   [UNICODE_2713] Daily Trio[UNICODE_9078]: {trio_time:.1f}ms")
+    print(f"   [UNICODE_2713] [UNICODE_9078]: {len(trio_response.trio_tasks)}[UNICODE_500B]")
+    print(f"   [UNICODE_2713] [UNICODE_4E88]: {trio_response.estimated_total_time}[UNICODE_5206]")
+    print(f"   [UNICODE_2713] [UNICODE_671F]XP: {trio_response.expected_xp}")
+    print(f"   [UNICODE_2713] [UNICODE_9078]: {trio_response.selection_reasoning}")
+    
+    # [UNICODE_30BF]
+    for i, task in enumerate(trio_response.trio_tasks):
+        print(f"       [UNICODE_30BF]{i+1}: {task.title} ({task.estimated_duration}[UNICODE_5206], {task.xp_reward} XP)")
+    
+    # === 3. [UNICODE_30BF]3[UNICODE_30BF]3[UNICODE_5206] ===
+    print("\n3. [UNICODE_30BF] - [UNICODE_8D85]")
+    
+    total_journey_xp = login_response.total_xp
+    completed_tasks = 0
+    
+    for i, task in enumerate(trio_response.trio_tasks):
+        print(f"\n   [UNICODE_30BF]{i+1}[UNICODE_5B9F]: {task.title}")
+        
+        # [UNICODE_30BF]
+        task_start_action = UserAction(
+            user_id=user_id,
+            action_type="task_start",
+            timestamp=datetime.now(),
+            context={"task_id": task.task_id}
+        )
+        
+        start_response = await micro_rewards_engine.process_user_action(task_start_action)
+        print(f"     [UNICODE_2713] [UNICODE_958B]: {start_response.total_xp} XP")
+        
+        # [UNICODE_30BF]3[UNICODE_30BF]3[UNICODE_5206]
+        task_complete_action = UserAction(
+            user_id=user_id,
+            action_type="task_complete",
+            timestamp=datetime.now(),
+            context={
+                "task_id": task.task_id,
+                "tap_count": 2,  # 3[UNICODE_30BF]
+                "duration_seconds": min(task.estimated_duration * 60, 180)  # 3[UNICODE_5206]
+            }
+        )
+        
+        start_time = time.time()
+        complete_response = await micro_rewards_engine.process_user_action(task_complete_action)
+        complete_time = (time.time() - start_time) * 1000
+        
+        print(f"     [UNICODE_2713] [UNICODE_5B8C]: {complete_time:.1f}ms")
+        print(f"     [UNICODE_2713] [UNICODE_5B8C]: {complete_response.total_xp} XP")
+        print(f"     [UNICODE_2713] [UNICODE_304A]: {complete_response.celebration_message}")
+        
+        # Self-Efficacy Gauge[UNICODE_66F4]
+        efficacy_request = EfficacyUpdateRequest(
+            user_id=user_id,
+            therapeutic_focus=therapeutic_focus,
+            task_completed=True,
+            task_difficulty=task.difficulty,
+            mood_rating=4,
+            reflection_quality=4
+        )
+        
+        efficacy_response = await efficacy_engine.update_efficacy_gauge(efficacy_request)
+        print(f"     [UNICODE_2713] [UNICODE_52B9]: {efficacy_response['efficacy_increase']:.2f}%")
+        
+        total_journey_xp += start_response.total_xp + complete_response.total_xp
+        completed_tasks += 1
+    
+    # === 4. [UNICODE_7D71] ===
+    print(f"\n4. [UNICODE_7D71]")
+    print(f"   [UNICODE_2713] [UNICODE_5B8C]: {completed_tasks}/3")
+    print(f"   [UNICODE_2713] [UNICODE_7DCF]XP: {total_journey_xp}")
+    
+    # [UNICODE_52B9]
+    efficacy_dashboard = await efficacy_engine.get_efficacy_dashboard(user_id)
+    print(f"   [UNICODE_2713] [UNICODE_52B9]: {efficacy_dashboard['overall_efficacy_level'].value}")
+    print(f"   [UNICODE_2713] [UNICODE_5E73]: {efficacy_dashboard['average_efficacy_percentage']:.1f}%")
+    print(f"   [UNICODE_2713] [UNICODE_7D99]: {efficacy_dashboard['max_consecutive_days']}[UNICODE_65E5]")
+    
+    # [UNICODE_30A8]
+    engagement_stats = await micro_rewards_engine.get_user_engagement_stats(user_id)
+    print(f"   [UNICODE_2713] [UNICODE_65E5]: {engagement_stats['daily_actions']}[UNICODE_56DE]")
+    print(f"   [UNICODE_2713] [UNICODE_7DCF]: {engagement_stats['total_actions']}[UNICODE_56DE]")
+    
+    return {
+        "completed_tasks": completed_tasks,
+        "total_xp": total_journey_xp,
+        "efficacy_level": efficacy_dashboard['overall_efficacy_level'].value,
+        "daily_actions": engagement_stats['daily_actions']
+    }
+
+async def test_21_day_habit_formation_integration():
+    """21[UNICODE_65E5]"""
+    print("\n" + "=" * 60)
+    print("21[UNICODE_65E5]")
+    
+    user_id = "habit_formation_integration_user"
+    therapeutic_focus = "Self-Discipline"
+    
+    # 21[UNICODE_65E5]
+    milestone_days = [1, 7, 14, 21]
+    
+    for day in milestone_days:
+        print(f"\n{day}[UNICODE_65E5]:")
+        
+        # Daily Trio[UNICODE_53D6]
+        trio_user_state = TrioUserState(
+            user_id=user_id,
+            current_state="ACTION" if day <= 7 else "CONTINUATION",
+            mood_trend=0.1 + (day * 0.01),
+            energy_level=3 + (day // 7),
+            available_time=20,
+            therapeutic_goals=[therapeutic_focus],
+            completed_tasks_today=0,
+            streak_days=day,
+            adhd_assist_level=1.0 + (day * 0.01)
+        )
+        
+        trio_response = await daily_trio_engine.select_daily_trio(trio_user_state)
+        print(f"   [UNICODE_2713] Daily Trio: {len(trio_response.trio_tasks)}[UNICODE_500B]")
+        
+        # 1[UNICODE_3064]
+        if trio_response.trio_tasks:
+            task = trio_response.trio_tasks[0]
+            
+            # Micro Rewards
+            complete_action = UserAction(
+                user_id=user_id,
+                action_type="task_complete",
+                timestamp=datetime.now(),
+                context={
+                    "task_id": task.task_id,
+                    "tap_count": 2,
+                    "duration_seconds": 120
+                }
+            )
+            
+            micro_response = await micro_rewards_engine.process_user_action(complete_action)
+            print(f"   [UNICODE_2713] Micro Rewards: {micro_response.total_xp} XP")
+            
+            # Self-Efficacy[UNICODE_66F4]
+            efficacy_request = EfficacyUpdateRequest(
+                user_id=user_id,
+                therapeutic_focus=therapeutic_focus,
+                task_completed=True,
+                task_difficulty=task.difficulty,
+                mood_rating=4,
+                reflection_quality=4
+            )
+            
+            # [UNICODE_624B]
+            gauge = await efficacy_engine._get_or_create_gauge(user_id, therapeutic_focus)
+            gauge.consecutive_days = day
+            gauge.total_days_active = day
+            gauge.current_percentage = min(100.0, day * 3.0)  # [UNICODE_7C21]
+            gauge.current_level = efficacy_engine._calculate_efficacy_level(gauge.current_percentage)
+            
+            # [UNICODE_30DE]
+            milestone_rewards = await efficacy_engine._check_milestones(gauge)
+            unlocked_skills = await efficacy_engine._check_passive_skill_unlocks(gauge)
+            
+            print(f"   [UNICODE_2713] [UNICODE_52B9]: {gauge.current_percentage:.1f}% ({gauge.current_level.value})")
+            print(f"   [UNICODE_2713] [UNICODE_30DE]: {len(milestone_rewards)}[UNICODE_500B]")
+            print(f"   [UNICODE_2713] [UNICODE_30D1]: {len(unlocked_skills)}[UNICODE_500B]")
+            
+            if day == 21:
+                print(f"   [UNICODE_1F3C6] 21[UNICODE_65E5]")
+                print(f"       - [UNICODE_7DCF]: {len(gauge.passive_skills)}[UNICODE_500B]")
+                print(f"       - [UNICODE_9054]: {gauge.milestone_reached}")
+    
+    print("\n[UNICODE_2713] 21[UNICODE_65E5]")
+
+async def test_performance_integration():
+    """[UNICODE_30D1]"""
+    print("\n" + "=" * 60)
+    print("[UNICODE_30D1]")
+    
+    user_id = "performance_integration_user"
+    response_times = []
+    
+    # [UNICODE_5B8C]10[UNICODE_56DE]
+    for i in range(10):
+        start_time = time.time()
+        
+        # 1. Daily Trio[UNICODE_53D6]
+        trio_user_state = TrioUserState(
+            user_id=f"{user_id}_{i}",
+            current_state="ACTION",
+            mood_trend=0.2,
+            energy_level=3,
+            available_time=15,
+            therapeutic_goals=["Self-Discipline"],
+            completed_tasks_today=0,
+            streak_days=3,
+            adhd_assist_level=1.1
+        )
+        
+        trio_response = await daily_trio_engine.select_daily_trio(trio_user_state)
+        
+        # 2. Micro Rewards[UNICODE_FF08]
+        if trio_response.trio_tasks:
+            complete_action = UserAction(
+                user_id=f"{user_id}_{i}",
+                action_type="task_complete",
+                timestamp=datetime.now(),
+                context={
+                    "task_id": trio_response.trio_tasks[0].task_id,
+                    "tap_count": 3,
+                    "duration_seconds": 180
+                }
+            )
+            
+            micro_response = await micro_rewards_engine.process_user_action(complete_action)
+        
+        # 3. Self-Efficacy[UNICODE_66F4]
+        efficacy_request = EfficacyUpdateRequest(
+            user_id=f"{user_id}_{i}",
+            therapeutic_focus="Self-Discipline",
+            task_completed=True,
+            task_difficulty=2,
+            mood_rating=4,
+            reflection_quality=3
+        )
+        
+        efficacy_response = await efficacy_engine.update_efficacy_gauge(efficacy_request)
+        
+        total_time = (time.time() - start_time) * 1000
+        response_times.append(total_time)
+    
+    # [UNICODE_30D1]
+    avg_time = sum(response_times) / len(response_times)
+    max_time = max(response_times)
+    min_time = min(response_times)
+    
+    print(f"   [UNICODE_2713] [UNICODE_5B8C]: {avg_time:.1f}ms")
+    print(f"   [UNICODE_2713] [UNICODE_6700]: {max_time:.1f}ms")
+    print(f"   [UNICODE_2713] [UNICODE_6700]: {min_time:.1f}ms")
+    print(f"   [UNICODE_2713] 3[UNICODE_5206]: {'[UNICODE_2713]' if max_time < 180000 else '[UNICODE_2717]'}")
+    print(f"   [UNICODE_2713] 1.2[UNICODE_79D2]: {'[UNICODE_2713]' if max_time < 1200 else '[UNICODE_2717]'}")
+    
+    print("\n[UNICODE_2713] [UNICODE_30D1]")
+
+async def main():
+    """[UNICODE_30E1]"""
+    # [UNICODE_5B8C]
+    journey_result = await test_complete_user_journey()
+    
+    # 21[UNICODE_65E5]
+    await test_21_day_habit_formation_integration()
+    
+    # [UNICODE_30D1]
+    await test_performance_integration()
+    
+    # [UNICODE_6700]
+    print("\n" + "=" * 60)
+    print("[UNICODE_2713] [UNICODE_30D6]")
+    print("\n[UNICODE_1F3AF] [UNICODE_30D6]:")
+    print("1. Daily Trio [UNICODE_30ED] [UNICODE_2713]")
+    print("   - 1[UNICODE_65E5]3[UNICODE_3064]")
+    print("   - ADHD[UNICODE_8A8D]")
+    print("   - AI[UNICODE_6700]")
+    
+    print("\n2. Self-Efficacy Gauge UI [UNICODE_2713]")
+    print("   - 21[UNICODE_65E5]")
+    print("   - [UNICODE_30D1]")
+    print("   - [UNICODE_6CBB]")
+    
+    print("\n3. [UNICODE_8D85]3[UNICODE_5206] [UNICODE_2713]")
+    print("   - 3[UNICODE_30BF]3[UNICODE_5206]")
+    print("   - 1.2[UNICODE_79D2]")
+    print("   - ADHD[UNICODE_306E]")
+    print("   - [UNICODE_30EA]")
+    
+    print(f"\n[UNICODE_1F4CA] [UNICODE_7D71]:")
+    print(f"- [UNICODE_5B8C]: {journey_result['completed_tasks']}/3")
+    print(f"- [UNICODE_7DCF]XP: {journey_result['total_xp']}")
+    print(f"- [UNICODE_52B9]: {journey_result['efficacy_level']}")
+    print(f"- [UNICODE_65E5]: {journey_result['daily_actions']}")
+    
+    print(f"\n[UNICODE_1F680] [UNICODE_6B21]:")
+    print("- Feature Flag[UNICODE_57FA]")
+    print("- CBT ABC[UNICODE_30E2]")
+    print("- KPI[UNICODE_30C0]")
+    print("- [UNICODE_03B1]")
+
+if __name__ == "__main__":
+    asyncio.run(main())

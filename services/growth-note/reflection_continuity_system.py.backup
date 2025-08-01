@@ -1,0 +1,483 @@
+"""
+[UNICODE_632F]
+
+[UNICODE_632F]
+"""
+
+import json
+from datetime import datetime, timedelta, date
+from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass, field
+from enum import Enum
+from main import GrowthNoteSystem, ReflectionAnalysis
+
+class ReminderType(Enum):
+    GENTLE = "gentle"
+    ENCOURAGING = "encouraging"
+    MOTIVATIONAL = "motivational"
+
+@dataclass
+class ReflectionStreak:
+    user_id: str
+    current_streak: int = 0
+    longest_streak: int = 0
+    total_reflections: int = 0
+    last_reflection_date: Optional[date] = None
+    missed_days_in_row: int = 0
+    streak_milestones: List[int] = field(default_factory=lambda: [])
+
+@dataclass
+class StoryPersonalizationData:
+    user_id: str
+    recent_themes: List[str]
+    emotional_patterns: List[str]
+    action_tendencies: List[str]
+    growth_areas: List[str]
+    reflection_insights: List[Dict]
+    last_updated: datetime
+
+class ReflectionContinuitySystem:
+    def __init__(self, growth_note_system: GrowthNoteSystem):
+        self.growth_note_system = growth_note_system
+        self.user_streaks: Dict[str, ReflectionStreak] = {}
+        self.story_personalization: Dict[str, StoryPersonalizationData] = {}
+        self.milestone_rewards = {
+            3: {"xp": 50, "message": "3[UNICODE_65E5]"},
+            7: {"xp": 100, "message": "1[UNICODE_9031]"},
+            14: {"xp": 200, "message": "2[UNICODE_9031]"},
+            21: {"xp": 300, "message": "3[UNICODE_9031]"},
+            30: {"xp": 500, "message": "1[UNICODE_30F6]"},
+            50: {"xp": 750, "message": "50[UNICODE_65E5]"},
+            100: {"xp": 1500, "message": "100[UNICODE_65E5]"}
+        }
+        
+        self.reminder_messages = {
+            ReminderType.GENTLE: [
+                "[UNICODE_4ECA]",
+                "[UNICODE_7121]",
+                "[UNICODE_3042]",
+                "[UNICODE_4ECA]"
+            ],
+            ReminderType.ENCOURAGING: [
+                "[UNICODE_632F]",
+                "[UNICODE_5C0F]",
+                "[UNICODE_4ECA]",
+                "[UNICODE_3042]"
+            ],
+            ReminderType.MOTIVATIONAL: [
+                "[UNICODE_7D99]",
+                "[UNICODE_3042]",
+                "[UNICODE_6BCE]",
+                "[UNICODE_4ECA]"
+            ]
+        }
+
+    def update_reflection_streak(self, user_id: str, reflection_completed: bool = True) -> Dict:
+        """[UNICODE_632F]"""
+        today = date.today()
+        
+        if user_id not in self.user_streaks:
+            self.user_streaks[user_id] = ReflectionStreak(user_id=user_id)
+        
+        streak = self.user_streaks[user_id]
+        
+        if reflection_completed:
+            # [UNICODE_632F]
+            if streak.last_reflection_date == today:
+                # [UNICODE_4ECA]
+                return {"status": "already_completed", "streak": streak.current_streak}
+            
+            elif streak.last_reflection_date == today - timedelta(days=1):
+                # [UNICODE_6628]
+                streak.current_streak += 1
+                streak.missed_days_in_row = 0
+            
+            elif streak.last_reflection_date is None or streak.last_reflection_date < today - timedelta(days=1):
+                # [UNICODE_521D]
+                streak.current_streak = 1
+                streak.missed_days_in_row = 0
+            
+            streak.last_reflection_date = today
+            streak.total_reflections += 1
+            
+            # [UNICODE_6700]
+            if streak.current_streak > streak.longest_streak:
+                streak.longest_streak = streak.current_streak
+            
+            # [UNICODE_30DE]
+            milestone_reward = self._check_milestone(streak)
+            
+            return {
+                "status": "completed",
+                "streak": streak.current_streak,
+                "total_reflections": streak.total_reflections,
+                "milestone_reward": milestone_reward
+            }
+        
+        else:
+            # [UNICODE_632F]
+            if streak.last_reflection_date and streak.last_reflection_date < today:
+                days_missed = (today - streak.last_reflection_date).days
+                streak.missed_days_in_row = days_missed
+                
+                if days_missed > 1:
+                    # 2[UNICODE_65E5]
+                    streak.current_streak = 0
+            
+            return {
+                "status": "skipped",
+                "missed_days": streak.missed_days_in_row,
+                "needs_reminder": streak.missed_days_in_row >= 2
+            }
+
+    def _check_milestone(self, streak: ReflectionStreak) -> Optional[Dict]:
+        """[UNICODE_30DE]"""
+        if streak.current_streak in self.milestone_rewards:
+            if streak.current_streak not in streak.streak_milestones:
+                streak.streak_milestones.append(streak.current_streak)
+                reward = self.milestone_rewards[streak.current_streak]
+                return {
+                    "milestone": streak.current_streak,
+                    "xp_bonus": reward["xp"],
+                    "message": reward["message"]
+                }
+        return None
+
+    def generate_reminder_message(self, user_id: str, missed_days: int) -> Dict:
+        """[UNICODE_30EA]"""
+        # [UNICODE_30EA]
+        if missed_days <= 3:
+            reminder_type = ReminderType.GENTLE
+        elif missed_days <= 7:
+            reminder_type = ReminderType.ENCOURAGING
+        else:
+            reminder_type = ReminderType.MOTIVATIONAL
+        
+        # [UNICODE_30E6]
+        streak = self.user_streaks.get(user_id, ReflectionStreak(user_id=user_id))
+        
+        # [UNICODE_30E1]
+        import random
+        base_message = random.choice(self.reminder_messages[reminder_type])
+        
+        # [UNICODE_30D1]
+        personalized_message = self._personalize_reminder(base_message, streak, missed_days)
+        
+        return {
+            "type": "flex",
+            "altText": "[UNICODE_632F]",
+            "contents": {
+                "type": "bubble",
+                "header": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "contents": [
+                        {
+                            "type": "text",
+                            "text": self._get_reminder_emoji(reminder_type) + " [UNICODE_632F]",
+                            "weight": "bold",
+                            "size": "lg",
+                            "color": "#2E3A59",
+                            "align": "center"
+                        }
+                    ],
+                    "backgroundColor": self._get_reminder_color(reminder_type),
+                    "paddingAll": "lg"
+                },
+                "body": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "contents": [
+                        {
+                            "type": "text",
+                            "text": personalized_message,
+                            "size": "sm",
+                            "wrap": True,
+                            "color": "#666666"
+                        },
+                        {
+                            "type": "separator",
+                            "margin": "lg"
+                        },
+                        {
+                            "type": "box",
+                            "layout": "vertical",
+                            "contents": [
+                                {
+                                    "type": "text",
+                                    "text": "[UNICODE_3042]",
+                                    "weight": "bold",
+                                    "size": "sm",
+                                    "margin": "lg"
+                                },
+                                {
+                                    "type": "text",
+                                    "text": f"[UNICODE_73FE]: {streak.current_streak}[UNICODE_65E5]",
+                                    "size": "xs",
+                                    "color": "#999999",
+                                    "margin": "sm"
+                                },
+                                {
+                                    "type": "text",
+                                    "text": f"[UNICODE_6700]: {streak.longest_streak}[UNICODE_65E5]",
+                                    "size": "xs",
+                                    "color": "#999999",
+                                    "margin": "xs"
+                                },
+                                {
+                                    "type": "text",
+                                    "text": f"[UNICODE_7DCF]: {streak.total_reflections}[UNICODE_56DE]",
+                                    "size": "xs",
+                                    "color": "#999999",
+                                    "margin": "xs"
+                                }
+                            ]
+                        }
+                    ],
+                    "paddingAll": "lg"
+                },
+                "footer": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "contents": [
+                        {
+                            "type": "button",
+                            "style": "primary",
+                            "color": "#FFC857",
+                            "action": {
+                                "type": "postback",
+                                "label": "[UNICODE_4ECA]",
+                                "data": "action=start_reflection_reminder"
+                            }
+                        },
+                        {
+                            "type": "button",
+                            "style": "secondary",
+                            "action": {
+                                "type": "postback",
+                                "label": "[UNICODE_660E]",
+                                "data": "action=postpone_reflection_reminder"
+                            },
+                            "margin": "sm"
+                        }
+                    ],
+                    "paddingAll": "lg"
+                }
+            }
+        }
+
+    def _personalize_reminder(self, base_message: str, streak: ReflectionStreak, missed_days: int) -> str:
+        """[UNICODE_30EA]"""
+        if streak.longest_streak > 0:
+            if missed_days <= 2:
+                return f"{base_message}\n\n[UNICODE_4EE5]{streak.longest_streak}[UNICODE_65E5]"
+            else:
+                return f"{base_message}\n\n{missed_days}[UNICODE_65E5]{streak.total_reflections}[UNICODE_56DE]"
+        else:
+            return f"{base_message}\n\n[UNICODE_65B0]"
+
+    def _get_reminder_emoji(self, reminder_type: ReminderType) -> str:
+        """[UNICODE_30EA]"""
+        emoji_map = {
+            ReminderType.GENTLE: "[UNICODE_1F319]",
+            ReminderType.ENCOURAGING: "[UNICODE_1F31F]",
+            ReminderType.MOTIVATIONAL: "[UNICODE_1F525]"
+        }
+        return emoji_map.get(reminder_type, "[UNICODE_1F4AD]")
+
+    def _get_reminder_color(self, reminder_type: ReminderType) -> str:
+        """[UNICODE_30EA]"""
+        color_map = {
+            ReminderType.GENTLE: "#F0F4F8",
+            ReminderType.ENCOURAGING: "#FFF8E1",
+            ReminderType.MOTIVATIONAL: "#FFE8E8"
+        }
+        return color_map.get(reminder_type, "#F8F9FA")
+
+    def update_story_personalization_data(self, user_id: str, reflection_analysis: ReflectionAnalysis):
+        """[UNICODE_30B9]"""
+        if user_id not in self.story_personalization:
+            self.story_personalization[user_id] = StoryPersonalizationData(
+                user_id=user_id,
+                recent_themes=[],
+                emotional_patterns=[],
+                action_tendencies=[],
+                growth_areas=[],
+                reflection_insights=[],
+                last_updated=datetime.now()
+            )
+        
+        data = self.story_personalization[user_id]
+        
+        # [UNICODE_6700]10[UNICODE_500B]
+        data.recent_themes.extend(reflection_analysis.problem_themes)
+        data.recent_themes = list(set(data.recent_themes))[-10:]
+        
+        # [UNICODE_611F]
+        emotion_value = reflection_analysis.emotional_tone.value
+        data.emotional_patterns.append(emotion_value)
+        data.emotional_patterns = data.emotional_patterns[-20:]  # [UNICODE_6700]20[UNICODE_500B]
+        
+        # [UNICODE_884C]
+        action_value = reflection_analysis.action_orientation.value
+        data.action_tendencies.append(action_value)
+        data.action_tendencies = data.action_tendencies[-20:]  # [UNICODE_6700]20[UNICODE_500B]
+        
+        # [UNICODE_6210]
+        data.growth_areas = self._identify_growth_areas(reflection_analysis)
+        
+        # [UNICODE_632F]
+        insight_data = {
+            "date": datetime.now().isoformat(),
+            "insights": reflection_analysis.key_insights,
+            "emotional_tone": emotion_value,
+            "action_orientation": action_value,
+            "themes": reflection_analysis.problem_themes
+        }
+        data.reflection_insights.append(insight_data)
+        data.reflection_insights = data.reflection_insights[-30:]  # [UNICODE_6700]30[UNICODE_500B]
+        
+        data.last_updated = datetime.now()
+
+    def _identify_growth_areas(self, reflection_analysis: ReflectionAnalysis) -> List[str]:
+        """[UNICODE_6210]"""
+        growth_areas = []
+        
+        # [UNICODE_554F]
+        theme_to_growth = {
+            "social": "[UNICODE_793E]",
+            "work_study": "[UNICODE_5B66]",
+            "health": "[UNICODE_5065]",
+            "mental": "[UNICODE_30E1]",
+            "time": "[UNICODE_6642]",
+            "motivation": "[UNICODE_30E2]"
+        }
+        
+        for theme in reflection_analysis.problem_themes:
+            if theme in theme_to_growth:
+                growth_areas.append(theme_to_growth[theme])
+        
+        # [UNICODE_884C]
+        if reflection_analysis.action_orientation.value == "low":
+            growth_areas.append("[UNICODE_884C]")
+        elif reflection_analysis.action_orientation.value == "high":
+            growth_areas.append("[UNICODE_8A08]")
+        
+        return list(set(growth_areas))
+
+    def get_story_personalization_context(self, user_id: str) -> Dict:
+        """[UNICODE_30B9]"""
+        if user_id not in self.story_personalization:
+            return {}
+        
+        data = self.story_personalization[user_id]
+        
+        # [UNICODE_611F]
+        recent_emotions = data.emotional_patterns[-7:]  # [UNICODE_76F4]7[UNICODE_56DE]
+        dominant_emotion = max(set(recent_emotions), key=recent_emotions.count) if recent_emotions else "neutral"
+        
+        # [UNICODE_884C]
+        recent_actions = data.action_tendencies[-7:]  # [UNICODE_76F4]7[UNICODE_56DE]
+        dominant_action = max(set(recent_actions), key=recent_actions.count) if recent_actions else "medium"
+        
+        # [UNICODE_6700]
+        recent_insights = data.reflection_insights[-3:]  # [UNICODE_76F4]3[UNICODE_56DE]
+        
+        return {
+            "user_id": user_id,
+            "recent_themes": data.recent_themes,
+            "dominant_emotion": dominant_emotion,
+            "dominant_action_tendency": dominant_action,
+            "growth_areas": data.growth_areas,
+            "recent_insights": [insight["insights"] for insight in recent_insights],
+            "reflection_frequency": len(data.reflection_insights),
+            "last_updated": data.last_updated.isoformat()
+        }
+
+    def get_streak_status(self, user_id: str) -> Dict:
+        """[UNICODE_30B9]"""
+        if user_id not in self.user_streaks:
+            return {
+                "current_streak": 0,
+                "longest_streak": 0,
+                "total_reflections": 0,
+                "missed_days_in_row": 0,
+                "needs_reminder": False,
+                "last_reflection_date": None
+            }
+        
+        streak = self.user_streaks[user_id]
+        today = date.today()
+        
+        # [UNICODE_4ECA]
+        if streak.last_reflection_date:
+            days_since_last = (today - streak.last_reflection_date).days
+            needs_reminder = days_since_last >= 2
+        else:
+            days_since_last = 0
+            needs_reminder = False  # [UNICODE_521D]
+        
+        return {
+            "current_streak": streak.current_streak,
+            "longest_streak": streak.longest_streak,
+            "total_reflections": streak.total_reflections,
+            "missed_days_in_row": days_since_last,
+            "needs_reminder": needs_reminder,
+            "last_reflection_date": streak.last_reflection_date.isoformat() if streak.last_reflection_date else None
+        }
+
+# [UNICODE_4F7F]
+def demo_continuity_system():
+    """[UNICODE_7D99]"""
+    growth_note_system = GrowthNoteSystem()
+    continuity_system = ReflectionContinuitySystem(growth_note_system)
+    
+    user_id = "demo_user"
+    
+    print("=== [UNICODE_632F] ===")
+    
+    # [UNICODE_521D]
+    result1 = continuity_system.update_reflection_streak(user_id, True)
+    print(f"[UNICODE_521D]: {result1}")
+    
+    # 2[UNICODE_65E5]
+    streak = continuity_system.user_streaks[user_id]
+    streak.last_reflection_date = date.today() - timedelta(days=1)
+    result2 = continuity_system.update_reflection_streak(user_id, True)
+    print(f"2[UNICODE_65E5]: {result2}")
+    
+    # 3[UNICODE_65E5]
+    streak.last_reflection_date = date.today() - timedelta(days=1)
+    streak.current_streak = 2
+    result3 = continuity_system.update_reflection_streak(user_id, True)
+    print(f"3[UNICODE_65E5]: {result3}")
+    
+    # [UNICODE_30EA]
+    reminder = continuity_system.generate_reminder_message(user_id, 3)
+    print(f"\n=== [UNICODE_30EA] ===")
+    print(json.dumps(reminder, ensure_ascii=False, indent=2))
+    
+    # [UNICODE_30B9]
+    sample_analysis = growth_note_system.process_reflection({
+        "current_problems": "[UNICODE_4EBA]",
+        "ideal_world": "[UNICODE_53CB]",
+        "ideal_emotions": "[UNICODE_5E78]",
+        "tomorrow_actions": "[UNICODE_660E]"
+    })
+    
+    continuity_system.update_story_personalization_data(user_id, sample_analysis)
+    
+    # [UNICODE_30D1]
+    context = continuity_system.get_story_personalization_context(user_id)
+    print(f"\n=== [UNICODE_30B9] ===")
+    print(json.dumps(context, ensure_ascii=False, indent=2))
+    
+    # [UNICODE_30B9]
+    status = continuity_system.get_streak_status(user_id)
+    print(f"\n=== [UNICODE_30B9] ===")
+    print(json.dumps(status, ensure_ascii=False, indent=2))
+    
+    return continuity_system
+
+if __name__ == "__main__":
+    demo_continuity_system()

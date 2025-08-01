@@ -1,0 +1,474 @@
+"""
+[UNICODE_30EC]
+Level system with exponential progression and XP management
+Requirements: 4.4, 4.5
+"""
+
+import math
+from typing import Dict, List, Optional, Tuple
+from datetime import datetime
+from pydantic import BaseModel, Field
+from enum import Enum
+
+from .core_types import ChapterType
+
+
+class LevelType(str, Enum):
+    """[UNICODE_30EC]"""
+    PLAYER = "player"  # [UNICODE_30D7]
+    YU = "yu"         # [UNICODE_30E6]
+
+
+class LevelMilestone(BaseModel):
+    """[UNICODE_30EC]"""
+    level: int
+    title: str
+    description: str
+    rewards: List[str] = []
+    unlock_features: List[str] = []
+    therapeutic_message: str = ""
+
+
+class LevelProgression(BaseModel):
+    """[UNICODE_30EC]"""
+    current_level: int
+    current_xp: int
+    xp_for_current_level: int
+    xp_for_next_level: int
+    xp_needed_for_next: int
+    progress_percentage: float
+    total_levels_available: int = 100
+
+
+class LevelCalculator:
+    """[UNICODE_30EC]"""
+    
+    # [UNICODE_30EC]
+    BASE_XP = 100           # [UNICODE_30EC]1[UNICODE_306B]XP
+    GROWTH_FACTOR = 1.15    # [UNICODE_6307]
+    MAX_LEVEL = 100         # [UNICODE_6700]
+    
+    # [UNICODE_30EC]
+    LEVEL_ADJUSTMENTS = {
+        # [UNICODE_521D]1-10[UNICODE_306F]
+        **{i: 0.9 for i in range(1, 11)},
+        # [UNICODE_4E2D]11-30[UNICODE_306F]
+        **{i: 1.0 for i in range(11, 31)},
+        # [UNICODE_4E0A]31-50[UNICODE_306F]
+        **{i: 1.1 for i in range(31, 51)},
+        # [UNICODE_30A8]51[UNICODE_4EE5]
+        **{i: 1.2 for i in range(51, 101)},
+    }
+    
+    @staticmethod
+    def calculate_xp_for_level(level: int) -> int:
+        """[UNICODE_6307]XP[UNICODE_3092]"""
+        if level <= 1:
+            return 0
+        
+        if level > LevelCalculator.MAX_LEVEL:
+            level = LevelCalculator.MAX_LEVEL
+        
+        # [UNICODE_6307]
+        # XP = BASE_XP * (GROWTH_FACTOR^(level-1) - 1) / (GROWTH_FACTOR - 1)
+        base_xp = LevelCalculator.BASE_XP
+        growth_factor = LevelCalculator.GROWTH_FACTOR
+        
+        # [UNICODE_7B49]
+        if growth_factor == 1:
+            total_xp = base_xp * (level - 1)
+        else:
+            total_xp = base_xp * (math.pow(growth_factor, level - 1) - 1) / (growth_factor - 1)
+        
+        # [UNICODE_30EC]
+        adjustment = LevelCalculator.LEVEL_ADJUSTMENTS.get(level, 1.0)
+        adjusted_xp = int(total_xp * adjustment)
+        
+        return adjusted_xp
+    
+    @staticmethod
+    def calculate_xp_for_level_range(start_level: int, end_level: int) -> int:
+        """[UNICODE_6307]XP[UNICODE_3092]"""
+        if start_level >= end_level:
+            return 0
+        
+        start_xp = LevelCalculator.calculate_xp_for_level(start_level)
+        end_xp = LevelCalculator.calculate_xp_for_level(end_level)
+        
+        return end_xp - start_xp
+    
+    @staticmethod
+    def get_level_from_xp(total_xp: int) -> int:
+        """[UNICODE_7D2F]XP[UNICODE_304B]"""
+        if total_xp <= 0:
+            return 1
+        
+        # [UNICODE_30D0]
+        left, right = 1, LevelCalculator.MAX_LEVEL
+        
+        while left < right:
+            mid = (left + right + 1) // 2
+            required_xp = LevelCalculator.calculate_xp_for_level(mid)
+            
+            if total_xp >= required_xp:
+                left = mid
+            else:
+                right = mid - 1
+        
+        return left
+    
+    @staticmethod
+    def get_level_progression(total_xp: int) -> LevelProgression:
+        """XP[UNICODE_304B]"""
+        current_level = LevelCalculator.get_level_from_xp(total_xp)
+        
+        # [UNICODE_73FE]XP
+        xp_for_current = LevelCalculator.calculate_xp_for_level(current_level)
+        
+        # [UNICODE_6B21]XP
+        next_level = min(current_level + 1, LevelCalculator.MAX_LEVEL)
+        xp_for_next = LevelCalculator.calculate_xp_for_level(next_level)
+        
+        # [UNICODE_6B21]XP
+        xp_needed = max(0, xp_for_next - total_xp)
+        
+        # [UNICODE_73FE]
+        if current_level >= LevelCalculator.MAX_LEVEL:
+            progress_percentage = 100.0
+        else:
+            level_xp_range = xp_for_next - xp_for_current
+            current_level_progress = total_xp - xp_for_current
+            progress_percentage = (current_level_progress / level_xp_range * 100) if level_xp_range > 0 else 0.0
+        
+        return LevelProgression(
+            current_level=current_level,
+            current_xp=total_xp,
+            xp_for_current_level=xp_for_current,
+            xp_for_next_level=xp_for_next,
+            xp_needed_for_next=xp_needed,
+            progress_percentage=progress_percentage,
+            total_levels_available=LevelCalculator.MAX_LEVEL
+        )
+    
+    @staticmethod
+    def calculate_level_up_rewards(old_level: int, new_level: int) -> List[str]:
+        """[UNICODE_30EC]"""
+        rewards = []
+        
+        for level in range(old_level + 1, new_level + 1):
+            # 5[UNICODE_30EC]
+            if level % 5 == 0:
+                rewards.append(f"milestone_reward_level_{level}")
+            
+            # 10[UNICODE_30EC]
+            if level % 10 == 0:
+                rewards.append(f"major_milestone_level_{level}")
+                rewards.append("bonus_crystal_growth")
+            
+            # 25[UNICODE_30EC]
+            if level % 25 == 0:
+                rewards.append(f"feature_unlock_level_{level}")
+                rewards.append("new_story_chapter")
+            
+            # 50[UNICODE_30EC]
+            if level % 50 == 0:
+                rewards.append(f"title_unlock_level_{level}")
+        
+        return rewards
+
+
+class PlayerLevelManager:
+    """[UNICODE_30D7]"""
+    
+    def __init__(self, initial_xp: int = 0):
+        self.total_xp = initial_xp
+        self.level_progression = LevelCalculator.get_level_progression(initial_xp)
+        self.level_history: List[Dict] = []
+    
+    def add_xp(self, xp_amount: int, source: str = "unknown") -> Dict:
+        """XP[UNICODE_3092]"""
+        if xp_amount <= 0:
+            return {
+                "xp_added": 0,
+                "level_up": False,
+                "old_level": self.level_progression.current_level,
+                "new_level": self.level_progression.current_level,
+                "rewards": []
+            }
+        
+        old_level = self.level_progression.current_level
+        old_xp = self.total_xp
+        
+        # XP[UNICODE_3092]
+        self.total_xp += xp_amount
+        
+        # [UNICODE_65B0]
+        self.level_progression = LevelCalculator.get_level_progression(self.total_xp)
+        new_level = self.level_progression.current_level
+        
+        # [UNICODE_30EC]
+        level_up = new_level > old_level
+        rewards = []
+        
+        if level_up:
+            rewards = LevelCalculator.calculate_level_up_rewards(old_level, new_level)
+            
+            # [UNICODE_30EC]
+            self.level_history.append({
+                "timestamp": datetime.utcnow(),
+                "old_level": old_level,
+                "new_level": new_level,
+                "xp_source": source,
+                "xp_amount": xp_amount,
+                "total_xp": self.total_xp
+            })
+        
+        return {
+            "xp_added": xp_amount,
+            "level_up": level_up,
+            "old_level": old_level,
+            "new_level": new_level,
+            "rewards": rewards,
+            "progression": self.level_progression
+        }
+    
+    def get_xp_breakdown(self) -> Dict:
+        """XP[UNICODE_306E]"""
+        return {
+            "total_xp": self.total_xp,
+            "current_level": self.level_progression.current_level,
+            "xp_for_current_level": self.level_progression.xp_for_current_level,
+            "xp_for_next_level": self.level_progression.xp_for_next_level,
+            "xp_needed_for_next": self.level_progression.xp_needed_for_next,
+            "progress_percentage": self.level_progression.progress_percentage
+        }
+    
+    def simulate_xp_addition(self, xp_amount: int) -> Dict:
+        """XP[UNICODE_8FFD]"""
+        simulated_total = self.total_xp + xp_amount
+        simulated_progression = LevelCalculator.get_level_progression(simulated_total)
+        
+        level_up = simulated_progression.current_level > self.level_progression.current_level
+        rewards = []
+        
+        if level_up:
+            rewards = LevelCalculator.calculate_level_up_rewards(
+                self.level_progression.current_level,
+                simulated_progression.current_level
+            )
+        
+        return {
+            "simulated_total_xp": simulated_total,
+            "simulated_level": simulated_progression.current_level,
+            "level_up": level_up,
+            "rewards": rewards,
+            "progression": simulated_progression
+        }
+
+
+class YuLevelManager:
+    """[UNICODE_30E6]"""
+    
+    def __init__(self, initial_level: int = 1):
+        self.current_level = initial_level
+        self.growth_events: List[Dict] = []
+        self.personality_traits: Dict[str, float] = {
+            "wisdom": 0.5,
+            "empathy": 0.5,
+            "curiosity": 0.5,
+            "resilience": 0.5
+        }
+    
+    def grow_naturally(self, player_level: int, days_passed: int = 1) -> Dict:
+        """[UNICODE_30E6]"""
+        # [UNICODE_30E6]
+        target_level = max(1, player_level - 2)
+        
+        growth_occurred = False
+        old_level = self.current_level
+        
+        # [UNICODE_81EA]
+        if self.current_level < target_level:
+            # [UNICODE_30EC]
+            level_gap = target_level - self.current_level
+            growth_probability = min(0.3 + (level_gap * 0.1), 0.8)
+            
+            # [UNICODE_65E5]
+            daily_growth_chance = growth_probability * days_passed
+            
+            if daily_growth_chance >= 0.5:  # 50%[UNICODE_4EE5]
+                self.current_level += 1
+                growth_occurred = True
+                
+                # [UNICODE_6210]
+                self.growth_events.append({
+                    "timestamp": datetime.utcnow(),
+                    "old_level": old_level,
+                    "new_level": self.current_level,
+                    "growth_type": "natural",
+                    "player_level": player_level,
+                    "days_passed": days_passed
+                })
+                
+                # [UNICODE_6027]
+                self._adjust_personality_traits()
+        
+        return {
+            "growth_occurred": growth_occurred,
+            "old_level": old_level,
+            "new_level": self.current_level,
+            "personality_traits": self.personality_traits.copy()
+        }
+    
+    def grow_from_interaction(self, interaction_type: str, player_level: int) -> Dict:
+        """[UNICODE_30D7]"""
+        growth_occurred = False
+        old_level = self.current_level
+        
+        # [UNICODE_76F8]
+        interaction_growth_rates = {
+            "story_choice": 0.1,
+            "task_completion": 0.05,
+            "crystal_resonance": 0.2,
+            "reflection_sharing": 0.15,
+            "emotional_support": 0.1
+        }
+        
+        growth_rate = interaction_growth_rates.get(interaction_type, 0.05)
+        
+        # [UNICODE_30D7]
+        level_difference = player_level - self.current_level
+        if level_difference > 3:
+            growth_rate *= 1.5  # [UNICODE_30EC]
+        
+        # [UNICODE_6210]
+        import random
+        if random.random() < growth_rate:
+            self.current_level += 1
+            growth_occurred = True
+            
+            # [UNICODE_6210]
+            self.growth_events.append({
+                "timestamp": datetime.utcnow(),
+                "old_level": old_level,
+                "new_level": self.current_level,
+                "growth_type": "interaction",
+                "interaction_type": interaction_type,
+                "player_level": player_level
+            })
+            
+            # [UNICODE_6027]
+            self._adjust_personality_traits(interaction_type)
+        
+        return {
+            "growth_occurred": growth_occurred,
+            "old_level": old_level,
+            "new_level": self.current_level,
+            "interaction_type": interaction_type,
+            "personality_traits": self.personality_traits.copy()
+        }
+    
+    def _adjust_personality_traits(self, interaction_type: Optional[str] = None):
+        """[UNICODE_6027]"""
+        if interaction_type == "story_choice":
+            self.personality_traits["curiosity"] = min(1.0, self.personality_traits["curiosity"] + 0.02)
+        elif interaction_type == "emotional_support":
+            self.personality_traits["empathy"] = min(1.0, self.personality_traits["empathy"] + 0.03)
+        elif interaction_type == "crystal_resonance":
+            self.personality_traits["wisdom"] = min(1.0, self.personality_traits["wisdom"] + 0.02)
+        elif interaction_type == "task_completion":
+            self.personality_traits["resilience"] = min(1.0, self.personality_traits["resilience"] + 0.01)
+        else:
+            # [UNICODE_81EA]
+            for trait in self.personality_traits:
+                self.personality_traits[trait] = min(1.0, self.personality_traits[trait] + 0.005)
+    
+    def get_personality_description(self) -> str:
+        """[UNICODE_73FE]"""
+        dominant_trait = max(self.personality_traits.items(), key=lambda x: x[1])
+        trait_name, trait_value = dominant_trait
+        
+        descriptions = {
+            "wisdom": f"[UNICODE_30E6]: {trait_value:.1%}[UNICODE_FF09]",
+            "empathy": f"[UNICODE_30E6]: {trait_value:.1%}[UNICODE_FF09]",
+            "curiosity": f"[UNICODE_30E6]: {trait_value:.1%}[UNICODE_FF09]",
+            "resilience": f"[UNICODE_30E6]: {trait_value:.1%}[UNICODE_FF09]"
+        }
+        
+        return descriptions.get(trait_name, "[UNICODE_30E6]")
+
+
+class LevelSystemManager:
+    """[UNICODE_30EC]"""
+    
+    def __init__(self, player_xp: int = 0, yu_level: int = 1):
+        self.player_manager = PlayerLevelManager(player_xp)
+        self.yu_manager = YuLevelManager(yu_level)
+        self.system_events: List[Dict] = []
+    
+    def add_player_xp(self, xp_amount: int, source: str = "unknown") -> Dict:
+        """[UNICODE_30D7]XP[UNICODE_3092]"""
+        # [UNICODE_30D7]XP[UNICODE_8FFD]
+        player_result = self.player_manager.add_xp(xp_amount, source)
+        
+        # [UNICODE_30E6]
+        yu_result = self.yu_manager.grow_naturally(
+            self.player_manager.level_progression.current_level
+        )
+        
+        # [UNICODE_30B7]
+        event = {
+            "timestamp": datetime.utcnow(),
+            "type": "xp_addition",
+            "player_result": player_result,
+            "yu_result": yu_result,
+            "source": source
+        }
+        self.system_events.append(event)
+        
+        return {
+            "player": player_result,
+            "yu": yu_result,
+            "system_event": event
+        }
+    
+    def trigger_yu_interaction(self, interaction_type: str) -> Dict:
+        """[UNICODE_30E6]"""
+        yu_result = self.yu_manager.grow_from_interaction(
+            interaction_type,
+            self.player_manager.level_progression.current_level
+        )
+        
+        # [UNICODE_30B7]
+        event = {
+            "timestamp": datetime.utcnow(),
+            "type": "yu_interaction",
+            "interaction_type": interaction_type,
+            "yu_result": yu_result
+        }
+        self.system_events.append(event)
+        
+        return {
+            "yu": yu_result,
+            "system_event": event
+        }
+    
+    def get_system_status(self) -> Dict:
+        """[UNICODE_30B7]"""
+        return {
+            "player": {
+                "level": self.player_manager.level_progression.current_level,
+                "xp": self.player_manager.total_xp,
+                "progression": self.player_manager.level_progression
+            },
+            "yu": {
+                "level": self.yu_manager.current_level,
+                "personality": self.yu_manager.personality_traits,
+                "description": self.yu_manager.get_personality_description()
+            },
+            "level_difference": abs(
+                self.player_manager.level_progression.current_level - 
+                self.yu_manager.current_level
+            ),
+            "recent_events": self.system_events[-5:] if self.system_events else []
+        }

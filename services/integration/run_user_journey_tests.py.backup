@@ -1,0 +1,372 @@
+"""
+[UNICODE_5B8C]
+
+[UNICODE_30B5]15.1[UNICODE_306E]
+"""
+
+import asyncio
+import sys
+import traceback
+from datetime import datetime
+
+# [UNICODE_30C6]
+from test_complete_user_journey import TestCompleteUserJourney
+from test_xp_level_resonance_integration import TestXPLevelResonanceIntegration
+from test_mandala_story_integration import TestMandalaStoryIntegration
+
+# [UNICODE_5171]
+from shared.interfaces.core_types import UserProfile
+from shared.interfaces.crystal_system import CRYSTAL_ATTRIBUTES
+from shared.interfaces.level_system import LevelSystem
+from shared.interfaces.resonance_system import ResonanceSystem
+from shared.interfaces.mandala_system import MandalaGrid
+from shared.interfaces.crystal_system import CrystalGauge
+
+
+class UserJourneyTestRunner:
+    """[UNICODE_30E6]"""
+    
+    def __init__(self):
+        self.test_results = {
+            "complete_journey": [],
+            "xp_level_resonance": [],
+            "mandala_story": [],
+            "summary": {
+                "total_tests": 0,
+                "passed": 0,
+                "failed": 0,
+                "errors": []
+            }
+        }
+    
+    async def run_all_tests(self):
+        """[UNICODE_5168]"""
+        print("=" * 60)
+        print("[UNICODE_5B8C]")
+        print(f"[UNICODE_5B9F]: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print("=" * 60)
+        
+        # 1. [UNICODE_5B8C]
+        await self._run_complete_journey_tests()
+        
+        # 2. XP[UNICODE_30FB]
+        await self._run_xp_level_resonance_tests()
+        
+        # 3. Mandala[UNICODE_30FB]
+        await self._run_mandala_story_tests()
+        
+        # [UNICODE_7D50]
+        self._print_test_summary()
+        
+        return self.test_results
+    
+    async def _run_complete_journey_tests(self):
+        """[UNICODE_5B8C]"""
+        print("\n1. [UNICODE_5B8C]")
+        print("-" * 40)
+        
+        test_instance = TestCompleteUserJourney()
+        
+        # [UNICODE_30C6]
+        mock_profile = self._create_test_user_profile()
+        mock_services = self._create_mock_services()
+        
+        tests = [
+            ("[UNICODE_671D]", test_instance.test_morning_task_delivery_flow),
+            ("[UNICODE_30BF]XP[UNICODE_7372]", test_instance.test_task_completion_and_xp_flow),
+            ("[UNICODE_5171]", test_instance.test_resonance_event_trigger),
+            ("[UNICODE_591C]", test_instance.test_evening_story_generation_flow),
+            ("Mandala[UNICODE_9032]", test_instance.test_mandala_progression_integration),
+            ("[UNICODE_5B8C]1[UNICODE_65E5]", test_instance.test_complete_daily_cycle)
+        ]
+        
+        for test_name, test_method in tests:
+            try:
+                print(f"  [UNICODE_5B9F]: {test_name}")
+                
+                # [UNICODE_30C6]
+                if "mock_user_profile" in test_method.__code__.co_varnames:
+                    await test_method(mock_profile, mock_services)
+                else:
+                    await test_method(mock_profile, mock_services)
+                
+                print(f"  [UNICODE_2713] {test_name} - [UNICODE_6210]")
+                self.test_results["complete_journey"].append({
+                    "test": test_name,
+                    "status": "PASSED",
+                    "error": None
+                })
+                self.test_results["summary"]["passed"] += 1
+                
+            except Exception as e:
+                print(f"  [UNICODE_2717] {test_name} - [UNICODE_5931]: {str(e)}")
+                self.test_results["complete_journey"].append({
+                    "test": test_name,
+                    "status": "FAILED",
+                    "error": str(e)
+                })
+                self.test_results["summary"]["failed"] += 1
+                self.test_results["summary"]["errors"].append(f"{test_name}: {str(e)}")
+            
+            self.test_results["summary"]["total_tests"] += 1
+    
+    async def _run_xp_level_resonance_tests(self):
+        """XP[UNICODE_30FB]"""
+        print("\n2. XP[UNICODE_30FB]")
+        print("-" * 40)
+        
+        test_instance = TestXPLevelResonanceIntegration()
+        level_system = LevelSystem()
+        resonance_system = ResonanceSystem()
+        
+        tests = [
+            ("XP[UNICODE_8A08]", test_instance.test_xp_calculation_accuracy),
+            ("[UNICODE_30EC]", lambda: test_instance.test_level_progression_algorithm(level_system)),
+            ("[UNICODE_6B21]XP[UNICODE_8A08]", lambda: test_instance.test_next_level_xp_calculation(level_system)),
+            ("[UNICODE_5171]", lambda: test_instance.test_resonance_event_trigger_conditions(resonance_system)),
+            ("[UNICODE_5171]XP[UNICODE_8A08]", lambda: test_instance.test_resonance_bonus_xp_calculation(resonance_system)),
+            ("[UNICODE_30A8]", lambda: test_instance.test_edge_case_level_calculations(level_system)),
+            ("[UNICODE_5171]", lambda: test_instance.test_resonance_event_types(resonance_system))
+        ]
+        
+        for test_name, test_method in tests:
+            try:
+                print(f"  [UNICODE_5B9F]: {test_name}")
+                
+                if asyncio.iscoroutinefunction(test_method):
+                    await test_method()
+                else:
+                    test_method()
+                
+                print(f"  [UNICODE_2713] {test_name} - [UNICODE_6210]")
+                self.test_results["xp_level_resonance"].append({
+                    "test": test_name,
+                    "status": "PASSED",
+                    "error": None
+                })
+                self.test_results["summary"]["passed"] += 1
+                
+            except Exception as e:
+                print(f"  [UNICODE_2717] {test_name} - [UNICODE_5931]: {str(e)}")
+                self.test_results["xp_level_resonance"].append({
+                    "test": test_name,
+                    "status": "FAILED", 
+                    "error": str(e)
+                })
+                self.test_results["summary"]["failed"] += 1
+                self.test_results["summary"]["errors"].append(f"{test_name}: {str(e)}")
+            
+            self.test_results["summary"]["total_tests"] += 1
+    
+    async def _run_mandala_story_tests(self):
+        """Mandala[UNICODE_30FB]"""
+        print("\n3. Mandala[UNICODE_30FB]")
+        print("-" * 40)
+        
+        test_instance = TestMandalaStoryIntegration()
+        mandala_grid = MandalaGrid()
+        crystal_gauge = CrystalGauge()
+        
+        tests = [
+            ("Mandala[UNICODE_30B0]", lambda: test_instance.test_mandala_grid_initialization(mandala_grid)),
+            ("[UNICODE_30E1]", lambda: test_instance.test_memory_cell_unlock_conditions(mandala_grid, crystal_gauge)),
+            ("Mandala API[UNICODE_5FDC]", lambda: test_instance.test_mandala_api_response_format(mandala_grid, self._create_test_user_profile())),
+            ("[UNICODE_30AF]", lambda: test_instance.test_crystal_attribute_chapter_mapping(crystal_gauge)),
+            ("Mandala[UNICODE_30E2]", lambda: test_instance.test_mandala_mobile_optimization(mandala_grid)),
+            ("[UNICODE_5B64]", test_instance.test_isolated_node_detection_and_merge)
+        ]
+        
+        for test_name, test_method in tests:
+            try:
+                print(f"  [UNICODE_5B9F]: {test_name}")
+                
+                if asyncio.iscoroutinefunction(test_method):
+                    await test_method()
+                else:
+                    test_method()
+                
+                print(f"  [UNICODE_2713] {test_name} - [UNICODE_6210]")
+                self.test_results["mandala_story"].append({
+                    "test": test_name,
+                    "status": "PASSED",
+                    "error": None
+                })
+                self.test_results["summary"]["passed"] += 1
+                
+            except Exception as e:
+                print(f"  [UNICODE_2717] {test_name} - [UNICODE_5931]: {str(e)}")
+                self.test_results["mandala_story"].append({
+                    "test": test_name,
+                    "status": "FAILED",
+                    "error": str(e)
+                })
+                self.test_results["summary"]["failed"] += 1
+                self.test_results["summary"]["errors"].append(f"{test_name}: {str(e)}")
+            
+            self.test_results["summary"]["total_tests"] += 1
+    
+    def _create_test_user_profile(self):
+        """[UNICODE_30C6]"""
+        return UserProfile(
+            uid="integration_test_user_001",
+            yu_level=6,
+            player_level=4,
+            total_xp=600,
+            crystal_gauges={attr: 40 for attr in CRYSTAL_ATTRIBUTES},
+            current_chapter="chapter_2",
+            daily_task_limit=16,
+            care_points=200
+        )
+    
+    def _create_mock_services(self):
+        """[UNICODE_30E2]"""
+        from unittest.mock import Mock
+        
+        mock_services = {
+            'mandala': Mock(),
+            'line_bot': Mock(),
+            'core_game': Mock(),
+            'ai_story': Mock(),
+            'task_mgmt': Mock(),
+            'mood_tracking': Mock()
+        }
+        
+        # [UNICODE_30E2]
+        mock_services['mandala'].get_daily_tasks.return_value = [
+            {"task_id": "morning_001", "type": "routine", "difficulty": 2},
+            {"task_id": "morning_002", "type": "skill_up", "difficulty": 3},
+            {"task_id": "morning_003", "type": "social", "difficulty": 1}
+        ]
+        
+        mock_services['line_bot'].send_daily_mandala.return_value = {
+            "message_id": "msg_001",
+            "format": "3x3_mandala",
+            "tasks_count": 3,
+            "mobile_optimized": True
+        }
+        
+        mock_services['core_game'].calculate_xp.return_value = 35
+        mock_services['core_game'].check_level_up.return_value = {
+            "level_up": True,
+            "new_level": 5,
+            "xp_for_next": 200
+        }
+        mock_services['core_game'].check_resonance_event.return_value = {
+            "resonance_triggered": True,
+            "level_difference": 6,
+            "bonus_xp": 120,
+            "resonance_type": "yu_ahead"
+        }
+        
+        mock_services['ai_story'].generate_story.return_value = {
+            "story_text": "[UNICODE_30E6]...",
+            "choices": [
+                {"text": "[UNICODE_65B0]", "real_task_id": "challenge_001", "xp_reward": 50},
+                {"text": "[UNICODE_4EF2]", "habit_tag": "teamwork", "xp_reward": 40},
+                {"text": "[UNICODE_5275]", "habit_tag": "creativity", "xp_reward": 45}
+            ],
+            "therapeutic_elements": ["positive_reinforcement", "goal_setting"],
+            "generation_time": 2.1
+        }
+        
+        mock_services['mood_tracking'].get_mood_coefficient.return_value = 1.15
+        mock_services['task_mgmt'].get_adhd_assist_multiplier.return_value = 1.25
+        
+        mock_services['mandala'].update_crystal_progress.return_value = {
+            "attribute": "Curiosity",
+            "new_value": 100,
+            "chapter_unlocked": True,
+            "new_chapter": "curiosity_mastery"
+        }
+        
+        mock_services['mandala'].unlock_memory_cells.return_value = {
+            "unlocked_cells": 9,
+            "total_unlocked": 36,
+            "completion_percentage": 44.4
+        }
+        
+        return mock_services
+    
+    def _print_test_summary(self):
+        """[UNICODE_30C6]"""
+        print("\n" + "=" * 60)
+        print("[UNICODE_30C6]")
+        print("=" * 60)
+        
+        summary = self.test_results["summary"]
+        print(f"[UNICODE_7DCF]: {summary['total_tests']}")
+        print(f"[UNICODE_6210]: {summary['passed']}")
+        print(f"[UNICODE_5931]: {summary['failed']}")
+        print(f"[UNICODE_6210]: {(summary['passed'] / summary['total_tests'] * 100):.1f}%")
+        
+        if summary['errors']:
+            print("\n[UNICODE_5931]:")
+            for error in summary['errors']:
+                print(f"  - {error}")
+        
+        print("\n[UNICODE_8A73]:")
+        
+        # [UNICODE_5B8C]
+        print("\n1. [UNICODE_5B8C]:")
+        for result in self.test_results["complete_journey"]:
+            status_icon = "[UNICODE_2713]" if result["status"] == "PASSED" else "[UNICODE_2717]"
+            print(f"  {status_icon} {result['test']}")
+        
+        # XP[UNICODE_30FB]
+        print("\n2. XP[UNICODE_30FB]:")
+        for result in self.test_results["xp_level_resonance"]:
+            status_icon = "[UNICODE_2713]" if result["status"] == "PASSED" else "[UNICODE_2717]"
+            print(f"  {status_icon} {result['test']}")
+        
+        # Mandala[UNICODE_30FB]
+        print("\n3. Mandala[UNICODE_30FB]:")
+        for result in self.test_results["mandala_story"]:
+            status_icon = "[UNICODE_2713]" if result["status"] == "PASSED" else "[UNICODE_2717]"
+            print(f"  {status_icon} {result['test']}")
+        
+        print("\n" + "=" * 60)
+        
+        # [UNICODE_8981]
+        print("[UNICODE_8981]:")
+        covered_requirements = [
+            "1.1 - [UNICODE_671D] (7:00 AM)",
+            "1.2 - [UNICODE_30EF]",
+            "1.3 - [UNICODE_591C] (21:30)",
+            "1.4 - [UNICODE_30B9]Mandala[UNICODE_9023]",
+            "1.5 - [UNICODE_30AF]100%[UNICODE_3067]",
+            "4.1 - Mandala 9x9[UNICODE_30B0]",
+            "4.2 - 8[UNICODE_5C5E]",
+            "4.3 - 81[UNICODE_30E1]",
+            "4.4 - [UNICODE_30E6]",
+            "4.5 - [UNICODE_30EC]5[UNICODE_4EE5]"
+        ]
+        
+        for req in covered_requirements:
+            print(f"  [UNICODE_2713] {req}")
+        
+        print("=" * 60)
+
+
+async def main():
+    """[UNICODE_30E1]"""
+    try:
+        runner = UserJourneyTestRunner()
+        results = await runner.run_all_tests()
+        
+        # [UNICODE_7D50]
+        if results["summary"]["failed"] == 0:
+            print("\n[UNICODE_1F389] [UNICODE_5168]!")
+            sys.exit(0)
+        else:
+            print(f"\n[UNICODE_26A0]  {results['summary']['failed']}[UNICODE_500B]")
+            sys.exit(1)
+            
+    except Exception as e:
+        print(f"\n[UNICODE_274C] [UNICODE_30C6]: {str(e)}")
+        traceback.print_exc()
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    # [UNICODE_975E]
+    asyncio.run(main())

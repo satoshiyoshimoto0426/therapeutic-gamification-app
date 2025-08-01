@@ -1,0 +1,289 @@
+# Cloud Monitoring設定
+apiVersion: monitoring.googleapis.com/v1
+kind: AlertPolicy
+metadata:
+  name: therapeutic-app-performance-alerts
+  project: PROJECT_ID
+spec:
+  displayName: "Therapeutic App Performance Alerts"
+  documentation:
+    content: "治療的ゲーミフィケーションアプリのパフォーマンス監視アラート"
+    mimeType: "text/markdown"
+  
+  conditions:
+  # 1. API応答時間監視（1.2秒P95レイテンシ目標）
+  - displayName: "API Response Time P95 > 1.2s"
+    conditionThreshold:
+      filter: |
+        resource.type="cloud_run_revision"
+        resource.labels.service_name="therapeutic-gamification-app"
+        metric.type="run.googleapis.com/request_latencies"
+      comparison: COMPARISON_GREATER_THAN
+      thresholdValue: 1200  # 1.2秒（ミリ秒）
+      duration: 300s  # 5分間継続
+      aggregations:
+      - alignmentPeriod: 60s
+        perSeriesAligner: ALIGN_DELTA
+        crossSeriesReducer: REDUCE_PERCENTILE_95
+        groupByFields:
+        - resource.labels.service_name
+  
+  # 2. エラー率監視
+  - displayName: "Error Rate > 1%"
+    conditionThreshold:
+      filter: |
+        resource.type="cloud_run_revision"
+        resource.labels.service_name="therapeutic-gamification-app"
+        metric.type="run.googleapis.com/request_count"
+        metric.labels.response_code_class!="2xx"
+      comparison: COMPARISON_GREATER_THAN
+      thresholdValue: 0.01  # 1%
+      duration: 300s
+      aggregations:
+      - alignmentPeriod: 60s
+        perSeriesAligner: ALIGN_RATE
+        crossSeriesReducer: REDUCE_SUM
+  
+  # 3. メモリ使用率監視
+  - displayName: "Memory Usage > 80%"
+    conditionThreshold:
+      filter: |
+        resource.type="cloud_run_revision"
+        resource.labels.service_name="therapeutic-gamification-app"
+        metric.type="run.googleapis.com/container/memory/utilizations"
+      comparison: COMPARISON_GREATER_THAN
+      thresholdValue: 0.8  # 80%
+      duration: 600s  # 10分間継続
+      aggregations:
+      - alignmentPeriod: 60s
+        perSeriesAligner: ALIGN_MEAN
+        crossSeriesReducer: REDUCE_MEAN
+  
+  # 4. CPU使用率監視
+  - displayName: "CPU Usage > 70%"
+    conditionThreshold:
+      filter: |
+        resource.type="cloud_run_revision"
+        resource.labels.service_name="therapeutic-gamification-app"
+        metric.type="run.googleapis.com/container/cpu/utilizations"
+      comparison: COMPARISON_GREATER_THAN
+      thresholdValue: 0.7  # 70%
+      duration: 600s
+      aggregations:
+      - alignmentPeriod: 60s
+        perSeriesAligner: ALIGN_MEAN
+        crossSeriesReducer: REDUCE_MEAN
+  
+  # 5. 同時接続数監視（20,000ユーザー目標）
+  - displayName: "Concurrent Users > 18000"
+    conditionThreshold:
+      filter: |
+        resource.type="cloud_run_revision"
+        resource.labels.service_name="therapeutic-gamification-app"
+        metric.type="run.googleapis.com/container/instance_count"
+      comparison: COMPARISON_GREATER_THAN
+      thresholdValue: 18000  # 90%閾値
+      duration: 300s
+      aggregations:
+      - alignmentPeriod: 60s
+        perSeriesAligner: ALIGN_MEAN
+        crossSeriesReducer: REDUCE_SUM
+  
+  # アラート通知設定
+  notificationChannels:
+  - projects/PROJECT_ID/notificationChannels/SLACK_CHANNEL_ID
+  - projects/PROJECT_ID/notificationChannels/EMAIL_CHANNEL_ID
+  - projects/PROJECT_ID/notificationChannels/SMS_CHANNEL_ID
+  
+  alertStrategy:
+    autoClose: 86400s  # 24時間で自動クローズ
+    notificationRateLimit:
+      period: 300s  # 5分間隔
+  
+  severity: ERROR
+  enabled: true
+
+---
+# 治療安全性メトリクス監視
+apiVersion: monitoring.googleapis.com/v1
+kind: AlertPolicy
+metadata:
+  name: therapeutic-safety-alerts
+  project: PROJECT_ID
+spec:
+  displayName: "Therapeutic Safety Alerts"
+  documentation:
+    content: "治療安全性メトリクス（F1スコア）の継続監視"
+    mimeType: "text/markdown"
+  
+  conditions:
+  # 1. F1スコア監視（98%目標）
+  - displayName: "Safety F1 Score < 98%"
+    conditionThreshold:
+      filter: |
+        resource.type="global"
+        metric.type="custom.googleapis.com/therapeutic/safety/f1_score"
+      comparison: COMPARISON_LESS_THAN
+      thresholdValue: 0.98  # 98%
+      duration: 60s  # 1分間継続
+      aggregations:
+      - alignmentPeriod: 60s
+        perSeriesAligner: ALIGN_MEAN
+        crossSeriesReducer: REDUCE_MEAN
+  
+  # 2. 自傷リスク検出失敗監視
+  - displayName: "Self-harm Detection Failures"
+    conditionThreshold:
+      filter: |
+        resource.type="global"
+        metric.type="custom.googleapis.com/therapeutic/safety/detection_failures"
+      comparison: COMPARISON_GREATER_THAN
+      thresholdValue: 5  # 5件以上
+      duration: 300s  # 5分間
+      aggregations:
+      - alignmentPeriod: 60s
+        perSeriesAligner: ALIGN_RATE
+        crossSeriesReducer: REDUCE_SUM
+  
+  # 3. CBT介入失敗監視
+  - displayName: "CBT Intervention Failures"
+    conditionThreshold:
+      filter: |
+        resource.type="global"
+        metric.type="custom.googleapis.com/therapeutic/safety/cbt_failures"
+      comparison: COMPARISON_GREATER_THAN
+      thresholdValue: 10  # 10件以上
+      duration: 600s  # 10分間
+      aggregations:
+      - alignmentPeriod: 60s
+        perSeriesAligner: ALIGN_RATE
+        crossSeriesReducer: REDUCE_SUM
+  
+  # 4. OpenAI Moderation API失敗監視
+  - displayName: "Moderation API Failures"
+    conditionThreshold:
+      filter: |
+        resource.type="global"
+        metric.type="custom.googleapis.com/therapeutic/safety/moderation_api_failures"
+      comparison: COMPARISON_GREATER_THAN
+      thresholdValue: 3  # 3件以上
+      duration: 180s  # 3分間
+      aggregations:
+      - alignmentPeriod: 60s
+        perSeriesAligner: ALIGN_RATE
+        crossSeriesReducer: REDUCE_SUM
+  
+  notificationChannels:
+  - projects/PROJECT_ID/notificationChannels/EMERGENCY_SLACK_CHANNEL_ID
+  - projects/PROJECT_ID/notificationChannels/SAFETY_TEAM_EMAIL_ID
+  - projects/PROJECT_ID/notificationChannels/ONCALL_SMS_ID
+  
+  alertStrategy:
+    autoClose: 3600s  # 1時間で自動クローズ
+    notificationRateLimit:
+      period: 60s  # 1分間隔（緊急性が高い）
+  
+  severity: CRITICAL
+  enabled: true
+
+---
+# アップタイム監視
+apiVersion: monitoring.googleapis.com/v1
+kind: UptimeCheckConfig
+metadata:
+  name: therapeutic-app-uptime-check
+  project: PROJECT_ID
+spec:
+  displayName: "Therapeutic App Uptime Check"
+  
+  httpCheck:
+    path: "/health"
+    port: 443
+    useSsl: true
+    validateSsl: true
+    headers:
+      User-Agent: "Google-Cloud-Uptime-Check"
+    acceptedResponseStatusCodes:
+    - statusClass: STATUS_CLASS_2XX
+  
+  monitoredResource:
+    type: "uptime_url"
+    labels:
+      project_id: "PROJECT_ID"
+      host: "therapeutic-app.example.com"
+  
+  timeout: 10s
+  period: 60s  # 1分間隔
+  
+  selectedRegions:
+  - "ASIA_PACIFIC"
+  - "USA"
+  - "EUROPE"
+  
+  contentMatchers:
+  - content: "healthy"
+    matcher: CONTAINS_STRING
+
+---
+# カスタムメトリクス定義
+apiVersion: monitoring.googleapis.com/v1
+kind: MetricDescriptor
+metadata:
+  name: therapeutic-safety-f1-score
+  project: PROJECT_ID
+spec:
+  type: "custom.googleapis.com/therapeutic/safety/f1_score"
+  displayName: "Therapeutic Safety F1 Score"
+  description: "治療安全性システムのF1スコア"
+  metricKind: GAUGE
+  valueType: DOUBLE
+  unit: "1"
+  labels:
+  - key: "service"
+    valueType: STRING
+    description: "サービス名"
+  - key: "model_version"
+    valueType: STRING
+    description: "モデルバージョン"
+
+---
+apiVersion: monitoring.googleapis.com/v1
+kind: MetricDescriptor
+metadata:
+  name: therapeutic-user-engagement
+  project: PROJECT_ID
+spec:
+  type: "custom.googleapis.com/therapeutic/user/engagement_score"
+  displayName: "User Engagement Score"
+  description: "ユーザーエンゲージメントスコア"
+  metricKind: GAUGE
+  valueType: DOUBLE
+  unit: "1"
+  labels:
+  - key: "user_state"
+    valueType: STRING
+    description: "ユーザー状態（APATHY, INTEREST, ACTION, CONTINUATION, HABITUATION）"
+  - key: "age_group"
+    valueType: STRING
+    description: "年齢グループ"
+
+---
+apiVersion: monitoring.googleapis.com/v1
+kind: MetricDescriptor
+metadata:
+  name: therapeutic-task-completion
+  project: PROJECT_ID
+spec:
+  type: "custom.googleapis.com/therapeutic/task/completion_rate"
+  displayName: "Task Completion Rate"
+  description: "タスク完了率"
+  metricKind: GAUGE
+  valueType: DOUBLE
+  unit: "1"
+  labels:
+  - key: "task_type"
+    valueType: STRING
+    description: "タスクタイプ（routine, one_shot, skill_up, social）"
+  - key: "difficulty"
+    valueType: STRING
+    description: "難易度"

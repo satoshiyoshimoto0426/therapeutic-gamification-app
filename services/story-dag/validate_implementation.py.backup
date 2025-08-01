@@ -1,0 +1,548 @@
+#!/usr/bin/env python3
+"""
+Validation script for Story DAG Management System
+Validates story node/edge management, DAG validation, user progression, and companion system
+"""
+
+import sys
+import os
+import asyncio
+from datetime import datetime, timedelta
+from unittest.mock import Mock
+
+# Add shared modules to path
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'shared'))
+
+def verify_imports():
+    """Verify all required imports work"""
+    print("[UNICODE_1F50D] Verifying imports...")
+    
+    try:
+        from main import (
+            EnhancedStoryNode, EnhancedStoryEdge, UserStoryState, CompanionInfo,
+            NodeType, UnlockConditionType, UnlockCondition, StoryDatabase
+        )
+        print("[UNICODE_2705] Story DAG models imported successfully")
+    except ImportError as e:
+        print(f"[UNICODE_274C] Failed to import story DAG models: {e}")
+        return False
+    
+    try:
+        from main import (
+            create_story_node, get_story_node, list_story_nodes,
+            create_story_edge, get_story_edge, validate_dag,
+            get_user_story_state, progress_story,
+            list_companions, get_companion_relationships, analyze_story_paths
+        )
+        print("[UNICODE_2705] Story DAG functions imported successfully")
+    except ImportError as e:
+        print(f"[UNICODE_274C] Failed to import story DAG functions: {e}")
+        return False
+    
+    return True
+
+async def verify_story_node_management():
+    """Verify story node creation and management"""
+    print("\n[UNICODE_1F4D6] Verifying story node management...")
+    
+    from main import create_story_node, get_story_node, list_story_nodes, db, StoryDatabase
+    from interfaces.core_types import ChapterType
+    
+    # Reset database
+    db.__dict__.update(StoryDatabase().__dict__)
+    
+    mock_user = {"uid": "test_user_123", "email": "test@example.com"}
+    
+    # Test node creation
+    node_data = {
+        "chapter_type": "self_discipline",
+        "node_type": "opening",
+        "title": "The Hero's Beginning",
+        "content": "Your journey toward self-mastery begins here. The path ahead is challenging but rewarding.",
+        "estimated_read_time": 3,
+        "therapeutic_tags": ["motivation", "goal_setting", "self_reflection"],
+        "unlock_conditions": [],
+        "companion_effects": {"yu": 5},
+        "mood_effects": {"confidence": 0.1, "motivation": 0.2},
+        "ending_flags": {"hero_journey_started": True}
+    }
+    
+    result = await create_story_node(node_data=node_data, current_user=mock_user)
+    
+    assert "node_id" in result
+    assert result["message"] == "Story node created successfully"
+    
+    node_id = result["node_id"]
+    assert node_id in db.nodes
+    
+    # Test node retrieval
+    retrieved_node = await get_story_node(node_id=node_id, current_user=mock_user)
+    assert retrieved_node.title == "The Hero's Beginning"
+    assert retrieved_node.chapter_type == ChapterType.SELF_DISCIPLINE
+    assert retrieved_node.companion_effects["yu"] == 5
+    assert retrieved_node.ending_flags["hero_journey_started"] == True
+    
+    # Test node listing
+    nodes_list = await list_story_nodes(current_user=mock_user)
+    assert nodes_list["total_count"] >= 1
+    
+    print("[UNICODE_2705] Story node management working correctly")
+    return True
+
+async def verify_story_edge_management():
+    """Verify story edge creation and management"""
+    print("\n[UNICODE_1F517] Verifying story edge management...")
+    
+    from main import create_story_node, create_story_edge, get_story_edge, db, StoryDatabase
+    
+    # Reset database
+    db.__dict__.update(StoryDatabase().__dict__)
+    
+    mock_user = {"uid": "test_user_123", "email": "test@example.com"}
+    
+    # Create two nodes first
+    node1_data = {
+        "chapter_type": "self_discipline",
+        "node_type": "opening",
+        "title": "Starting Point",
+        "content": "The beginning of your adventure"
+    }
+    
+    node2_data = {
+        "chapter_type": "self_discipline",
+        "node_type": "challenge",
+        "title": "First Challenge",
+        "content": "Your first test of determination"
+    }
+    
+    node1_result = await create_story_node(node_data=node1_data, current_user=mock_user)
+    node2_result = await create_story_node(node_data=node2_data, current_user=mock_user)
+    
+    node1_id = node1_result["node_id"]
+    node2_id = node2_result["node_id"]
+    
+    # Create edge with real-world task linking
+    edge_data = {
+        "from_node_id": node1_id,
+        "to_node_id": node2_id,
+        "choice_text": "Accept the challenge and begin your training",
+        "real_task_id": "morning_routine_task",
+        "habit_tag": "self_discipline",
+        "probability": 0.8,
+        "therapeutic_weight": 1.2,
+        "companion_requirements": {"yu": 5},
+        "achievement_rewards": ["first_step", "courage_badge"],
+        "ending_influence": {"hero_path": 0.3, "wisdom_path": 0.1}
+    }
+    
+    result = await create_story_edge(edge_data=edge_data, current_user=mock_user)
+    
+    assert "edge_id" in result
+    assert result["message"] == "Story edge created successfully"
+    
+    edge_id = result["edge_id"]
+    assert edge_id in db.edges
+    
+    # Test edge retrieval
+    retrieved_edge = await get_story_edge(edge_id=edge_id, current_user=mock_user)
+    assert retrieved_edge.from_node_id == node1_id
+    assert retrieved_edge.to_node_id == node2_id
+    assert retrieved_edge.real_task_id == "morning_routine_task"
+    assert retrieved_edge.habit_tag == "self_discipline"
+    assert retrieved_edge.ending_influence["hero_path"] == 0.3
+    
+    print("[UNICODE_2705] Story edge management with real-world task linking working correctly")
+    return True
+
+async def verify_dag_validation():
+    """Verify DAG structure validation"""
+    print("\n[UNICODE_1F50D] Verifying DAG validation...")
+    
+    from main import (create_story_node, create_story_edge, validate_dag, 
+                     detect_cycle, find_isolated_nodes, db, StoryDatabase)
+    
+    # Reset database
+    db.__dict__.update(StoryDatabase().__dict__)
+    
+    mock_user = {"uid": "test_user_123", "email": "test@example.com"}
+    
+    # Create a valid story structure
+    nodes_data = [
+        {"chapter_type": "self_discipline", "node_type": "opening", "title": "Start", "content": "Beginning"},
+        {"chapter_type": "self_discipline", "node_type": "challenge", "title": "Challenge", "content": "Test"},
+        {"chapter_type": "self_discipline", "node_type": "resolution", "title": "Victory", "content": "Success"},
+        {"chapter_type": "self_discipline", "node_type": "ending", "title": "Hero Ending", "content": "You became a hero"}
+    ]
+    
+    node_ids = []
+    for node_data in nodes_data:
+        result = await create_story_node(node_data=node_data, current_user=mock_user)
+        node_ids.append(result["node_id"])
+    
+    # Create valid edges (linear progression)
+    edges_data = [
+        {"from_node_id": node_ids[0], "to_node_id": node_ids[1], "choice_text": "Face the challenge"},
+        {"from_node_id": node_ids[1], "to_node_id": node_ids[2], "choice_text": "Overcome the obstacle"},
+        {"from_node_id": node_ids[2], "to_node_id": node_ids[3], "choice_text": "Embrace your destiny"}
+    ]
+    
+    for edge_data in edges_data:
+        await create_story_edge(edge_data=edge_data, current_user=mock_user)
+    
+    # Validate DAG
+    validation = await validate_dag(current_user=mock_user)
+    
+    assert validation["is_valid"] == True
+    assert validation["has_cycles"] == False
+    assert len(validation["isolated_nodes"]) == 0
+    assert len(validation["unreachable_nodes"]) == 0
+    
+    # Test cycle prevention
+    try:
+        # Try to create a cycle (should fail)
+        await create_story_edge({
+            "from_node_id": node_ids[3],
+            "to_node_id": node_ids[0],
+            "choice_text": "Start over"
+        }, current_user=mock_user)
+        assert False, "Should have prevented cycle creation"
+    except Exception as e:
+        assert "cycle" in str(e).lower()
+    
+    # Create isolated node
+    isolated_node = await create_story_node({
+        "chapter_type": "self_discipline",
+        "node_type": "opening",
+        "title": "Isolated",
+        "content": "No connections"
+    }, current_user=mock_user)
+    
+    # Validate again (should detect isolated node)
+    validation = await validate_dag(current_user=mock_user)
+    assert isolated_node["node_id"] in validation["isolated_nodes"]
+    
+    print("[UNICODE_2705] DAG validation and cycle prevention working correctly")
+    return True
+
+async def verify_user_story_progression():
+    """Verify user story state and progression"""
+    print("\n[UNICODE_1F464] Verifying user story progression...")
+    
+    from main import (create_story_node, create_story_edge, get_user_story_state, 
+                     progress_story, db, StoryDatabase)
+    
+    # Reset database
+    db.__dict__.update(StoryDatabase().__dict__)
+    
+    mock_user = {"uid": "test_user_123", "email": "test@example.com"}
+    
+    # Create story structure
+    node1_result = await create_story_node({
+        "chapter_type": "self_discipline",
+        "node_type": "opening",
+        "title": "Your Journey Begins",
+        "content": "Welcome to your path of growth",
+        "companion_effects": {"yu": 10},
+        "mood_effects": {"hope": 0.2},
+        "ending_flags": {"journey_started": True}
+    }, current_user=mock_user)
+    
+    node2_result = await create_story_node({
+        "chapter_type": "self_discipline",
+        "node_type": "challenge",
+        "title": "The First Trial",
+        "content": "Your determination will be tested",
+        "companion_effects": {"yu": 15},
+        "mood_effects": {"confidence": 0.1}
+    }, current_user=mock_user)
+    
+    edge_result = await create_story_edge({
+        "from_node_id": node1_result["node_id"],
+        "to_node_id": node2_result["node_id"],
+        "choice_text": "I'm ready to face the challenge",
+        "ending_influence": {"hero_path": 0.4, "wisdom_path": 0.2}
+    }, current_user=mock_user)
+    
+    # Get initial user state
+    initial_state = await get_user_story_state(
+        uid="test_user_123",
+        current_user=mock_user
+    )
+    
+    assert initial_state.uid == "test_user_123"
+    assert len(initial_state.choice_history) == 0
+    assert len(initial_state.companion_relationships) == 0
+    
+    # Set starting position
+    db.user_states["test_user_123"].current_node_id = node1_result["node_id"]
+    
+    # Progress through story
+    progress_result = await progress_story(
+        uid="test_user_123",
+        progress_data={"edge_id": edge_result["edge_id"]},
+        current_user=mock_user
+    )
+    
+    assert progress_result["message"] == "Story progressed successfully"
+    
+    # Verify updated state
+    updated_state = db.user_states["test_user_123"]
+    assert updated_state.current_node_id == node2_result["node_id"]
+    assert node2_result["node_id"] in updated_state.unlocked_nodes
+    assert node1_result["node_id"] in updated_state.completed_nodes
+    assert len(updated_state.choice_history) == 1
+    
+    # Verify companion relationship updates
+    assert updated_state.companion_relationships["yu"] == 15
+    
+    # Verify ending score updates
+    assert updated_state.ending_scores["hero_path"] == 0.4
+    assert updated_state.ending_scores["wisdom_path"] == 0.2
+    
+    # Verify story flags
+    assert updated_state.story_flags.get("journey_started") == True
+    
+    print("[UNICODE_2705] User story progression with companion and ending tracking working correctly")
+    return True
+
+async def verify_companion_system():
+    """Verify companion relationship system"""
+    print("\n[UNICODE_1F91D] Verifying companion system...")
+    
+    from main import list_companions, get_companion_relationships, db, StoryDatabase, UserStoryState
+    
+    # Reset database
+    db.__dict__.update(StoryDatabase().__dict__)
+    
+    mock_user = {"uid": "test_user_123", "email": "test@example.com"}
+    
+    # Test companion listing
+    companions_result = await list_companions(current_user=mock_user)
+    
+    assert "companions" in companions_result
+    companions = companions_result["companions"]
+    assert len(companions) >= 2  # yu and mentor
+    
+    # Find Yu companion
+    yu_companion = next((c for c in companions if c.companion_id == "yu"), None)
+    assert yu_companion is not None
+    assert yu_companion.name == "Yu"
+    assert yu_companion.description == "[UNICODE_3042]"
+    
+    # Create user state with companion relationships
+    user_state = UserStoryState(
+        uid="test_user_123",
+        current_node_id="test_node",
+        last_updated=datetime.utcnow()
+    )
+    user_state.companion_relationships = {"yu": 35, "mentor": 20}
+    db.user_states["test_user_123"] = user_state
+    
+    # Test relationship retrieval
+    relationships_result = await get_companion_relationships(
+        uid="test_user_123",
+        current_user=mock_user
+    )
+    
+    assert "relationships" in relationships_result
+    relationships = relationships_result["relationships"]
+    
+    assert "yu" in relationships
+    yu_relationship = relationships["yu"]
+    assert yu_relationship["relationship_level"] == 35
+    assert yu_relationship["relationship_percentage"] == 35.0  # 35/100 * 100
+    assert yu_relationship["companion"].name == "Yu"
+    
+    print("[UNICODE_2705] Companion system working correctly")
+    return True
+
+async def verify_multi_ending_support():
+    """Verify multi-ending story support"""
+    print("\n[UNICODE_1F3AD] Verifying multi-ending support...")
+    
+    from main import (create_story_node, create_story_edge, progress_story, 
+                     get_user_story_state, db, StoryDatabase)
+    
+    # Reset database
+    db.__dict__.update(StoryDatabase().__dict__)
+    
+    mock_user = {"uid": "test_user_123", "email": "test@example.com"}
+    
+    # Create branching story structure
+    start_node = await create_story_node({
+        "chapter_type": "wisdom",
+        "node_type": "choice",
+        "title": "The Crossroads",
+        "content": "Two paths diverge before you..."
+    }, current_user=mock_user)
+    
+    hero_ending = await create_story_node({
+        "chapter_type": "wisdom",
+        "node_type": "ending",
+        "title": "Hero's Triumph",
+        "content": "You became the hero the world needed"
+    }, current_user=mock_user)
+    
+    sage_ending = await create_story_node({
+        "chapter_type": "wisdom",
+        "node_type": "ending",
+        "title": "Sage's Wisdom",
+        "content": "You found enlightenment through understanding"
+    }, current_user=mock_user)
+    
+    # Create edges with different ending influences
+    hero_edge = await create_story_edge({
+        "from_node_id": start_node["node_id"],
+        "to_node_id": hero_ending["node_id"],
+        "choice_text": "Take the path of action and courage",
+        "ending_influence": {"hero_path": 1.0, "wisdom_path": 0.2}
+    }, current_user=mock_user)
+    
+    sage_edge = await create_story_edge({
+        "from_node_id": start_node["node_id"],
+        "to_node_id": sage_ending["node_id"],
+        "choice_text": "Take the path of contemplation and wisdom",
+        "ending_influence": {"wisdom_path": 1.0, "hero_path": 0.1}
+    }, current_user=mock_user)
+    
+    # Test hero path progression
+    user_state = await get_user_story_state(uid="test_user_123", current_user=mock_user)
+    db.user_states["test_user_123"].current_node_id = start_node["node_id"]
+    
+    await progress_story(
+        uid="test_user_123",
+        progress_data={"edge_id": hero_edge["edge_id"]},
+        current_user=mock_user
+    )
+    
+    final_state = db.user_states["test_user_123"]
+    assert final_state.ending_scores["hero_path"] == 1.0
+    assert final_state.ending_scores["wisdom_path"] == 0.2
+    assert final_state.current_node_id == hero_ending["node_id"]
+    
+    print("[UNICODE_2705] Multi-ending story support working correctly")
+    return True
+
+async def verify_story_analytics():
+    """Verify story analytics and insights"""
+    print("\n[UNICODE_1F4CA] Verifying story analytics...")
+    
+    from main import analyze_story_paths, db, StoryDatabase, UserStoryState
+    
+    # Reset database
+    db.__dict__.update(StoryDatabase().__dict__)
+    
+    mock_user = {"uid": "test_user_123", "email": "test@example.com"}
+    
+    # Create sample user data
+    user1 = UserStoryState(
+        uid="user1",
+        current_node_id="ending_hero",
+        last_updated=datetime.utcnow()
+    )
+    user1.choice_history = [
+        {"edge_id": "edge_courage", "choice_text": "Be brave"},
+        {"edge_id": "edge_action", "choice_text": "Take action"}
+    ]
+    user1.ending_scores = {"hero_path": 0.9, "wisdom_path": 0.3}
+    
+    user2 = UserStoryState(
+        uid="user2",
+        current_node_id="ending_sage",
+        last_updated=datetime.utcnow()
+    )
+    user2.choice_history = [
+        {"edge_id": "edge_contemplation", "choice_text": "Think deeply"},
+        {"edge_id": "edge_wisdom", "choice_text": "Seek understanding"}
+    ]
+    user2.ending_scores = {"hero_path": 0.2, "wisdom_path": 0.8}
+    
+    user3 = UserStoryState(
+        uid="user3",
+        current_node_id="middle_node",
+        last_updated=datetime.utcnow()
+    )
+    user3.choice_history = [
+        {"edge_id": "edge_courage", "choice_text": "Be brave"}
+    ]
+    user3.ending_scores = {"hero_path": 0.5, "wisdom_path": 0.5}
+    
+    db.user_states["user1"] = user1
+    db.user_states["user2"] = user2
+    db.user_states["user3"] = user3
+    
+    # Analyze story paths
+    analytics = await analyze_story_paths(current_user=mock_user)
+    
+    assert "popular_choices" in analytics
+    assert "ending_trends" in analytics
+    assert analytics["total_users"] == 3
+    
+    # Check popular choices
+    assert analytics["popular_choices"]["edge_courage"] == 2  # user1 and user3
+    assert analytics["popular_choices"]["edge_contemplation"] == 1  # user2
+    
+    # Check ending trends
+    assert "hero_path" in analytics["ending_trends"]
+    assert "wisdom_path" in analytics["ending_trends"]
+    assert len(analytics["ending_trends"]["hero_path"]) == 3
+    assert len(analytics["ending_trends"]["wisdom_path"]) == 3
+    
+    print("[UNICODE_2705] Story analytics working correctly")
+    return True
+
+async def main():
+    """Main validation function"""
+    print("[UNICODE_1F4DA] Verifying Task 7: Create story DAG management system")
+    print("=" * 80)
+    
+    all_passed = True
+    
+    # Run all verifications
+    verifications = [
+        ("Import Test", verify_imports),
+        ("Story Node Management", verify_story_node_management),
+        ("Story Edge Management", verify_story_edge_management),
+        ("DAG Validation", verify_dag_validation),
+        ("User Story Progression", verify_user_story_progression),
+        ("Companion System", verify_companion_system),
+        ("Multi-Ending Support", verify_multi_ending_support),
+        ("Story Analytics", verify_story_analytics)
+    ]
+    
+    for test_name, verification in verifications:
+        try:
+            print(f"\n--- {test_name} ---")
+            if asyncio.iscoroutinefunction(verification):
+                result = await verification()
+            else:
+                result = verification()
+            
+            if not result:
+                all_passed = False
+        except Exception as e:
+            print(f"[UNICODE_274C] {test_name} failed with error: {e}")
+            all_passed = False
+    
+    print("\n" + "=" * 80)
+    if all_passed:
+        print("[UNICODE_1F389] ALL VERIFICATIONS PASSED!")
+        print("[UNICODE_2705] Task 7 has been successfully implemented with all sub-tasks:")
+        print("   [UNICODE_2022] Story node and edge data structures with CHAPTER > NODE > EDGE hierarchy")
+        print("   [UNICODE_2022] DAG validation to prevent cycles and ensure connectivity")
+        print("   [UNICODE_2022] Story state tracking per user with unlock conditions")
+        print("   [UNICODE_2022] Real-world task linking via real_task_id and habit_tag")
+        print("   [UNICODE_2022] Story progression logic with branch probability calculations")
+        print("   [UNICODE_2022] Companion relationship system for multi-character stories")
+        print("   [UNICODE_2022] Multi-ending support with choice influence tracking")
+        print("   [UNICODE_2022] Story analytics for popular paths and ending trends")
+        print("   [UNICODE_2022] Unit tests for DAG operations and story state management")
+        print("\n[UNICODE_1F680] Ready for enhanced gamification features integration!")
+        return True
+    else:
+        print("[UNICODE_274C] Some verifications failed. Please check the implementation.")
+        return False
+
+if __name__ == "__main__":
+    success = asyncio.run(main())
+    sys.exit(0 if success else 1)

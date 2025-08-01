@@ -1,0 +1,529 @@
+"""
+[UNICODE_88C5]
+
+6[UNICODE_30B9]3[UNICODE_FF09]
+6[UNICODE_7A2E]
+"""
+
+from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass, field
+from enum import Enum
+from datetime import datetime
+import copy
+
+# [UNICODE_5171]
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+
+from gacha_system import Item, ItemType, ItemRarity
+from shared.utils.exceptions import ValidationError, InvalidEquipmentSlotError, ItemNotFoundError
+
+
+class EquipmentSlot(Enum):
+    """[UNICODE_88C5]"""
+    WEAPON = "weapon"
+    ARMOR = "armor"
+    ACCESSORY = "accessory"
+    CONSUMABLE_1 = "consumable_1"
+    CONSUMABLE_2 = "consumable_2"
+    CONSUMABLE_3 = "consumable_3"
+
+
+class StatType(Enum):
+    """[UNICODE_80FD]"""
+    FOCUS = "focus"           # [UNICODE_96C6]
+    RESILIENCE = "resilience" # [UNICODE_56DE]
+    MOTIVATION = "motivation" # [UNICODE_3084]
+    SOCIAL = "social"         # [UNICODE_793E]
+    CREATIVITY = "creativity" # [UNICODE_5275]
+    WISDOM = "wisdom"         # [UNICODE_77E5]
+
+
+@dataclass
+class EquipmentStats:
+    """[UNICODE_88C5]"""
+    focus: int = 0
+    resilience: int = 0
+    motivation: int = 0
+    social: int = 0
+    creativity: int = 0
+    wisdom: int = 0
+    
+    def __add__(self, other: 'EquipmentStats') -> 'EquipmentStats':
+        """[UNICODE_80FD]"""
+        return EquipmentStats(
+            focus=self.focus + other.focus,
+            resilience=self.resilience + other.resilience,
+            motivation=self.motivation + other.motivation,
+            social=self.social + other.social,
+            creativity=self.creativity + other.creativity,
+            wisdom=self.wisdom + other.wisdom
+        )
+    
+    def __sub__(self, other: 'EquipmentStats') -> 'EquipmentStats':
+        """[UNICODE_80FD]"""
+        return EquipmentStats(
+            focus=self.focus - other.focus,
+            resilience=self.resilience - other.resilience,
+            motivation=self.motivation - other.motivation,
+            social=self.social - other.social,
+            creativity=self.creativity - other.creativity,
+            wisdom=self.wisdom - other.wisdom
+        )
+    
+    def to_dict(self) -> Dict[str, int]:
+        """[UNICODE_8F9E]"""
+        return {
+            "focus": self.focus,
+            "resilience": self.resilience,
+            "motivation": self.motivation,
+            "social": self.social,
+            "creativity": self.creativity,
+            "wisdom": self.wisdom
+        }
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, int]) -> 'EquipmentStats':
+        """[UNICODE_8F9E]"""
+        return cls(
+            focus=data.get("focus", 0),
+            resilience=data.get("resilience", 0),
+            motivation=data.get("motivation", 0),
+            social=data.get("social", 0),
+            creativity=data.get("creativity", 0),
+            wisdom=data.get("wisdom", 0)
+        )
+    
+    def get_total_bonus(self) -> int:
+        """[UNICODE_7DCF]"""
+        return self.focus + self.resilience + self.motivation + self.social + self.creativity + self.wisdom
+
+
+@dataclass
+class EquipmentSet:
+    """[UNICODE_88C5]"""
+    weapon: Optional[Item] = None
+    armor: Optional[Item] = None
+    accessory: Optional[Item] = None
+    consumable_1: Optional[Item] = None
+    consumable_2: Optional[Item] = None
+    consumable_3: Optional[Item] = None
+    
+    def get_equipped_items(self) -> List[Item]:
+        """[UNICODE_88C5]"""
+        items = []
+        for slot in EquipmentSlot:
+            item = getattr(self, slot.value)
+            if item:
+                items.append(item)
+        return items
+    
+    def get_item_by_slot(self, slot: EquipmentSlot) -> Optional[Item]:
+        """[UNICODE_30B9]"""
+        return getattr(self, slot.value)
+    
+    def set_item_by_slot(self, slot: EquipmentSlot, item: Optional[Item]) -> None:
+        """[UNICODE_30B9]"""
+        setattr(self, slot.value, item)
+
+
+@dataclass
+class TaskCompletionBonus:
+    """[UNICODE_30BF]"""
+    base_efficiency: float
+    focus_bonus: float
+    motivation_bonus: float
+    total_bonus: float
+    active_effects: List[str]
+    timestamp: datetime
+
+
+class EquipmentSystem:
+    """
+    [UNICODE_88C5]
+    
+    6[UNICODE_30B9]6[UNICODE_7A2E]
+    [UNICODE_88C5]
+    """
+    
+    def __init__(self):
+        # [UNICODE_30B9]
+        self.slot_item_types = {
+            EquipmentSlot.WEAPON: [ItemType.WEAPON],
+            EquipmentSlot.ARMOR: [ItemType.ARMOR],
+            EquipmentSlot.ACCESSORY: [ItemType.ACCESSORY],
+            EquipmentSlot.CONSUMABLE_1: [ItemType.CONSUMABLE],
+            EquipmentSlot.CONSUMABLE_2: [ItemType.CONSUMABLE],
+            EquipmentSlot.CONSUMABLE_3: [ItemType.CONSUMABLE]
+        }
+        
+        # [UNICODE_80FD]
+        self.stat_efficiency_coefficients = {
+            StatType.FOCUS: 0.02,      # [UNICODE_96C6]: 2%/point
+            StatType.MOTIVATION: 0.015, # [UNICODE_3084]: 1.5%/point
+            StatType.RESILIENCE: 0.01,  # [UNICODE_56DE]: 1%/point
+            StatType.SOCIAL: 0.008,     # [UNICODE_793E]: 0.8%/point
+            StatType.CREATIVITY: 0.012, # [UNICODE_5275]: 1.2%/point
+            StatType.WISDOM: 0.01       # [UNICODE_77E5]: 1%/point
+        }
+        
+        # [UNICODE_6700]
+        self.max_total_bonus = 0.5  # [UNICODE_6700]50%[UNICODE_30DC]
+        
+        # [UNICODE_7279]
+        self.special_effect_bonuses = {
+            "task_focus_boost": 0.05,
+            "motivation_boost": 0.04,
+            "deep_work_mode": 0.06,
+            "productivity_enhance": 0.03,
+            "efficiency_boost": 0.04,
+            "concentration_aid": 0.03,
+            "energy_boost": 0.02,
+            "performance_enhance": 0.05
+        }
+    
+    def equip_item(self, equipment_set: EquipmentSet, item: Item, slot: EquipmentSlot) -> Tuple[bool, str]:
+        """
+        [UNICODE_30A2]
+        
+        Args:
+            equipment_set: [UNICODE_88C5]
+            item: [UNICODE_88C5]
+            slot: [UNICODE_88C5]
+            
+        Returns:
+            Tuple[bool, str]: ([UNICODE_6210], [UNICODE_30E1])
+        """
+        # [UNICODE_30B9]
+        if slot not in EquipmentSlot:
+            return False, f"[UNICODE_7121]: {slot}"
+        
+        # [UNICODE_30A2]
+        allowed_types = self.slot_item_types[slot]
+        if item.item_type not in allowed_types:
+            return False, f"[UNICODE_3053]{slot.value}[UNICODE_30B9]"
+        
+        # [UNICODE_65E2]
+        old_item = equipment_set.get_item_by_slot(slot)
+        
+        # [UNICODE_88C5]
+        equipment_set.set_item_by_slot(slot, item)
+        
+        # [UNICODE_30E1]
+        if old_item:
+            message = f"{old_item.name}[UNICODE_3092]{item.name}[UNICODE_3092]"
+        else:
+            message = f"{item.name}[UNICODE_3092]"
+        
+        return True, message
+    
+    def unequip_item(self, equipment_set: EquipmentSet, slot: EquipmentSlot) -> Tuple[bool, str]:
+        """
+        [UNICODE_30A2]
+        
+        Args:
+            equipment_set: [UNICODE_88C5]
+            slot: [UNICODE_88C5]
+            
+        Returns:
+            Tuple[bool, str]: ([UNICODE_6210], [UNICODE_30E1])
+        """
+        if slot not in EquipmentSlot:
+            return False, f"[UNICODE_7121]: {slot}"
+        
+        item = equipment_set.get_item_by_slot(slot)
+        if not item:
+            return False, f"{slot.value}[UNICODE_30B9]"
+        
+        equipment_set.set_item_by_slot(slot, None)
+        return True, f"{item.name}[UNICODE_3092]"
+    
+    def calculate_total_stats(self, equipment_set: EquipmentSet) -> EquipmentStats:
+        """
+        [UNICODE_88C5]
+        
+        Args:
+            equipment_set: [UNICODE_88C5]
+            
+        Returns:
+            EquipmentStats: [UNICODE_7DCF]
+        """
+        total_stats = EquipmentStats()
+        
+        for item in equipment_set.get_equipped_items():
+            item_stats = EquipmentStats.from_dict(item.stat_bonuses)
+            total_stats = total_stats + item_stats
+        
+        return total_stats
+    
+    def calculate_task_completion_bonus(self, equipment_set: EquipmentSet) -> TaskCompletionBonus:
+        """
+        [UNICODE_88C5]
+        
+        Args:
+            equipment_set: [UNICODE_88C5]
+            
+        Returns:
+            TaskCompletionBonus: [UNICODE_30BF]
+        """
+        total_stats = self.calculate_total_stats(equipment_set)
+        
+        # [UNICODE_57FA]
+        focus_bonus = total_stats.focus * self.stat_efficiency_coefficients[StatType.FOCUS]
+        motivation_bonus = total_stats.motivation * self.stat_efficiency_coefficients[StatType.MOTIVATION]
+        resilience_bonus = total_stats.resilience * self.stat_efficiency_coefficients[StatType.RESILIENCE]
+        social_bonus = total_stats.social * self.stat_efficiency_coefficients[StatType.SOCIAL]
+        creativity_bonus = total_stats.creativity * self.stat_efficiency_coefficients[StatType.CREATIVITY]
+        wisdom_bonus = total_stats.wisdom * self.stat_efficiency_coefficients[StatType.WISDOM]
+        
+        base_efficiency = (focus_bonus + motivation_bonus + resilience_bonus + 
+                          social_bonus + creativity_bonus + wisdom_bonus)
+        
+        # [UNICODE_7279]
+        special_effects_bonus = 0
+        active_effects = []
+        
+        for item in equipment_set.get_equipped_items():
+            for effect in item.special_effects:
+                if effect in self.special_effect_bonuses:
+                    special_effects_bonus += self.special_effect_bonuses[effect]
+                    active_effects.append(effect)
+        
+        # [UNICODE_7DCF]
+        total_bonus = min(self.max_total_bonus, base_efficiency + special_effects_bonus)
+        
+        return TaskCompletionBonus(
+            base_efficiency=base_efficiency,
+            focus_bonus=focus_bonus,
+            motivation_bonus=motivation_bonus,
+            total_bonus=total_bonus,
+            active_effects=active_effects,
+            timestamp=datetime.now()
+        )
+    
+    def get_equipment_summary(self, equipment_set: EquipmentSet) -> Dict:
+        """
+        [UNICODE_88C5]
+        
+        Args:
+            equipment_set: [UNICODE_88C5]
+            
+        Returns:
+            Dict: [UNICODE_88C5]
+        """
+        equipped_items = equipment_set.get_equipped_items()
+        total_stats = self.calculate_total_stats(equipment_set)
+        completion_bonus = self.calculate_task_completion_bonus(equipment_set)
+        
+        # [UNICODE_30B9]
+        slot_status = {}
+        for slot in EquipmentSlot:
+            item = equipment_set.get_item_by_slot(slot)
+            slot_status[slot.value] = {
+                "equipped": item is not None,
+                "item_name": item.name if item else None,
+                "item_rarity": item.rarity.value if item else None,
+                "item_id": item.id if item else None
+            }
+        
+        # [UNICODE_30EC]
+        rarity_count = {}
+        for item in equipped_items:
+            rarity = item.rarity.value
+            rarity_count[rarity] = rarity_count.get(rarity, 0) + 1
+        
+        return {
+            "total_equipped": len(equipped_items),
+            "slot_status": slot_status,
+            "total_stats": total_stats.to_dict(),
+            "completion_bonus": {
+                "base_efficiency": completion_bonus.base_efficiency,
+                "total_bonus": completion_bonus.total_bonus,
+                "bonus_percentage": f"{completion_bonus.total_bonus * 100:.1f}%",
+                "active_effects": completion_bonus.active_effects
+            },
+            "rarity_distribution": rarity_count,
+            "equipment_power": total_stats.get_total_bonus()
+        }
+    
+    def recommend_equipment_upgrade(self, equipment_set: EquipmentSet, available_items: List[Item]) -> List[Dict]:
+        """
+        [UNICODE_88C5]
+        
+        Args:
+            equipment_set: [UNICODE_73FE]
+            available_items: [UNICODE_5229]
+            
+        Returns:
+            List[Dict]: [UNICODE_30A2]
+        """
+        recommendations = []
+        current_stats = self.calculate_total_stats(equipment_set)
+        current_bonus = self.calculate_task_completion_bonus(equipment_set)
+        
+        for item in available_items:
+            # [UNICODE_88C5]
+            compatible_slots = []
+            for slot, allowed_types in self.slot_item_types.items():
+                if item.item_type in allowed_types:
+                    compatible_slots.append(slot)
+            
+            for slot in compatible_slots:
+                # [UNICODE_4EEE]
+                temp_equipment = copy.deepcopy(equipment_set)
+                current_item = temp_equipment.get_item_by_slot(slot)
+                
+                # [UNICODE_88C5]
+                temp_equipment.set_item_by_slot(slot, item)
+                new_bonus = self.calculate_task_completion_bonus(temp_equipment)
+                
+                # [UNICODE_6539]
+                improvement = new_bonus.total_bonus - current_bonus.total_bonus
+                
+                if improvement > 0:
+                    recommendations.append({
+                        "item": item,
+                        "slot": slot.value,
+                        "current_item": current_item,
+                        "improvement": improvement,
+                        "improvement_percentage": f"{improvement * 100:.1f}%",
+                        "new_total_bonus": f"{new_bonus.total_bonus * 100:.1f}%",
+                        "priority": self._calculate_upgrade_priority(improvement, item.rarity)
+                    })
+        
+        # [UNICODE_6539]
+        recommendations.sort(key=lambda x: x["improvement"], reverse=True)
+        return recommendations[:10]  # [UNICODE_4E0A]10[UNICODE_4EF6]
+    
+    def _calculate_upgrade_priority(self, improvement: float, rarity: ItemRarity) -> str:
+        """[UNICODE_30A2]"""
+        rarity_weights = {
+            ItemRarity.COMMON: 1,
+            ItemRarity.UNCOMMON: 2,
+            ItemRarity.RARE: 3,
+            ItemRarity.EPIC: 4,
+            ItemRarity.LEGENDARY: 5
+        }
+        
+        score = improvement * 100 + rarity_weights[rarity]
+        
+        if score >= 15:
+            return "high"
+        elif score >= 8:
+            return "medium"
+        else:
+            return "low"
+    
+    def validate_equipment_set(self, equipment_set: EquipmentSet) -> Tuple[bool, List[str]]:
+        """
+        [UNICODE_88C5]
+        
+        Args:
+            equipment_set: [UNICODE_88C5]
+            
+        Returns:
+            Tuple[bool, List[str]]: ([UNICODE_6709], [UNICODE_30A8])
+        """
+        errors = []
+        
+        for slot in EquipmentSlot:
+            item = equipment_set.get_item_by_slot(slot)
+            if item:
+                # [UNICODE_30A2]
+                allowed_types = self.slot_item_types[slot]
+                if item.item_type not in allowed_types:
+                    errors.append(f"{slot.value}[UNICODE_30B9]: {item.name}")
+                
+                # [UNICODE_30A2]
+                if not hasattr(item, 'stat_bonuses') or not isinstance(item.stat_bonuses, dict):
+                    errors.append(f"[UNICODE_30A2] {item.name} [UNICODE_306E]")
+                
+                if not hasattr(item, 'special_effects') or not isinstance(item.special_effects, list):
+                    errors.append(f"[UNICODE_30A2] {item.name} [UNICODE_306E]")
+        
+        return len(errors) == 0, errors
+    
+    def get_stat_breakdown(self, equipment_set: EquipmentSet) -> Dict:
+        """
+        [UNICODE_80FD]
+        
+        Args:
+            equipment_set: [UNICODE_88C5]
+            
+        Returns:
+            Dict: [UNICODE_80FD]
+        """
+        breakdown = {
+            "by_item": {},
+            "by_stat": {stat.value: 0 for stat in StatType},
+            "efficiency_contribution": {}
+        }
+        
+        for slot in EquipmentSlot:
+            item = equipment_set.get_item_by_slot(slot)
+            if item:
+                item_stats = EquipmentStats.from_dict(item.stat_bonuses)
+                breakdown["by_item"][slot.value] = {
+                    "item_name": item.name,
+                    "stats": item_stats.to_dict()
+                }
+                
+                # [UNICODE_80FD]
+                for stat in StatType:
+                    stat_value = getattr(item_stats, stat.value)
+                    breakdown["by_stat"][stat.value] += stat_value
+        
+        # [UNICODE_52B9]
+        for stat in StatType:
+            stat_value = breakdown["by_stat"][stat.value]
+            efficiency = stat_value * self.stat_efficiency_coefficients[stat]
+            breakdown["efficiency_contribution"][stat.value] = {
+                "stat_points": stat_value,
+                "efficiency_bonus": efficiency,
+                "percentage": f"{efficiency * 100:.2f}%"
+            }
+        
+        return breakdown
+
+
+if __name__ == "__main__":
+    # [UNICODE_57FA]
+    from gacha_system import GachaSystem
+    
+    # [UNICODE_30AC]
+    gacha = GachaSystem()
+    result = gacha.perform_gacha("ten_pull", 10000)
+    
+    if result.success:
+        equipment_system = EquipmentSystem()
+        equipment_set = EquipmentSet()
+        
+        # [UNICODE_30A2]
+        equipped_count = 0
+        for item in result.items:
+            for slot in EquipmentSlot:
+                if equipment_system.slot_item_types[slot] and item.item_type in equipment_system.slot_item_types[slot]:
+                    if equipment_set.get_item_by_slot(slot) is None:
+                        success, message = equipment_system.equip_item(equipment_set, item, slot)
+                        if success:
+                            print(f"[UNICODE_88C5]: {message}")
+                            equipped_count += 1
+                            break
+        
+        # [UNICODE_88C5]
+        summary = equipment_system.get_equipment_summary(equipment_set)
+        print(f"\n[UNICODE_88C5]:")
+        print(f"  [UNICODE_88C5]: {summary['total_equipped']}")
+        print(f"  [UNICODE_7DCF]: {summary['total_stats']}")
+        print(f"  [UNICODE_4F5C]: {summary['completion_bonus']['bonus_percentage']}")
+        print(f"  [UNICODE_30A2]: {summary['completion_bonus']['active_effects']}")
+        
+        # [UNICODE_80FD]
+        breakdown = equipment_system.get_stat_breakdown(equipment_set)
+        print(f"\n[UNICODE_80FD]:")
+        for stat, contribution in breakdown["efficiency_contribution"].items():
+            if contribution["stat_points"] > 0:
+                print(f"  {stat}: {contribution['stat_points']}pt [UNICODE_2192] {contribution['percentage']}")
+    else:
+        print("[UNICODE_30AC]")

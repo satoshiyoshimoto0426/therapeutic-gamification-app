@@ -1,0 +1,500 @@
+"""
+Authentication Middleware
+
+JWT[UNICODE_8A8D]Dependency Injection[UNICODE_7528]
+Guardian Portal[UNICODE_7528]
+
+Requirements: 6.1, 10.3
+"""
+
+from fastapi import Depends, HTTPException, status, Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from typing import Dict, Any, Optional, Callable
+import sys
+import os
+
+# Add project root to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+from services.auth.jwt_service import jwt_service, token_validator, TokenData
+from shared.interfaces.rbac_system import PermissionLevel, ResourceType, Action
+from shared.interfaces.rbac_system import rbac_system
+from shared.middleware.rbac_middleware import guardian_auth_service
+
+
+class JWTAuthMiddleware:
+    """JWT[UNICODE_8A8D]"""
+    
+    def __init__(self):
+        self.security = HTTPBearer(auto_error=False)
+    
+    async def __call__(
+        self,
+        request: Request,
+        credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False))
+    ) -> Optional[TokenData]:
+        """
+        JWT[UNICODE_8A8D]
+        
+        Args:
+            request: FastAPI[UNICODE_30EA]
+            credentials: HTTP[UNICODE_8A8D]
+            
+        Returns:
+            Optional[TokenData]: [UNICODE_8A8D]
+            
+        Raises:
+            HTTPException: [UNICODE_8A8D]
+        """
+        if not credentials:
+            return None
+        
+        try:
+            token_data = token_validator.validate_access_token(credentials.credentials)
+            
+            # [UNICODE_30EA]
+            request.state.token_data = token_data
+            request.state.guardian_id = token_data.guardian_id
+            request.state.user_id = token_data.user_id
+            request.state.permission_level = token_data.permission_level
+            
+            return token_data
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Authentication error: {str(e)}",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
+    
+    def validate_token_format(self, authorization_header: str) -> str:
+        """
+        [UNICODE_8A8D]
+        
+        Args:
+            authorization_header: Authorization[UNICODE_30D8]
+            
+        Returns:
+            str: [UNICODE_62BD]JWT[UNICODE_30C8]
+            
+        Raises:
+            HTTPException: [UNICODE_30C8]
+        """
+        if not authorization_header:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authorization header is required",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
+        
+        try:
+            scheme, token = authorization_header.split(' ', 1)
+            if scheme.lower() != 'bearer':
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid authentication scheme. Expected 'Bearer'",
+                    headers={"WWW-Authenticate": "Bearer"}
+                )
+            
+            if not token or len(token.strip()) == 0:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Token is required",
+                    headers={"WWW-Authenticate": "Bearer"}
+                )
+            
+            return token.strip()
+            
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authorization header format. Expected 'Bearer <token>'",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
+    
+    async def authenticate_request(self, request: Request) -> Optional[TokenData]:
+        """
+        [UNICODE_30EA]
+        
+        Args:
+            request: FastAPI[UNICODE_30EA]
+            
+        Returns:
+            Optional[TokenData]: [UNICODE_8A8D]
+        """
+        authorization = request.headers.get("Authorization")
+        if not authorization:
+            return None
+        
+        try:
+            token = self.validate_token_format(authorization)
+            token_data = token_validator.validate_access_token(token)
+            
+            # [UNICODE_30EA]
+            request.state.token_data = token_data
+            request.state.guardian_id = token_data.guardian_id
+            request.state.user_id = token_data.user_id
+            request.state.permission_level = token_data.permission_level
+            request.state.authenticated = True
+            
+            return token_data
+            
+        except HTTPException:
+            request.state.authenticated = False
+            raise
+        except Exception as e:
+            request.state.authenticated = False
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Authentication failed: {str(e)}",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
+
+
+# [UNICODE_30B0]
+jwt_auth_middleware = JWTAuthMiddleware()
+
+
+# Dependency Injection[UNICODE_7528]
+async def get_current_token(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False))
+) -> TokenData:
+    """
+    [UNICODE_73FE]JWT[UNICODE_30C8]
+    
+    Args:
+        credentials: HTTP[UNICODE_8A8D]
+        
+    Returns:
+        TokenData: [UNICODE_8A8D]
+        
+    Raises:
+        HTTPException: [UNICODE_8A8D]
+    """
+    if not credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    
+    return token_validator.validate_access_token(credentials.credentials)
+
+
+async def get_current_guardian(
+    token_data: TokenData = Depends(get_current_token)
+) -> Dict[str, Any]:
+    """
+    [UNICODE_73FE]
+    
+    Args:
+        token_data: [UNICODE_8A8D]
+        
+    Returns:
+        Dict[str, Any]: [UNICODE_4FDD]
+    """
+    # RBAC[UNICODE_6A29]
+    permissions = rbac_system.get_user_permissions(
+        token_data.guardian_id,
+        token_data.user_id
+    )
+    
+    return {
+        "guardian_id": token_data.guardian_id,
+        "user_id": token_data.user_id,
+        "permission_level": token_data.permission_level,
+        "permissions": permissions,
+        "token_jti": token_data.jti,
+        "token_expires_at": token_data.expires_at
+    }
+
+
+async def get_optional_guardian(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False))
+) -> Optional[Dict[str, Any]]:
+    """
+    [UNICODE_30AA]
+    
+    Args:
+        credentials: HTTP[UNICODE_8A8D]
+        
+    Returns:
+        Optional[Dict[str, Any]]: [UNICODE_4FDD]
+    """
+    if not credentials:
+        return None
+    
+    try:
+        token_data = token_validator.validate_access_token(credentials.credentials)
+        permissions = rbac_system.get_user_permissions(
+            token_data.guardian_id,
+            token_data.user_id
+        )
+        
+        return {
+            "guardian_id": token_data.guardian_id,
+            "user_id": token_data.user_id,
+            "permission_level": token_data.permission_level,
+            "permissions": permissions,
+            "token_jti": token_data.jti,
+            "token_expires_at": token_data.expires_at
+        }
+    except:
+        return None
+
+
+# [UNICODE_6A29]
+def require_permission_level(required_level: PermissionLevel):
+    """
+    [UNICODE_6A29]
+    
+    Args:
+        required_level: [UNICODE_5FC5]
+        
+    Returns:
+        Callable: [UNICODE_8A8D]
+    """
+    async def permission_dependency(
+        guardian_info: Dict[str, Any] = Depends(get_current_guardian)
+    ) -> Dict[str, Any]:
+        current_level = PermissionLevel(guardian_info["permission_level"])
+        
+        # [UNICODE_6A29]
+        if current_level.value < required_level.value:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Insufficient permissions. Required: {required_level.value}, Current: {current_level.value}"
+            )
+        
+        return guardian_info
+    
+    return permission_dependency
+
+
+def require_resource_access(resource_type: ResourceType, action: Action):
+    """
+    [UNICODE_30EA]
+    
+    Args:
+        resource_type: [UNICODE_30EA]
+        action: [UNICODE_30A2]
+        
+    Returns:
+        Callable: [UNICODE_8A8D]
+    """
+    async def resource_dependency(
+        guardian_info: Dict[str, Any] = Depends(get_current_guardian)
+    ) -> Dict[str, Any]:
+        has_access = guardian_auth_service.check_access(
+            guardian_info["guardian_id"],
+            guardian_info["user_id"],
+            resource_type,
+            action
+        )
+        
+        if not has_access:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied for {action.value} on {resource_type.value}"
+            )
+        
+        return guardian_info
+    
+    return resource_dependency
+
+
+# [UNICODE_4FBF]
+async def require_view_only_access(
+    guardian_info: Dict[str, Any] = Depends(get_current_guardian)
+) -> Dict[str, Any]:
+    """view-only[UNICODE_6A29]"""
+    return await require_permission_level(PermissionLevel.VIEW_ONLY)(guardian_info)
+
+
+async def require_task_edit_access(
+    guardian_info: Dict[str, Any] = Depends(get_current_guardian)
+) -> Dict[str, Any]:
+    """task-edit[UNICODE_6A29]"""
+    return await require_permission_level(PermissionLevel.TASK_EDIT)(guardian_info)
+
+
+async def require_chat_send_access(
+    guardian_info: Dict[str, Any] = Depends(get_current_guardian)
+) -> Dict[str, Any]:
+    """chat-send[UNICODE_6A29]"""
+    return await require_permission_level(PermissionLevel.CHAT_SEND)(guardian_info)
+
+
+# [UNICODE_30EA]
+async def require_dashboard_view(
+    guardian_info: Dict[str, Any] = Depends(get_current_guardian)
+) -> Dict[str, Any]:
+    """[UNICODE_30C0]"""
+    return await require_resource_access(ResourceType.DASHBOARD, Action.VIEW)(guardian_info)
+
+
+async def require_task_management(
+    guardian_info: Dict[str, Any] = Depends(get_current_guardian)
+) -> Dict[str, Any]:
+    """[UNICODE_30BF]"""
+    return await require_resource_access(ResourceType.TASKS, Action.EDIT)(guardian_info)
+
+
+async def require_chat_access(
+    guardian_info: Dict[str, Any] = Depends(get_current_guardian)
+) -> Dict[str, Any]:
+    """[UNICODE_30C1]"""
+    return await require_resource_access(ResourceType.CHAT, Action.SEND)(guardian_info)
+
+
+async def require_report_access(
+    guardian_info: Dict[str, Any] = Depends(get_current_guardian)
+) -> Dict[str, Any]:
+    """[UNICODE_30EC]"""
+    return await require_resource_access(ResourceType.REPORTS, Action.VIEW)(guardian_info)
+
+
+class AuthenticationService:
+    """[UNICODE_8A8D]"""
+    
+    def __init__(self):
+        self.jwt_service = jwt_service
+        self.rbac_system = rbac_system
+        self.guardian_auth_service = guardian_auth_service
+    
+    async def authenticate_and_authorize(
+        self,
+        guardian_id: str,
+        user_id: str,
+        permission_level: PermissionLevel,
+        resource_type: Optional[ResourceType] = None,
+        action: Optional[Action] = None
+    ) -> Dict[str, Any]:
+        """
+        [UNICODE_8A8D]
+        
+        Args:
+            guardian_id: [UNICODE_4FDD]ID
+            user_id: [UNICODE_30E6]ID
+            permission_level: [UNICODE_6A29]
+            resource_type: [UNICODE_30EA]
+            action: [UNICODE_30A2]
+            
+        Returns:
+            Dict[str, Any]: [UNICODE_8A8D]
+            
+        Raises:
+            HTTPException: [UNICODE_8A8D]
+        """
+        try:
+            # [UNICODE_57FA]
+            auth_result = self.guardian_auth_service.authenticate_guardian(
+                guardian_id, user_id, permission_level
+            )
+            
+            # [UNICODE_30EA]
+            if resource_type and action:
+                has_access = self.guardian_auth_service.check_access(
+                    guardian_id, user_id, resource_type, action
+                )
+                if not has_access:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail=f"Access denied for {action.value} on {resource_type.value}"
+                    )
+            
+            # JWT[UNICODE_30C8]
+            token_pair = self.jwt_service.create_token_pair(
+                guardian_id, user_id, permission_level.value
+            )
+            
+            return {
+                "authentication": auth_result,
+                "tokens": token_pair.dict(),
+                "authorized": True
+            }
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Authentication service error: {str(e)}"
+            )
+    
+    async def refresh_authentication(self, refresh_token: str) -> Dict[str, Any]:
+        """
+        [UNICODE_8A8D]
+        
+        Args:
+            refresh_token: [UNICODE_30EA]
+            
+        Returns:
+            Dict[str, Any]: [UNICODE_66F4]
+            
+        Raises:
+            HTTPException: [UNICODE_66F4]
+        """
+        try:
+            # [UNICODE_30C8]
+            token_pair = self.jwt_service.refresh_access_token(refresh_token)
+            
+            # [UNICODE_30C8]
+            token_data = token_validator.validate_refresh_token(refresh_token)
+            
+            return {
+                "tokens": token_pair.dict(),
+                "guardian_id": token_data.guardian_id,
+                "user_id": token_data.user_id,
+                "permission_level": token_data.permission_level,
+                "refreshed_at": token_data.issued_at.isoformat()
+            }
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Token refresh error: {str(e)}"
+            )
+    
+    async def logout(self, access_token: str, refresh_token: Optional[str] = None) -> Dict[str, Any]:
+        """
+        [UNICODE_30ED]
+        
+        Args:
+            access_token: [UNICODE_30A2]
+            refresh_token: [UNICODE_30EA]
+            
+        Returns:
+            Dict[str, Any]: [UNICODE_30ED]
+        """
+        try:
+            revoked_count = 0
+            
+            # [UNICODE_30A2]
+            if self.jwt_service.revoke_token(access_token):
+                revoked_count += 1
+            
+            # [UNICODE_30EA]
+            if refresh_token and self.jwt_service.revoke_token(refresh_token):
+                revoked_count += 1
+            
+            return {
+                "success": True,
+                "message": "Logged out successfully",
+                "revoked_tokens": revoked_count
+            }
+            
+        except Exception as e:
+            return {
+                "success": False,
+                "message": f"Logout error: {str(e)}",
+                "revoked_tokens": 0
+            }
+
+
+# [UNICODE_30B0]
+auth_service = AuthenticationService()

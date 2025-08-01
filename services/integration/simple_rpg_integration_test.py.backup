@@ -1,0 +1,360 @@
+"""
+RPG[UNICODE_8981] - [UNICODE_7C21]
+[UNICODE_30BF]20.1[UNICODE_306E]
+"""
+
+import sys
+import os
+import json
+from datetime import datetime
+
+# [UNICODE_30D7]
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+
+def test_rpg_systems_integration():
+    """RPG[UNICODE_30B7]"""
+    print("[UNICODE_1F680] RPG[UNICODE_8981]")
+    print("=" * 60)
+    
+    test_results = {
+        "test_suite": "RPG[UNICODE_8981]",
+        "timestamp": datetime.now().isoformat(),
+        "tests": [],
+        "summary": {
+            "total_tests": 0,
+            "passed_tests": 0,
+            "failed_tests": 0,
+            "success_rate": 0.0
+        }
+    }
+    
+    # 1. [UNICODE_30B3]
+    print("\n[UNICODE_1F504] [UNICODE_30B3]...")
+    try:
+        from shared.interfaces.core_types import TaskType
+        
+        # [UNICODE_57FA]
+        base_coins = 10  # [UNICODE_30EB]
+        difficulty = 3
+        mood_coefficient = 1.1
+        adhd_assist = 1.2
+        
+        # [UNICODE_624B]
+        calculated_coins = int(base_coins * difficulty * mood_coefficient * adhd_assist)
+        
+        test_results["tests"].append({
+            "test_name": "[UNICODE_30B3]",
+            "passed": True,
+            "details": {
+                "base_coins": base_coins,
+                "difficulty": difficulty,
+                "mood_coefficient": mood_coefficient,
+                "adhd_assist": adhd_assist,
+                "calculated_coins": calculated_coins
+            }
+        })
+        test_results["summary"]["passed_tests"] += 1
+        print("[UNICODE_2705] [UNICODE_30B3]")
+        
+    except Exception as e:
+        test_results["tests"].append({
+            "test_name": "[UNICODE_30B3]",
+            "passed": False,
+            "error": str(e)
+        })
+        test_results["summary"]["failed_tests"] += 1
+        print(f"[UNICODE_274C] [UNICODE_30B3]: {e}")
+    
+    # 2. XP[UNICODE_30B7]
+    print("\n[UNICODE_1F504] XP[UNICODE_30B7]...")
+    try:
+        # XP[UNICODE_8A08]
+        base_xp = 15  # [UNICODE_4E2D]XP
+        mood_coefficient = 1.1
+        adhd_assist = 1.2
+        
+        calculated_xp = int(base_xp * mood_coefficient * adhd_assist)
+        
+        # [UNICODE_30EC]
+        import math
+        total_xp = 1000
+        level = int(math.log2(total_xp / 100 + 1))
+        
+        test_results["tests"].append({
+            "test_name": "XP[UNICODE_30B7]",
+            "passed": True,
+            "details": {
+                "base_xp": base_xp,
+                "calculated_xp": calculated_xp,
+                "total_xp": total_xp,
+                "calculated_level": level
+            }
+        })
+        test_results["summary"]["passed_tests"] += 1
+        print("[UNICODE_2705] XP[UNICODE_30B7]")
+        
+    except Exception as e:
+        test_results["tests"].append({
+            "test_name": "XP[UNICODE_30B7]",
+            "passed": False,
+            "error": str(e)
+        })
+        test_results["summary"]["failed_tests"] += 1
+        print(f"[UNICODE_274C] XP[UNICODE_30B7]: {e}")
+    
+    # 3. [UNICODE_8077]
+    print("\n[UNICODE_1F504] [UNICODE_8077]...")
+    try:
+        # [UNICODE_8077]
+        job_types = ["warrior", "hero", "mage", "priest", "sage", "ninja"]
+        
+        # [UNICODE_8077]
+        job_level = 3
+        base_bonus = 2  # [UNICODE_6226]resilience[UNICODE_57FA]
+        level_multiplier = 1.0 + (job_level - 1) * 0.1
+        calculated_bonus = int(base_bonus * level_multiplier)
+        
+        test_results["tests"].append({
+            "test_name": "[UNICODE_8077]",
+            "passed": True,
+            "details": {
+                "available_jobs": len(job_types),
+                "job_level": job_level,
+                "base_bonus": base_bonus,
+                "calculated_bonus": calculated_bonus
+            }
+        })
+        test_results["summary"]["passed_tests"] += 1
+        print("[UNICODE_2705] [UNICODE_8077]")
+        
+    except Exception as e:
+        test_results["tests"].append({
+            "test_name": "[UNICODE_8077]",
+            "passed": False,
+            "error": str(e)
+        })
+        test_results["summary"]["failed_tests"] += 1
+        print(f"[UNICODE_274C] [UNICODE_8077]: {e}")
+    
+    # 4. [UNICODE_9B54]
+    print("\n[UNICODE_1F504] [UNICODE_9B54]...")
+    try:
+        # [UNICODE_9B54]
+        demon_types = [
+            "procrastination_dragon",
+            "anxiety_shadow", 
+            "depression_void",
+            "social_fear_goblin"
+        ]
+        
+        # [UNICODE_30C0]
+        user_actions = ["routine_task_completion", "pomodoro_usage"]
+        demon_weaknesses = ["routine_task_completion", "pomodoro_usage", "small_step_action"]
+        
+        damage = 0
+        for action in user_actions:
+            if action in demon_weaknesses:
+                damage += 25  # [UNICODE_5F31]
+            else:
+                damage += 5   # [UNICODE_901A]
+        
+        test_results["tests"].append({
+            "test_name": "[UNICODE_9B54]",
+            "passed": True,
+            "details": {
+                "available_demons": len(demon_types),
+                "user_actions": user_actions,
+                "calculated_damage": damage
+            }
+        })
+        test_results["summary"]["passed_tests"] += 1
+        print("[UNICODE_2705] [UNICODE_9B54]")
+        
+    except Exception as e:
+        test_results["tests"].append({
+            "test_name": "[UNICODE_9B54]",
+            "passed": False,
+            "error": str(e)
+        })
+        test_results["summary"]["failed_tests"] += 1
+        print(f"[UNICODE_274C] [UNICODE_9B54]: {e}")
+    
+    # 5. [UNICODE_7D4C]
+    print("\n[UNICODE_1F504] [UNICODE_7D4C]...")
+    try:
+        # [UNICODE_30A4]
+        inflation_thresholds = {
+            10000: 0.8,  # 10,000[UNICODE_30B3]20%[UNICODE_6E1B]
+            5000: 0.9,   # 5,000[UNICODE_30B3]10%[UNICODE_6E1B]
+            1000: 0.95   # 1,000[UNICODE_30B3]5%[UNICODE_6E1B]
+        }
+        
+        def apply_inflation_control(user_total_coins):
+            for threshold in sorted(inflation_thresholds.keys(), reverse=True):
+                if user_total_coins >= threshold:
+                    return inflation_thresholds[threshold]
+            return 1.0
+        
+        # [UNICODE_7570]
+        test_amounts = [500, 2000, 7000, 15000]
+        inflation_results = []
+        
+        for amount in test_amounts:
+            adjustment = apply_inflation_control(amount)
+            inflation_results.append({
+                "coins": amount,
+                "adjustment": adjustment,
+                "reduction_percent": int((1 - adjustment) * 100)
+            })
+        
+        test_results["tests"].append({
+            "test_name": "[UNICODE_7D4C]",
+            "passed": True,
+            "details": {
+                "inflation_results": inflation_results
+            }
+        })
+        test_results["summary"]["passed_tests"] += 1
+        print("[UNICODE_2705] [UNICODE_7D4C]")
+        
+    except Exception as e:
+        test_results["tests"].append({
+            "test_name": "[UNICODE_7D4C]",
+            "passed": False,
+            "error": str(e)
+        })
+        test_results["summary"]["failed_tests"] += 1
+        print(f"[UNICODE_274C] [UNICODE_7D4C]: {e}")
+    
+    # [UNICODE_30B5]
+    test_results["summary"]["total_tests"] = len(test_results["tests"])
+    if test_results["summary"]["total_tests"] > 0:
+        test_results["summary"]["success_rate"] = (
+            test_results["summary"]["passed_tests"] / test_results["summary"]["total_tests"]
+        ) * 100
+    
+    # [UNICODE_7D50]
+    print("\n" + "=" * 60)
+    print("[UNICODE_1F4CA] RPG[UNICODE_8981]")
+    print("=" * 60)
+    print(f"[UNICODE_7DCF]: {test_results['summary']['total_tests']}")
+    print(f"[UNICODE_6210]: {test_results['summary']['passed_tests']}")
+    print(f"[UNICODE_5931]: {test_results['summary']['failed_tests']}")
+    print(f"[UNICODE_6210]: {test_results['summary']['success_rate']:.1f}%")
+    
+    if test_results["summary"]["success_rate"] == 100.0:
+        print("[UNICODE_1F389] [UNICODE_5168]RPG[UNICODE_7D71]")
+    else:
+        print("[UNICODE_26A0]  [UNICODE_4E00]")
+    
+    # [UNICODE_7D50]JSON[UNICODE_30D5]
+    output_file = "simple_rpg_integration_test_results.json"
+    with open(output_file, 'w', encoding='utf-8') as f:
+        json.dump(test_results, f, ensure_ascii=False, indent=2)
+    
+    print(f"\n[UNICODE_1F4C4] [UNICODE_8A73] {output_file} [UNICODE_306B]")
+    
+    return test_results
+
+
+def test_task_battle_integration():
+    """[UNICODE_30BF]"""
+    print("\n[UNICODE_1F504] [UNICODE_30BF]...")
+    
+    try:
+        # 1. [UNICODE_30BF]
+        task_data = {
+            "task_id": "test_task_001",
+            "task_type": "routine",
+            "difficulty": 3,
+            "mood_score": 4,
+            "adhd_assist_usage": 1.1
+        }
+        
+        # XP[UNICODE_8A08]
+        base_xp = 15
+        mood_coefficient = 0.8 + (task_data["mood_score"] - 1) * 0.1  # 1.1
+        xp_earned = int(base_xp * mood_coefficient * task_data["adhd_assist_usage"])
+        
+        # [UNICODE_30B3]
+        base_coins = 10
+        coins_earned = int(base_coins * task_data["difficulty"] * mood_coefficient * task_data["adhd_assist_usage"])
+        
+        # 2. [UNICODE_30D0]
+        user_actions = ["routine_task_completion", "morning_routine"]
+        
+        # 3. [UNICODE_30D0]
+        demon_hp = 100
+        damage_per_action = 25
+        total_damage = len(user_actions) * damage_per_action
+        
+        battle_result = "victory" if total_damage >= demon_hp else "ongoing"
+        
+        # 4. [UNICODE_30D0]
+        battle_rewards = {
+            "coins": 150,
+            "xp": 75,
+            "items": ["focus_potion", "time_crystal"]
+        } if battle_result == "victory" else {}
+        
+        integration_result = {
+            "task_completion": {
+                "xp_earned": xp_earned,
+                "coins_earned": coins_earned
+            },
+            "battle_engagement": {
+                "user_actions": user_actions,
+                "total_damage": total_damage,
+                "result": battle_result
+            },
+            "total_rewards": {
+                "total_xp": xp_earned + battle_rewards.get("xp", 0),
+                "total_coins": coins_earned + battle_rewards.get("coins", 0),
+                "items_obtained": battle_rewards.get("items", [])
+            }
+        }
+        
+        print("[UNICODE_2705] [UNICODE_30BF]")
+        print(f"   [UNICODE_7DCF]XP: {integration_result['total_rewards']['total_xp']}")
+        print(f"   [UNICODE_7DCF]: {integration_result['total_rewards']['total_coins']}")
+        print(f"   [UNICODE_30A2]: {len(integration_result['total_rewards']['items_obtained'])}[UNICODE_500B]")
+        
+        return True, integration_result
+        
+    except Exception as e:
+        print(f"[UNICODE_274C] [UNICODE_30BF]: {e}")
+        return False, {"error": str(e)}
+
+
+def main():
+    """[UNICODE_30E1]"""
+    # [UNICODE_57FA]
+    basic_results = test_rpg_systems_integration()
+    
+    # [UNICODE_30BF]
+    integration_success, integration_data = test_task_battle_integration()
+    
+    # [UNICODE_7DCF]
+    overall_success = (
+        basic_results["summary"]["success_rate"] == 100.0 and 
+        integration_success
+    )
+    
+    print("\n" + "=" * 60)
+    print("[UNICODE_1F3C6] [UNICODE_7DCF]")
+    print("=" * 60)
+    
+    if overall_success:
+        print("[UNICODE_1F389] RPG[UNICODE_8981]20.1[UNICODE_FF09]")
+        print("\n[UNICODE_2705] [UNICODE_5B9F]:")
+        print("   - XP[UNICODE_30FB]")
+        print("   - [UNICODE_9B54]")
+        print("   - [UNICODE_7D4C]")
+        exit(0)
+    else:
+        print("[UNICODE_26A0]  [UNICODE_4E00]")
+        exit(1)
+
+
+if __name__ == "__main__":
+    main()

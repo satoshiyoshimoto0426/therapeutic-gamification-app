@@ -1,0 +1,173 @@
+"""
+Simple test for mobile-optimized LINE Bot UI functions
+"""
+
+import sys
+import os
+
+# Add current directory to path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+def test_mobile_ui_functions():
+    """Test mobile UI functions"""
+    try:
+        from mobile_ui_functions import (
+            create_mobile_optimized_heart_crystal_tasks,
+            create_task_bubble_mobile,
+            create_empty_task_bubble,
+            create_task_completion_success_message
+        )
+        print("[UNICODE_2705] Successfully imported mobile UI functions")
+        
+        # Test data
+        sample_tasks = [
+            {
+                "id": "task_1",
+                "title": "[UNICODE_671D]",
+                "type": "routine",
+                "difficulty": 2,
+                "xp_reward": 20
+            },
+            {
+                "id": "task_2",
+                "title": "[UNICODE_8AAD]30[UNICODE_5206]",
+                "type": "skill_up", 
+                "difficulty": 3,
+                "xp_reward": 30
+            }
+        ]
+        
+        # Test mobile-optimized Heart Crystal tasks
+        flex_message = create_mobile_optimized_heart_crystal_tasks(sample_tasks)
+        assert flex_message is not None
+        assert hasattr(flex_message, 'alt_text')
+        assert "[UNICODE_1F48E] [UNICODE_4ECA]" in flex_message.alt_text
+        print("[UNICODE_2705] Mobile-optimized Heart Crystal tasks creation: PASSED")
+        
+        # Test individual task bubble
+        task_bubble = create_task_bubble_mobile(sample_tasks[0])
+        assert task_bubble is not None
+        assert hasattr(task_bubble, 'layout')
+        assert task_bubble.layout == "vertical"
+        print("[UNICODE_2705] Mobile task bubble creation: PASSED")
+        
+        # Test empty task bubble
+        empty_bubble = create_empty_task_bubble()
+        assert empty_bubble is not None
+        assert hasattr(empty_bubble, 'layout')
+        print("[UNICODE_2705] Empty task bubble creation: PASSED")
+        
+        # Test completion success message
+        success_message = create_task_completion_success_message("[UNICODE_30C6]", 25)
+        assert success_message is not None
+        assert hasattr(success_message, 'alt_text')
+        assert "[UNICODE_5B8C]" in success_message.alt_text
+        print("[UNICODE_2705] Task completion success message: PASSED")
+        
+        return True
+        
+    except ImportError as e:
+        print(f"[UNICODE_274C] Import error: {e}")
+        return False
+    except Exception as e:
+        print(f"[UNICODE_274C] Test error: {e}")
+        return False
+
+def test_adhd_considerations():
+    """Test ADHD-friendly mobile optimizations"""
+    try:
+        from mobile_ui_functions import create_mobile_optimized_heart_crystal_tasks, create_task_bubble_mobile
+        
+        # Test with many tasks (should limit to 9 for cognitive load reduction)
+        many_tasks = []
+        for i in range(15):
+            many_tasks.append({
+                "id": f"task_{i}",
+                "title": f"[UNICODE_30BF]{i}",
+                "type": "routine",
+                "difficulty": 1,
+                "xp_reward": 10
+            })
+        
+        flex_message = create_mobile_optimized_heart_crystal_tasks(many_tasks)
+        
+        # Should have header + 3 rows = 4 bubbles (limited to 9 tasks in 3x3 grid)
+        bubbles = flex_message.contents.contents
+        assert len(bubbles) == 4
+        print("[UNICODE_2705] Task limit for cognitive load reduction: PASSED")
+        
+        # Test title truncation for mobile readability
+        long_title_task = {
+            "id": "task_long",
+            "title": "[UNICODE_3053]",
+            "type": "routine",
+            "difficulty": 1,
+            "xp_reward": 10
+        }
+        
+        bubble = create_task_bubble_mobile(long_title_task)
+        title_text = bubble.contents[1].text
+        
+        # Should be truncated for mobile readability
+        assert len(title_text) <= 11  # 8 chars + "..."
+        print("[UNICODE_2705] Title truncation for mobile readability: PASSED")
+        
+        return True
+        
+    except Exception as e:
+        print(f"[UNICODE_274C] ADHD consideration test error: {e}")
+        return False
+
+def test_touch_friendly_interface():
+    """Test touch-friendly interface elements"""
+    try:
+        from mobile_ui_functions import create_task_bubble_mobile
+        
+        task = {
+            "id": "task_1",
+            "title": "[UNICODE_30C6]",
+            "type": "routine",
+            "difficulty": 1,
+            "xp_reward": 10
+        }
+        
+        bubble = create_task_bubble_mobile(task)
+        
+        # Check button sizing for touch interaction
+        button = bubble.contents[3]  # Completion button
+        assert button.height == "sm"  # Appropriate for touch
+        assert button.style == "primary"
+        print("[UNICODE_2705] Touch-friendly button sizing: PASSED")
+        
+        # Check visual feedback elements (these are set in the BoxComponent)
+        assert hasattr(bubble, 'contents')  # Has content structure
+        print("[UNICODE_2705] Visual feedback elements: PASSED")
+        
+        return True
+        
+    except Exception as e:
+        print(f"[UNICODE_274C] Touch-friendly interface test error: {e}")
+        return False
+
+if __name__ == "__main__":
+    print("[UNICODE_1F9EA] Testing Mobile-Optimized LINE Bot UI Functions...")
+    print("=" * 60)
+    
+    success = True
+    success &= test_mobile_ui_functions()
+    success &= test_adhd_considerations()
+    success &= test_touch_friendly_interface()
+    
+    if success:
+        print("\n[UNICODE_1F389] All tests PASSED! Mobile UI functions are working correctly.")
+        print("\n[UNICODE_1F4F1] Key Features Implemented:")
+        print("  [UNICODE_2022] 3x3 Mandala grid layout for Heart Crystal tasks")
+        print("  [UNICODE_2022] Touch-friendly buttons with appropriate sizing")
+        print("  [UNICODE_2022] ADHD-friendly cognitive load reduction (max 9 tasks)")
+        print("  [UNICODE_2022] Mobile-optimized title truncation")
+        print("  [UNICODE_2022] Visual feedback with colors and emojis")
+        print("  [UNICODE_2022] One-tap task completion")
+    else:
+        print("\n[UNICODE_274C] Some tests FAILED. Please check the implementation.")
+    
+    exit(0 if success else 1)

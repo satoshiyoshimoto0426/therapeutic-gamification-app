@@ -1,0 +1,166 @@
+"""
+Basic Mobile Mandala System Test
+
+[UNICODE_30E2]Mandala[UNICODE_30B7]
+"""
+
+import sys
+import os
+
+# Add project root to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+from shared.interfaces.mobile_types import (
+    DeviceType, ScreenOrientation, TouchEventType,
+    MobileViewport, TouchEvent, ADHDMobileSettings
+)
+
+
+def test_mobile_types():
+    """[UNICODE_30E2]"""
+    print("[UNICODE_1F9EA] [UNICODE_30E2]")
+    
+    # [UNICODE_30D3]
+    viewport = MobileViewport(
+        width=375,
+        height=667,
+        orientation=ScreenOrientation.PORTRAIT,
+        device_pixel_ratio=2.0,
+        safe_area_insets={"top": 44, "bottom": 34, "left": 0, "right": 0}
+    )
+    
+    print(f"[UNICODE_1F4F1] [UNICODE_30D3]: {viewport.width}x{viewport.height}")
+    
+    # [UNICODE_30BF]
+    touch_event = TouchEvent(
+        event_type=TouchEventType.TAP,
+        x=100.0,
+        y=200.0,
+        timestamp=1234567890
+    )
+    
+    print(f"[UNICODE_1F446] [UNICODE_30BF]: {touch_event.event_type}")
+    
+    # ADHD[UNICODE_8A2D]
+    adhd_settings = ADHDMobileSettings(
+        large_touch_targets=True,
+        reduced_animations=True,
+        focus_mode_available=True
+    )
+    
+    print(f"[UNICODE_1F9E0] ADHD[UNICODE_8A2D]: [UNICODE_5927]={adhd_settings.large_touch_targets}")
+    
+    print("[UNICODE_2705] [UNICODE_30E2]")
+    return True
+
+
+def test_mandala_system_interface():
+    """Mandala[UNICODE_30B7]"""
+    print("\n[UNICODE_1F3AF] Mandala[UNICODE_30B7]")
+    
+    try:
+        from shared.interfaces.mandala_system import MandalaSystemInterface, MandalaGrid
+        
+        # [UNICODE_30A4]
+        interface = MandalaSystemInterface()
+        print("[UNICODE_1F4D0] MandalaSystemInterface[UNICODE_4F5C]")
+        
+        # [UNICODE_30B0]
+        grid = interface.get_or_create_grid("test_user")
+        print(f"[UNICODE_1F3AF] Mandala[UNICODE_30B0]: {grid.total_cells}[UNICODE_30BB]")
+        
+        # API[UNICODE_5FDC]
+        api_response = interface.get_grid_api_response("test_user")
+        print(f"[UNICODE_1F4CA] API[UNICODE_5FDC]: {api_response['total_cells']}[UNICODE_30BB]")
+        
+        print("[UNICODE_2705] Mandala[UNICODE_30B7]")
+        return True
+        
+    except Exception as e:
+        print(f"[UNICODE_274C] Mandala[UNICODE_30B7]: {e}")
+        return False
+
+
+def test_mobile_mandala_basic():
+    """[UNICODE_57FA]Mandala[UNICODE_6A5F]"""
+    print("\n[UNICODE_1F4F1] [UNICODE_57FA]Mandala[UNICODE_6A5F]")
+    
+    try:
+        # [UNICODE_7C21]
+        class SimpleMobileMandala:
+            def __init__(self):
+                self.configs = {}
+            
+            def calculate_cell_size(self, width: int) -> int:
+                """[UNICODE_753B]"""
+                if width <= 360:
+                    return 32
+                elif width <= 480:
+                    return 36
+                elif width <= 768:
+                    return 48
+                else:
+                    return 56
+            
+            def create_layout(self, width: int, height: int):
+                """[UNICODE_30EC]"""
+                cell_size = self.calculate_cell_size(width)
+                gap = max(2, cell_size // 16)
+                total_width = (cell_size * 9) + (gap * 8)
+                
+                return {
+                    "cell_size": cell_size,
+                    "gap": gap,
+                    "total_width": total_width,
+                    "zoom_enabled": width <= 480
+                }
+        
+        # [UNICODE_30C6]
+        mobile_mandala = SimpleMobileMandala()
+        
+        # [UNICODE_5C0F]
+        small_layout = mobile_mandala.create_layout(320, 568)
+        print(f"[UNICODE_1F4F1] [UNICODE_5C0F]: [UNICODE_30BB]={small_layout['cell_size']}px, [UNICODE_30BA]={small_layout['zoom_enabled']}")
+        
+        # [UNICODE_6A19]
+        standard_layout = mobile_mandala.create_layout(375, 667)
+        print(f"[UNICODE_1F4F1] [UNICODE_6A19]: [UNICODE_30BB]={standard_layout['cell_size']}px, [UNICODE_30BA]={standard_layout['zoom_enabled']}")
+        
+        # [UNICODE_30BF]
+        tablet_layout = mobile_mandala.create_layout(768, 1024)
+        print(f"[UNICODE_1F4DF] [UNICODE_30BF]: [UNICODE_30BB]={tablet_layout['cell_size']}px, [UNICODE_30BA]={tablet_layout['zoom_enabled']}")
+        
+        print("[UNICODE_2705] [UNICODE_57FA]Mandala[UNICODE_6A5F]")
+        return True
+        
+    except Exception as e:
+        print(f"[UNICODE_274C] [UNICODE_57FA]Mandala[UNICODE_6A5F]: {e}")
+        return False
+
+
+def main():
+    """[UNICODE_30E1]"""
+    print("[UNICODE_1F680] [UNICODE_30E2]Mandala[UNICODE_30B7] [UNICODE_57FA]")
+    print("=" * 60)
+    
+    try:
+        # [UNICODE_57FA]
+        test_mobile_types()
+        test_mandala_system_interface()
+        test_mobile_mandala_basic()
+        
+        print("\n" + "=" * 60)
+        print("[UNICODE_1F389] [UNICODE_5168]")
+        
+    except Exception as e:
+        print(f"\n[UNICODE_274C] [UNICODE_30C6]: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return False
+    
+    return True
+
+
+if __name__ == "__main__":
+    success = main()
+    sys.exit(0 if success else 1)

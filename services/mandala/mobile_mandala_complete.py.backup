@@ -1,0 +1,527 @@
+"""
+Complete Mobile-Optimized Mandala System
+
+[UNICODE_753B]
+[UNICODE_30BF]
+
+Requirements: 9.5, 4.1
+"""
+
+from typing import Dict, List, Optional, Tuple, Any
+from dataclasses import dataclass, field
+from datetime import datetime
+import math
+import sys
+import os
+
+# Add project root to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+from shared.interfaces.mobile_types import (
+    DeviceType, ScreenOrientation, TouchEventType, SwipeDirection,
+    MobileMandalaConfig, TouchEvent, SwipeEvent, PinchEvent,
+    MobileViewport, ADHDMobileSettings, FocusModeConfig,
+    TouchInteractionResponse, MobileOptimizedResponse
+)
+from shared.interfaces.mandala_system import MandalaSystemInterface, MandalaGrid, MemoryCell, CellStatus
+
+
+@dataclass
+class MobileGridLayout:
+    """[UNICODE_30E2]"""
+    cell_size: int
+    gap: int
+    total_width: int
+    total_height: int
+    zoom_level: float = 1.0
+    pan_offset_x: float = 0.0
+    pan_offset_y: float = 0.0
+    visible_cells: List[Tuple[int, int]] = field(default_factory=list)
+
+
+@dataclass
+class TouchGesture:
+    """[UNICODE_30BF]"""
+    is_active: bool = False
+    start_time: Optional[datetime] = None
+    start_position: Optional[Tuple[float, float]] = None
+    current_position: Optional[Tuple[float, float]] = None
+    gesture_type: Optional[TouchEventType] = None
+    target_cell: Optional[Tuple[int, int]] = None
+
+
+class MobileMandalaSystem:
+    """
+    [UNICODE_30E2]Mandala[UNICODE_30B7]
+    
+    [UNICODE_753B]
+    [UNICODE_30BA]
+    """
+    
+    def __init__(self, mandala_interface: MandalaSystemInterface):
+        self.mandala_interface = mandala_interface
+        self.mobile_configs: Dict[str, MobileMandalaConfig] = {}
+        self.grid_layouts: Dict[str, MobileGridLayout] = {}
+        self.touch_gestures: Dict[str, TouchGesture] = {}
+        self.adhd_settings: Dict[str, ADHDMobileSettings] = {}
+        
+        # [UNICODE_30C7]ADHD[UNICODE_8A2D]
+        self.default_adhd_settings = ADHDMobileSettings()
+    
+    def calculate_grid_size_for_screen(self, viewport: MobileViewport) -> MobileMandalaConfig:
+        """
+        [UNICODE_753B]
+        
+        Args:
+            viewport: [UNICODE_30E2]
+            
+        Returns:
+            MobileMandalaConfig: [UNICODE_30E2]Mandala[UNICODE_8A2D]
+        """
+        # [UNICODE_30C7]
+        config = MobileMandalaConfig.for_device_width(viewport.width)
+        
+        # [UNICODE_753B]
+        if viewport.orientation == ScreenOrientation.LANDSCAPE:
+            # [UNICODE_6A2A]
+            config.cell_size = int(config.cell_size * 1.2)
+            config.total_width = int(config.total_width * 1.2)
+            config.zoom_enabled = False  # [UNICODE_6A2A]
+        
+        # [UNICODE_30BB]
+        safe_area_width = viewport.width - viewport.safe_area_insets["left"] - viewport.safe_area_insets["right"]
+        safe_area_height = viewport.height - viewport.safe_area_insets["top"] - viewport.safe_area_insets["bottom"]
+        
+        # [UNICODE_5229]
+        available_width = safe_area_width - 32  # [UNICODE_5DE6]16px
+        max_cell_size = (available_width - (8 * config.gap)) // 9  # 9x9[UNICODE_30B0]
+        
+        if max_cell_size < config.cell_size:
+            config.cell_size = max_cell_size
+            config.total_width = (config.cell_size * 9) + (config.gap * 8)
+            config.zoom_enabled = True  # [UNICODE_5C0F]
+        
+        return config
+    
+    def create_mobile_grid_layout(self, uid: str, viewport: MobileViewport) -> MobileGridLayout:
+        """
+        [UNICODE_30E2]
+        
+        Args:
+            uid: [UNICODE_30E6]ID
+            viewport: [UNICODE_30E2]
+            
+        Returns:
+            MobileGridLayout: [UNICODE_30E2]
+        """
+        config = self.calculate_grid_size_for_screen(viewport)
+        self.mobile_configs[uid] = config
+        
+        layout = MobileGridLayout(
+            cell_size=config.cell_size,
+            gap=config.gap,
+            total_width=config.total_width,
+            total_height=config.total_width,  # [UNICODE_6B63]
+            visible_cells=self._calculate_visible_cells(viewport, config)
+        )
+        
+        self.grid_layouts[uid] = layout
+        return layout
+    
+    def _calculate_visible_cells(self, viewport: MobileViewport, config: MobileMandalaConfig) -> List[Tuple[int, int]]:
+        """[UNICODE_8868]"""
+        if config.device_type in [DeviceType.TABLET_PORTRAIT, DeviceType.TABLET_LANDSCAPE]:
+            # [UNICODE_30BF]
+            return [(x, y) for x in range(9) for y in range(9)]
+        
+        # [UNICODE_30B9]
+        center_cells = [
+            (3, 3), (3, 4), (3, 5),
+            (4, 3), (4, 4), (4, 5),
+            (5, 3), (5, 4), (5, 5)
+        ]
+        return center_cells
+    
+    def handle_touch_event(self, uid: str, touch_event: TouchEvent) -> TouchInteractionResponse:
+        """
+        [UNICODE_30BF]
+        
+        Args:
+            uid: [UNICODE_30E6]ID
+            touch_event: [UNICODE_30BF]
+            
+        Returns:
+            TouchInteractionResponse: [UNICODE_30BF]
+        """
+        if uid not in self.touch_gestures:
+            self.touch_gestures[uid] = TouchGesture()
+        
+        gesture = self.touch_gestures[uid]
+        layout = self.grid_layouts.get(uid)
+        
+        if not layout:
+            return TouchInteractionResponse(
+                success=False,
+                feedback_type="none",
+                accessibility_announcement="[UNICODE_30B0]"
+            )
+        
+        # [UNICODE_30BF]
+        cell_position = self._get_cell_from_touch(touch_event.x, touch_event.y, layout)
+        
+        if touch_event.event_type == TouchEventType.TAP:
+            return self._handle_tap(uid, cell_position, touch_event)
+        elif touch_event.event_type == TouchEventType.LONG_PRESS:
+            return self._handle_long_press(uid, cell_position, touch_event)
+        elif touch_event.event_type == TouchEventType.DOUBLE_TAP:
+            return self._handle_double_tap(uid, cell_position, touch_event)
+        else:
+            return TouchInteractionResponse(
+                success=False,
+                feedback_type="none"
+            )
+    
+    def handle_swipe_event(self, uid: str, swipe_event: SwipeEvent) -> TouchInteractionResponse:
+        """
+        [UNICODE_30B9]
+        
+        Args:
+            uid: [UNICODE_30E6]ID
+            swipe_event: [UNICODE_30B9]
+            
+        Returns:
+            TouchInteractionResponse: [UNICODE_30B9]
+        """
+        layout = self.grid_layouts.get(uid)
+        config = self.mobile_configs.get(uid)
+        
+        if not layout or not config or not config.swipe_navigation:
+            return TouchInteractionResponse(
+                success=False,
+                feedback_type="none"
+            )
+        
+        # [UNICODE_30B9]
+        pan_distance = min(swipe_event.distance, layout.cell_size)
+        
+        if swipe_event.direction == SwipeDirection.LEFT:
+            layout.pan_offset_x = max(layout.pan_offset_x - pan_distance, -layout.total_width * 0.3)
+        elif swipe_event.direction == SwipeDirection.RIGHT:
+            layout.pan_offset_x = min(layout.pan_offset_x + pan_distance, layout.total_width * 0.3)
+        elif swipe_event.direction == SwipeDirection.UP:
+            layout.pan_offset_y = max(layout.pan_offset_y - pan_distance, -layout.total_height * 0.3)
+        elif swipe_event.direction == SwipeDirection.DOWN:
+            layout.pan_offset_y = min(layout.pan_offset_y + pan_distance, layout.total_height * 0.3)
+        
+        return TouchInteractionResponse(
+            success=True,
+            feedback_type="visual",
+            animation="pan",
+            accessibility_announcement=f"[UNICODE_30B0]{swipe_event.direction.value}[UNICODE_65B9]"
+        )
+    
+    def handle_pinch_event(self, uid: str, pinch_event: PinchEvent) -> TouchInteractionResponse:
+        """
+        [UNICODE_30D4]
+        
+        Args:
+            uid: [UNICODE_30E6]ID
+            pinch_event: [UNICODE_30D4]
+            
+        Returns:
+            TouchInteractionResponse: [UNICODE_30D4]
+        """
+        layout = self.grid_layouts.get(uid)
+        config = self.mobile_configs.get(uid)
+        
+        if not layout or not config or not config.zoom_enabled:
+            return TouchInteractionResponse(
+                success=False,
+                feedback_type="none"
+            )
+        
+        # [UNICODE_30BA]0.5x - 2.0x[UNICODE_FF09]
+        new_zoom = layout.zoom_level * pinch_event.scale
+        layout.zoom_level = max(0.5, min(2.0, new_zoom))
+        
+        return TouchInteractionResponse(
+            success=True,
+            feedback_type="haptic",
+            animation="zoom",
+            accessibility_announcement=f"[UNICODE_30BA]: {layout.zoom_level:.1f}[UNICODE_500D]"
+        )
+    
+    def _get_cell_from_touch(self, x: float, y: float, layout: MobileGridLayout) -> Optional[Tuple[int, int]]:
+        """[UNICODE_30BF]"""
+        # [UNICODE_30BA]
+        adjusted_x = (x - layout.pan_offset_x) / layout.zoom_level
+        adjusted_y = (y - layout.pan_offset_y) / layout.zoom_level
+        
+        # [UNICODE_30B0]
+        cell_x = int(adjusted_x // (layout.cell_size + layout.gap))
+        cell_y = int(adjusted_y // (layout.cell_size + layout.gap))
+        
+        # [UNICODE_6709]
+        if 0 <= cell_x < 9 and 0 <= cell_y < 9:
+            return (cell_x, cell_y)
+        
+        return None
+    
+    def _handle_tap(self, uid: str, cell_position: Optional[Tuple[int, int]], touch_event: TouchEvent) -> TouchInteractionResponse:
+        """[UNICODE_30BF]"""
+        if not cell_position:
+            return TouchInteractionResponse(
+                success=False,
+                feedback_type="haptic",
+                accessibility_announcement="[UNICODE_6709]"
+            )
+        
+        x, y = cell_position
+        grid = self.mandala_interface.get_or_create_grid(uid)
+        cell = grid.get_cell(x, y)
+        
+        if not cell:
+            # [UNICODE_30ED]
+            if grid.can_unlock(x, y):
+                return TouchInteractionResponse(
+                    success=True,
+                    feedback_type="haptic",
+                    next_action="show_unlock_dialog",
+                    accessibility_announcement=f"[UNICODE_4F4D] {x+1}, {y+1} [UNICODE_306E]"
+                )
+            else:
+                return TouchInteractionResponse(
+                    success=False,
+                    feedback_type="haptic",
+                    accessibility_announcement=f"[UNICODE_4F4D] {x+1}, {y+1} [UNICODE_306E]"
+                )
+        
+        elif cell.status == CellStatus.UNLOCKED:
+            # [UNICODE_30A2] - [UNICODE_8A73]
+            return TouchInteractionResponse(
+                success=True,
+                feedback_type="haptic",
+                next_action="show_cell_details",
+                accessibility_announcement=f"{cell.quest_title} - {cell.quest_description}"
+            )
+        
+        elif cell.status == CellStatus.CORE_VALUE:
+            # [UNICODE_4FA1] - [UNICODE_30EA]
+            return TouchInteractionResponse(
+                success=True,
+                feedback_type="haptic",
+                next_action="show_core_value",
+                accessibility_announcement=f"[UNICODE_30B3]: {cell.quest_title} - {cell.quest_description}"
+            )
+        
+        elif cell.status == CellStatus.COMPLETED:
+            # [UNICODE_5B8C] - [UNICODE_6210]
+            return TouchInteractionResponse(
+                success=True,
+                feedback_type="haptic",
+                next_action="show_completion_details",
+                accessibility_announcement=f"[UNICODE_5B8C]: {cell.quest_title} - {cell.xp_reward} XP[UNICODE_7372]"
+            )
+        
+        return TouchInteractionResponse(success=False, feedback_type="none")
+    
+    def _handle_long_press(self, uid: str, cell_position: Optional[Tuple[int, int]], touch_event: TouchEvent) -> TouchInteractionResponse:
+        """[UNICODE_30ED]"""
+        if not cell_position:
+            return TouchInteractionResponse(
+                success=False,
+                feedback_type="haptic"
+            )
+        
+        x, y = cell_position
+        grid = self.mandala_interface.get_or_create_grid(uid)
+        cell = grid.get_cell(x, y)
+        
+        if cell and cell.status == CellStatus.UNLOCKED:
+            # [UNICODE_30A2]
+            return TouchInteractionResponse(
+                success=True,
+                feedback_type="haptic",
+                next_action="complete_cell",
+                accessibility_announcement=f"{cell.quest_title} [UNICODE_3092]"
+            )
+        
+        return TouchInteractionResponse(
+            success=True,
+            feedback_type="haptic",
+            next_action="show_context_menu",
+            accessibility_announcement="[UNICODE_30B3]"
+        )
+    
+    def _handle_double_tap(self, uid: str, cell_position: Optional[Tuple[int, int]], touch_event: TouchEvent) -> TouchInteractionResponse:
+        """[UNICODE_30C0]"""
+        if not cell_position:
+            return TouchInteractionResponse(success=False, feedback_type="none")
+        
+        layout = self.grid_layouts.get(uid)
+        
+        if layout:
+            # [UNICODE_30C0]
+            layout.zoom_level = 1.0
+            layout.pan_offset_x = 0.0
+            layout.pan_offset_y = 0.0
+            
+            return TouchInteractionResponse(
+                success=True,
+                feedback_type="haptic",
+                animation="zoom_reset",
+                accessibility_announcement="[UNICODE_30BA]"
+            )
+        
+        return TouchInteractionResponse(success=False, feedback_type="none")
+    
+    def get_mobile_optimized_grid_data(self, uid: str, viewport: MobileViewport) -> MobileOptimizedResponse:
+        """
+        [UNICODE_30E2]
+        
+        Args:
+            uid: [UNICODE_30E6]ID
+            viewport: [UNICODE_30E2]
+            
+        Returns:
+            MobileOptimizedResponse: [UNICODE_30E2]
+        """
+        # [UNICODE_30B0]/[UNICODE_66F4]
+        layout = self.create_mobile_grid_layout(uid, viewport)
+        config = self.mobile_configs[uid]
+        
+        # [UNICODE_57FA]
+        grid_data = self.mandala_interface.get_grid_api_response(uid)
+        
+        # [UNICODE_30E2]
+        mobile_config = {
+            "device_type": config.device_type.value,
+            "cell_size": layout.cell_size,
+            "gap": layout.gap,
+            "total_width": layout.total_width,
+            "total_height": layout.total_height,
+            "zoom_enabled": config.zoom_enabled,
+            "swipe_navigation": config.swipe_navigation,
+            "haptic_feedback": config.haptic_feedback,
+            "visible_cells": layout.visible_cells,
+            "zoom_level": layout.zoom_level,
+            "pan_offset": {
+                "x": layout.pan_offset_x,
+                "y": layout.pan_offset_y
+            }
+        }
+        
+        # ADHD[UNICODE_914D]
+        adhd_settings = self.adhd_settings.get(uid, self.default_adhd_settings)
+        
+        # [UNICODE_30D1]
+        performance_hints = {
+            "lazy_load_cells": config.device_type in [DeviceType.MOBILE_SMALL, DeviceType.MOBILE_STANDARD],
+            "reduce_animations": adhd_settings.reduced_animations,
+            "preload_adjacent": True,
+            "cache_strategy": "stale-while-revalidate"
+        }
+        
+        # [UNICODE_30A2]
+        accessibility_metadata = {
+            "touch_target_size": 44 if adhd_settings.large_touch_targets else 32,
+            "high_contrast": adhd_settings.high_contrast_mode,
+            "reduced_motion": adhd_settings.reduced_animations,
+            "voice_over_labels": True,
+            "gesture_alternatives": True
+        }
+        
+        return MobileOptimizedResponse(
+            data=grid_data,
+            mobile_config=mobile_config,
+            performance_hints=performance_hints,
+            accessibility_metadata=accessibility_metadata
+        )
+    
+    def update_adhd_settings(self, uid: str, settings: ADHDMobileSettings) -> bool:
+        """
+        ADHD[UNICODE_914D]
+        
+        Args:
+            uid: [UNICODE_30E6]ID
+            settings: ADHD[UNICODE_8A2D]
+            
+        Returns:
+            bool: [UNICODE_66F4]/[UNICODE_5931]
+        """
+        self.adhd_settings[uid] = settings
+        
+        # [UNICODE_30EC]
+        if uid in self.grid_layouts:
+            layout = self.grid_layouts[uid]
+            
+            # [UNICODE_5927]
+            if settings.large_touch_targets:
+                layout.cell_size = max(layout.cell_size, 48)
+            
+            # [UNICODE_96C6]
+            if settings.focus_mode_available:
+                # [UNICODE_8868]
+                layout.visible_cells = layout.visible_cells[:9]  # [UNICODE_6700]9[UNICODE_30BB]
+        
+        return True
+    
+    def get_focus_mode_layout(self, uid: str) -> Optional[MobileGridLayout]:
+        """
+        [UNICODE_96C6]
+        
+        Args:
+            uid: [UNICODE_30E6]ID
+            
+        Returns:
+            Optional[MobileGridLayout]: [UNICODE_96C6]
+        """
+        adhd_settings = self.adhd_settings.get(uid, self.default_adhd_settings)
+        
+        if not adhd_settings.focus_mode_available:
+            return None
+        
+        layout = self.grid_layouts.get(uid)
+        if not layout:
+            return None
+        
+        # [UNICODE_96C6]
+        focus_layout = MobileGridLayout(
+            cell_size=layout.cell_size + 20,  # [UNICODE_30BB]
+            gap=layout.gap + 4,  # [UNICODE_9593]
+            total_width=layout.total_width,
+            total_height=layout.total_height,
+            zoom_level=1.2,  # [UNICODE_5C11]
+            visible_cells=layout.visible_cells[:3]  # [UNICODE_6700]3[UNICODE_30BB]
+        )
+        
+        return focus_layout
+    
+    def reset_grid_view(self, uid: str) -> TouchInteractionResponse:
+        """
+        [UNICODE_30B0]
+        
+        Args:
+            uid: [UNICODE_30E6]ID
+            
+        Returns:
+            TouchInteractionResponse: [UNICODE_30EA]
+        """
+        layout = self.grid_layouts.get(uid)
+        
+        if layout:
+            layout.zoom_level = 1.0
+            layout.pan_offset_x = 0.0
+            layout.pan_offset_y = 0.0
+            
+            return TouchInteractionResponse(
+                success=True,
+                feedback_type="haptic",
+                animation="reset",
+                accessibility_announcement="[UNICODE_30B0]"
+            )
+        
+        return TouchInteractionResponse(
+            success=False,
+            feedback_type="none"
+        )

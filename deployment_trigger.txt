@@ -1,0 +1,8 @@
+# Deployment Trigger for GitHub Actions
+# Generated at: 2025-08-01T12:06:16.743819
+
+DEPLOYMENT_ID=20250801_120616
+PROJECT_ID=therapeutic-gamification-app-prod
+SERVICE_NAME=therapeutic-gamification-app
+ENVIRONMENT=production
+TRIGGER_REASON=manual_deployment_setup

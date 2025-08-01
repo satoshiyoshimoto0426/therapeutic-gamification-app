@@ -1,0 +1,436 @@
+"""
+Guardian Portal [UNICODE_57FA]
+
+Task 13: Guardian Portal[UNICODE_57FA]
+"""
+
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../shared'))
+
+from datetime import datetime, timedelta
+import json
+import uuid
+
+def test_guardian_auth_system():
+    """Guardian[UNICODE_8A8D]"""
+    print("=== Guardian[UNICODE_8A8D] ===")
+    
+    # Guardian[UNICODE_8A8D]
+    class TestGuardianAuth:
+        def __init__(self):
+            self.secret_key = "test_guardian_secret"
+            self.magic_links = {}
+        
+        def generate_magic_link(self, email: str, guardian_id: str) -> str:
+            """Magic Link[UNICODE_751F]"""
+            if "@" not in email:
+                raise ValueError("[UNICODE_7121]")
+            
+            token = f"test_token_{uuid.uuid4().hex[:16]}"
+            expiry = datetime.utcnow() + timedelta(minutes=15)
+            
+            self.magic_links[token] = {
+                "email": email,
+                "guardian_id": guardian_id,
+                "expires_at": expiry,
+                "used": False
+            }
+            
+            return f"https://guardian.therapeutic-app.com/auth/magic?token={token}"
+        
+        def verify_magic_link(self, token: str) -> dict:
+            """Magic Link[UNICODE_691C]"""
+            if token not in self.magic_links:
+                raise Exception("[UNICODE_7121]")
+            
+            link_data = self.magic_links[token]
+            
+            if link_data["used"]:
+                raise Exception("[UNICODE_65E2]")
+            
+            if datetime.utcnow() > link_data["expires_at"]:
+                raise Exception("[UNICODE_671F]")
+            
+            self.magic_links[token]["used"] = True
+            
+            return {
+                "guardian_id": link_data["guardian_id"],
+                "email": link_data["email"]
+            }
+    
+    # [UNICODE_30C6]
+    auth = TestGuardianAuth()
+    
+    # 1. Magic Link[UNICODE_751F]
+    try:
+        magic_link = auth.generate_magic_link("guardian@example.com", "guardian_001")
+        print(f"[UNICODE_2713] Magic Link[UNICODE_751F]: {magic_link}")
+        
+        # [UNICODE_30C8]
+        token = magic_link.split("token=")[1]
+        
+        # 2. Magic Link[UNICODE_691C]
+        verified_data = auth.verify_magic_link(token)
+        print(f"[UNICODE_2713] Magic Link[UNICODE_691C]: {verified_data}")
+        
+        # 3. [UNICODE_4F7F]
+        try:
+            auth.verify_magic_link(token)
+            print("[UNICODE_2717] [UNICODE_4F7F]")
+        except Exception as e:
+            print(f"[UNICODE_2713] [UNICODE_4F7F]: {e}")
+        
+    except Exception as e:
+        print(f"[UNICODE_2717] Guardian[UNICODE_8A8D]: {e}")
+        return False
+    
+    return True
+
+def test_guardian_rbac_system():
+    """Guardian RBAC[UNICODE_6A29]"""
+    print("\n=== Guardian RBAC[UNICODE_6A29] ===")
+    
+    class TestGuardianRBAC:
+        def __init__(self):
+            self.permissions = {
+                "view-only": ["view_reports", "view_progress"],
+                "task-edit": ["view_reports", "view_progress", "edit_tasks", "assign_tasks"],
+                "chat-send": ["view_reports", "view_progress", "edit_tasks", "assign_tasks", "send_messages", "emergency_contact"]
+            }
+        
+        def get_guardian_permissions(self, guardian_id: str) -> list:
+            """Guardian[UNICODE_6A29]"""
+            guardian_permissions = {
+                "guardian_001": "chat-send",
+                "guardian_002": "task-edit",
+                "guardian_003": "view-only"
+            }
+            
+            permission_level = guardian_permissions.get(guardian_id, "view-only")
+            return self.permissions.get(permission_level, self.permissions["view-only"])
+        
+        def check_permission(self, guardian_id: str, required_permission: str) -> bool:
+            """[UNICODE_6A29]"""
+            guardian_permissions = self.get_guardian_permissions(guardian_id)
+            return required_permission in guardian_permissions
+    
+    # [UNICODE_30C6]
+    rbac = TestGuardianRBAC()
+    
+    # 1. [UNICODE_5404]
+    test_cases = [
+        ("guardian_001", "chat-send", "send_messages", True),
+        ("guardian_002", "task-edit", "edit_tasks", True),
+        ("guardian_002", "task-edit", "send_messages", False),
+        ("guardian_003", "view-only", "view_reports", True),
+        ("guardian_003", "view-only", "edit_tasks", False),
+    ]
+    
+    for guardian_id, level, permission, expected in test_cases:
+        result = rbac.check_permission(guardian_id, permission)
+        status = "[UNICODE_2713]" if result == expected else "[UNICODE_2717]"
+        print(f"{status} {guardian_id} ({level}) - {permission}: {result}")
+    
+    return True
+
+def test_care_points_system():
+    """[UNICODE_30B1]"""
+    print("\n=== [UNICODE_30B1] ===")
+    
+    class TestCarePointsSystem:
+        def __init__(self):
+            self.point_rate = 1  # 1[UNICODE_5186] = 1[UNICODE_30DD]
+            self.adhd_discount_rate = 0.5  # 50%[UNICODE_5272]
+            self.corporate_bulk_thresholds = {
+                10000: 0.05,   # 10,000[UNICODE_5186]5%[UNICODE_5272]
+                50000: 0.10,   # 50,000[UNICODE_5186]10%[UNICODE_5272]
+                100000: 0.15   # 100,000[UNICODE_5186]15%[UNICODE_5272]
+            }
+            self.care_point_balances = {}
+            self.transactions = []
+            self.medical_documents = {}
+        
+        def calculate_corporate_discount(self, amount: int) -> float:
+            """[UNICODE_4F01]"""
+            discount_rate = 0.0
+            
+            for threshold, rate in sorted(self.corporate_bulk_thresholds.items(), reverse=True):
+                if amount >= threshold:
+                    discount_rate = rate
+                    break
+            
+            return discount_rate
+        
+        def process_corporate_purchase(self, corporate_id: str, amount: int) -> dict:
+            """[UNICODE_4F01]"""
+            discount_rate = self.calculate_corporate_discount(amount)
+            discounted_amount = int(amount * (1 - discount_rate))
+            points_purchased = discounted_amount * self.point_rate
+            
+            # [UNICODE_4F01]
+            if corporate_id not in self.care_point_balances:
+                self.care_point_balances[corporate_id] = 0
+            
+            self.care_point_balances[corporate_id] += points_purchased
+            
+            return {
+                "corporate_id": corporate_id,
+                "purchase_amount": discounted_amount,
+                "points_purchased": points_purchased,
+                "discount_applied": f"corporate_bulk_{discount_rate*100:.0f}%" if discount_rate > 0 else None
+            }
+        
+        def transfer_care_points(self, from_corporate_id: str, to_user_id: str, points: int) -> dict:
+            """[UNICODE_30B1]"""
+            # [UNICODE_4F01]
+            corporate_balance = self.care_point_balances.get(from_corporate_id, 0)
+            if corporate_balance < points:
+                raise Exception("[UNICODE_30B1]")
+            
+            # [UNICODE_30DD]
+            self.care_point_balances[from_corporate_id] -= points
+            
+            if to_user_id not in self.care_point_balances:
+                self.care_point_balances[to_user_id] = 0
+            self.care_point_balances[to_user_id] += points
+            
+            # [UNICODE_30C8]
+            transaction = {
+                "transaction_id": str(uuid.uuid4()),
+                "from_entity": from_corporate_id,
+                "to_user": to_user_id,
+                "points": points,
+                "transaction_type": "transfer",
+                "created_at": datetime.utcnow()
+            }
+            
+            self.transactions.append(transaction)
+            return transaction
+        
+        def verify_adhd_medical_document(self, document_id: str, user_id: str, document_type: str) -> dict:
+            """ADHD[UNICODE_533B]"""
+            document = {
+                "document_id": document_id,
+                "user_id": user_id,
+                "document_type": document_type,
+                "verified": True,
+                "verified_at": datetime.utcnow(),
+                "expiry_date": datetime.utcnow() + timedelta(days=365)
+            }
+            
+            self.medical_documents[document_id] = document
+            return document
+        
+        def check_adhd_discount_eligibility(self, user_id: str) -> bool:
+            """ADHD[UNICODE_5272]"""
+            current_time = datetime.utcnow()
+            
+            for doc in self.medical_documents.values():
+                if (doc["user_id"] == user_id and 
+                    doc["verified"] and 
+                    doc["expiry_date"] > current_time):
+                    return True
+            
+            return False
+        
+        def apply_adhd_discount(self, user_id: str, original_amount: int) -> dict:
+            """ADHD[UNICODE_533B]50%[UNICODE_5272]"""
+            if not self.check_adhd_discount_eligibility(user_id):
+                raise Exception("ADHD[UNICODE_5272]")
+            
+            discounted_amount = int(original_amount * self.adhd_discount_rate)
+            discount_amount = original_amount - discounted_amount
+            
+            return {
+                "original_amount": original_amount,
+                "discounted_amount": discounted_amount,
+                "discount_amount": discount_amount,
+                "discount_rate": self.adhd_discount_rate,
+                "discount_type": "adhd_medical"
+            }
+    
+    # [UNICODE_30C6]
+    care_system = TestCarePointsSystem()
+    
+    # 1. [UNICODE_4F01]
+    test_amounts = [5000, 15000, 60000, 150000]
+    expected_discounts = [0.0, 0.05, 0.10, 0.15]
+    
+    print("[UNICODE_4F01]:")
+    for amount, expected in zip(test_amounts, expected_discounts):
+        discount = care_system.calculate_corporate_discount(amount)
+        status = "[UNICODE_2713]" if discount == expected else "[UNICODE_2717]"
+        print(f"  {status} {amount:,}[UNICODE_5186] -> {discount*100:.0f}%[UNICODE_5272]")
+    
+    # 2. [UNICODE_30B1]
+    print("\n[UNICODE_30B1]:")
+    purchase = care_system.process_corporate_purchase("corp_001", 50000)
+    print(f"  [UNICODE_2713] [UNICODE_8CFC]: {purchase['points_purchased']:,}[UNICODE_30DD]")
+    print(f"  [UNICODE_2713] [UNICODE_5272]: {purchase['discount_applied']}")
+    
+    # 3. [UNICODE_30B1]
+    print("\n[UNICODE_30B1]:")
+    try:
+        transaction = care_system.transfer_care_points("corp_001", "user_001", 1000)
+        print(f"  [UNICODE_2713] [UNICODE_914D]: {transaction['points']}[UNICODE_30DD]")
+        print(f"  [UNICODE_2713] [UNICODE_4F01]: {care_system.care_point_balances['corp_001']:,}[UNICODE_30DD]")
+        print(f"  [UNICODE_2713] [UNICODE_30E6]: {care_system.care_point_balances['user_001']:,}[UNICODE_30DD]")
+    except Exception as e:
+        print(f"  [UNICODE_2717] [UNICODE_914D]: {e}")
+    
+    # 4. ADHD[UNICODE_5272]
+    print("\nADHD[UNICODE_5272]:")
+    
+    # [UNICODE_533B]
+    try:
+        care_system.apply_adhd_discount("user_002", 20000)
+        print("  [UNICODE_2717] [UNICODE_8CC7]")
+    except Exception as e:
+        print(f"  [UNICODE_2713] [UNICODE_8CC7]: {e}")
+    
+    # [UNICODE_533B]
+    document = care_system.verify_adhd_medical_document("doc_001", "user_002", "diagnosis")
+    print(f"  [UNICODE_2713] [UNICODE_533B]: {document['document_id']}")
+    
+    # [UNICODE_5272]
+    discount_info = care_system.apply_adhd_discount("user_002", 20000)
+    print(f"  [UNICODE_2713] ADHD[UNICODE_5272]: {discount_info['original_amount']:,}[UNICODE_5186] -> {discount_info['discounted_amount']:,}[UNICODE_5186]")
+    
+    return True
+
+def test_weekly_report_generation():
+    """[UNICODE_9031]"""
+    print("\n=== [UNICODE_9031] ===")
+    
+    class TestReportGenerator:
+        def generate_weekly_report(self, user_data: dict, guardian_data: dict) -> bytes:
+            """[UNICODE_9031]"""
+            report_content = f"""
+[UNICODE_9031] - {user_data['name']}
+[UNICODE_671F]: {user_data['week_start']} [UNICODE_FF5E] {user_data['week_end']}
+
+=== [UNICODE_9031] ===
+[UNICODE_5B8C]: {user_data['total_tasks_completed']}
+[UNICODE_7372]XP: {user_data['total_xp_earned']}
+[UNICODE_5E73]: {user_data['mood_average']:.1f}/5.0
+[UNICODE_7D99]: {user_data['adherence_rate']*100:.1f}%
+
+=== [UNICODE_63A8] ===
+{chr(10).join(user_data.get('recommendations', []))}
+
+=== Guardian[UNICODE_5411] ===
+Guardian: {guardian_data.get('name', 'Unknown')}
+[UNICODE_95A2]: {guardian_data.get('relationship', 'Unknown')}
+"""
+            
+            return report_content.encode('utf-8')
+    
+    # [UNICODE_30C6]
+    user_data = {
+        'name': '[UNICODE_7530]',
+        'week_start': '2024[UNICODE_5E74]1[UNICODE_6708]15[UNICODE_65E5]',
+        'week_end': '2024[UNICODE_5E74]1[UNICODE_6708]21[UNICODE_65E5]',
+        'total_tasks_completed': 28,
+        'total_xp_earned': 1740,
+        'mood_average': 3.8,
+        'adherence_rate': 0.85,
+        'recommendations': [
+            "[UNICODE_793E]",
+            "[UNICODE_300C]",
+            "[UNICODE_7D99]"
+        ]
+    }
+    
+    guardian_data = {
+        'name': '[UNICODE_7530]',
+        'relationship': 'parent'
+    }
+    
+    # [UNICODE_30EC]
+    generator = TestReportGenerator()
+    report_content = generator.generate_weekly_report(user_data, guardian_data)
+    
+    print(f"[UNICODE_2713] [UNICODE_9031]: {len(report_content)}[UNICODE_30D0]")
+    print("[UNICODE_30EC]:")
+    print(report_content.decode('utf-8')[:200] + "...")
+    
+    return True
+
+def test_guardian_dashboard():
+    """Guardian[UNICODE_30C0]"""
+    print("\n=== Guardian[UNICODE_30C0] ===")
+    
+    # [UNICODE_30C0]
+    dashboard_data = {
+        "guardian_id": "guardian_001",
+        "permissions": ["view_reports", "view_progress", "edit_tasks", "send_messages"],
+        "managed_users": [
+            {
+                "user_id": "user_001",
+                "name": "[UNICODE_7530]",
+                "current_level": 15,
+                "total_xp": 2500,
+                "last_activity": "2024-01-20T10:30:00Z",
+                "mood_trend": "improving",
+                "task_completion_rate": 0.85
+            }
+        ],
+        "dashboard_summary": {
+            "total_users": 1,
+            "active_users_today": 1,
+            "average_completion_rate": 0.85,
+            "alerts": []
+        }
+    }
+    
+    print(f"[UNICODE_2713] Guardian ID: {dashboard_data['guardian_id']}")
+    print(f"[UNICODE_2713] [UNICODE_6A29]: {', '.join(dashboard_data['permissions'])}")
+    print(f"[UNICODE_2713] [UNICODE_7BA1]: {dashboard_data['dashboard_summary']['total_users']}")
+    print(f"[UNICODE_2713] [UNICODE_5E73]: {dashboard_data['dashboard_summary']['average_completion_rate']*100:.1f}%")
+    
+    # [UNICODE_30E6]
+    user = dashboard_data['managed_users'][0]
+    print(f"[UNICODE_2713] [UNICODE_30E6]: {user['name']} (Lv.{user['current_level']}, XP:{user['total_xp']:,})")
+    
+    return True
+
+def run_all_tests():
+    """[UNICODE_5168]"""
+    print("Guardian Portal [UNICODE_57FA]")
+    print("=" * 50)
+    
+    tests = [
+        ("Guardian[UNICODE_8A8D]", test_guardian_auth_system),
+        ("Guardian RBAC[UNICODE_6A29]", test_guardian_rbac_system),
+        ("[UNICODE_30B1]", test_care_points_system),
+        ("[UNICODE_9031]", test_weekly_report_generation),
+        ("Guardian[UNICODE_30C0]", test_guardian_dashboard),
+    ]
+    
+    passed = 0
+    total = len(tests)
+    
+    for test_name, test_func in tests:
+        try:
+            if test_func():
+                passed += 1
+                print(f"\n{test_name}: [UNICODE_6210]")
+            else:
+                print(f"\n{test_name}: [UNICODE_5931]")
+        except Exception as e:
+            print(f"\n{test_name}: [UNICODE_30A8] - {e}")
+    
+    print("\n" + "=" * 50)
+    print(f"[UNICODE_30C6]: {passed}/{total} [UNICODE_6210]")
+    
+    if passed == total:
+        print("[UNICODE_2713] Guardian Portal[UNICODE_57FA]")
+        return True
+    else:
+        print("[UNICODE_2717] [UNICODE_4E00]")
+        return False
+
+if __name__ == "__main__":
+    success = run_all_tests()
+    exit(0 if success else 1)

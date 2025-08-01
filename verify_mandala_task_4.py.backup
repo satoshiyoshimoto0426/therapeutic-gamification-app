@@ -1,0 +1,133 @@
+#!/usr/bin/env python3
+"""
+[UNICODE_30BF]4: Mandala[UNICODE_30B7]9x9[UNICODE_30B0]
+
+[UNICODE_30B5]4.1[UNICODE_3068]4.2[UNICODE_306E]
+"""
+
+import sys
+import os
+
+# [UNICODE_30D7]
+sys.path.append(os.path.dirname(__file__))
+
+from shared.interfaces.mandala_system import MandalaSystemInterface, MandalaGrid, CellStatus
+from shared.interfaces.mandala_validation import MandalaValidator
+
+
+def verify_task_4_1():
+    """4.1 MandalaGrid[UNICODE_30AF]"""
+    print("=== [UNICODE_30BF]4.1: MandalaGrid[UNICODE_30AF] ===")
+    
+    # 9x9[UNICODE_30B0]
+    grid = MandalaGrid("test_user")
+    assert grid.total_cells == 81, "9x9[UNICODE_30B0]81[UNICODE_30BB]"
+    assert len(grid.grid) == 9, "[UNICODE_30B0]9[UNICODE_3067]"
+    assert len(grid.grid[0]) == 9, "[UNICODE_30B0]9[UNICODE_3067]"
+    print("[UNICODE_2713] 9x9[UNICODE_30B0]")
+    
+    # [UNICODE_4E2D]ACT[UNICODE_7642]
+    core_value_positions = [(4, 4), (3, 4), (5, 4), (4, 3), (4, 5), (3, 3), (5, 5), (3, 5), (5, 3)]
+    for x, y in core_value_positions:
+        cell = grid.get_cell(x, y)
+        assert cell is not None, f"[UNICODE_4E2D]({x}, {y})[UNICODE_304C]"
+        assert cell.status == CellStatus.CORE_VALUE, f"[UNICODE_30BB]({x}, {y})[UNICODE_304C]"
+        assert cell.therapeutic_focus is not None, f"[UNICODE_30BB]({x}, {y})[UNICODE_306B]"
+    print("[UNICODE_2713] [UNICODE_4E2D]ACT[UNICODE_7642]")
+    
+    # [UNICODE_30B0]
+    serialized = grid.serialize_grid()
+    assert "uid" in serialized, "[UNICODE_30B7]uid[UNICODE_304C]"
+    assert "grid" in serialized, "[UNICODE_30B7]grid[UNICODE_304C]"
+    assert "core_values" in serialized, "[UNICODE_30B7]core_values[UNICODE_304C]"
+    assert len(serialized["grid"]) == 9, "[UNICODE_30B7]9[UNICODE_3067]"
+    print("[UNICODE_2713] [UNICODE_30B0]")
+    
+    # [UNICODE_30C7]
+    restored_grid = MandalaGrid.deserialize_grid(serialized)
+    assert restored_grid.uid == grid.uid, "[UNICODE_5FA9]uid[UNICODE_304C]"
+    assert restored_grid.total_cells == grid.total_cells, "[UNICODE_5FA9]"
+    print("[UNICODE_2713] [UNICODE_30B0]")
+    
+    print("[UNICODE_30BF]4.1: [UNICODE_5B8C] [UNICODE_2705]\n")
+
+
+def verify_task_4_2():
+    """4.2 [UNICODE_30BB]API[UNICODE_5B9F]"""
+    print("=== [UNICODE_30BF]4.2: [UNICODE_30BB]API[UNICODE_5B9F] ===")
+    
+    interface = MandalaSystemInterface()
+    validator = MandalaValidator()
+    test_uid = "test_user_4_2"
+    
+    # [UNICODE_30BB]
+    grid = interface.get_or_create_grid(test_uid)
+    
+    # [UNICODE_4E2D]
+    assert grid.can_unlock(4, 2), "[UNICODE_4E2D](4,2)[UNICODE_304C]"
+    
+    # [UNICODE_96E2]
+    assert not grid.can_unlock(0, 0), "[UNICODE_96E2](0,0)[UNICODE_304C]"
+    print("[UNICODE_2713] [UNICODE_30BB]")
+    
+    # [UNICODE_30BB]
+    quest_data = {
+        "quest_title": "[UNICODE_30C6]",
+        "quest_description": "[UNICODE_30C6]",
+        "xp_reward": 25,
+        "difficulty": 2,
+        "therapeutic_focus": "Mindfulness"
+    }
+    
+    success = interface.unlock_cell_for_user(test_uid, 4, 2, quest_data)
+    assert success, "[UNICODE_30BB]"
+    
+    updated_grid = interface.get_or_create_grid(test_uid)
+    assert updated_grid.unlocked_count == 1, "[UNICODE_30A2]"
+    
+    unlocked_cell = updated_grid.get_cell(4, 2)
+    assert unlocked_cell is not None, "[UNICODE_30A2]"
+    assert unlocked_cell.status == CellStatus.UNLOCKED, "[UNICODE_30BB]UNLOCKED[UNICODE_3067]"
+    print("[UNICODE_2713] [UNICODE_30BB]")
+    
+    # API[UNICODE_5FDC]
+    api_response = interface.get_grid_api_response(test_uid)
+    assert "uid" in api_response, "API[UNICODE_5FDC]uid[UNICODE_304C]"
+    assert "grid" in api_response, "API[UNICODE_5FDC]grid[UNICODE_304C]"
+    assert "unlocked_count" in api_response, "API[UNICODE_5FDC]unlocked_count[UNICODE_304C]"
+    assert "completion_rate" in api_response, "API[UNICODE_5FDC]completion_rate[UNICODE_304C]"
+    print("[UNICODE_2713] API[UNICODE_5FDC]")
+    
+    # [UNICODE_30ED]
+    validation_result = validator.validate_api_response_data(api_response)
+    assert validation_result.is_valid, f"API[UNICODE_5FDC]: {validation_result.error_message}"
+    print("[UNICODE_2713] [UNICODE_30ED]JSON[UNICODE_5FDC]")
+    
+    print("[UNICODE_30BF]4.2: [UNICODE_5B8C] [UNICODE_2705]\n")
+
+
+def main():
+    """[UNICODE_30E1]"""
+    print("[UNICODE_30BF]4: Mandala[UNICODE_30B7]9x9[UNICODE_30B0]\n")
+    
+    try:
+        verify_task_4_1()
+        verify_task_4_2()
+        
+        print("[UNICODE_1F389] [UNICODE_30BF]4: Mandala[UNICODE_30B7]9x9[UNICODE_30B0] - [UNICODE_5168]!")
+        print("   - 4.1 MandalaGrid[UNICODE_30AF]: [UNICODE_2705]")
+        print("   - 4.2 [UNICODE_30BB]API[UNICODE_5B9F]: [UNICODE_2705]")
+        print("\n[UNICODE_8981]4.1, 4.3[UNICODE_304C]")
+        
+        return True
+        
+    except Exception as e:
+        print(f"[UNICODE_274C] [UNICODE_691C]: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+if __name__ == "__main__":
+    success = main()
+    sys.exit(0 if success else 1)

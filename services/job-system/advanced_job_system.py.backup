@@ -1,0 +1,701 @@
+"""
+[UNICODE_4E0A]
+
+[UNICODE_30D1]
+[UNICODE_8A73]
+"""
+
+from enum import Enum
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Any, Callable
+from datetime import datetime, timedelta
+import json
+
+from main import JobType, JobManager, JobSystem, UserJobData
+
+
+class UnlockConditionType(Enum):
+    """[UNICODE_30A2]"""
+    JOB_LEVEL = "job_level"                    # [UNICODE_8077]
+    STAT_VALUE = "stat_value"                  # [UNICODE_80FD]
+    TASK_COMPLETION = "task_completion"        # [UNICODE_30BF]
+    STORY_BRANCH = "story_branch"              # [UNICODE_30B9]
+    TIME_BASED = "time_based"                  # [UNICODE_6642]
+    ACHIEVEMENT = "achievement"                # [UNICODE_5B9F]
+    COMBINATION = "combination"                # [UNICODE_8907]
+
+
+@dataclass
+class UnlockCondition:
+    """[UNICODE_30A2]"""
+    condition_type: UnlockConditionType
+    key: str
+    required_value: Any
+    description: str
+    check_function: Optional[Callable] = None
+
+
+@dataclass
+class StoryIntegration:
+    """[UNICODE_30B9]"""
+    job_unlock_story_node: str                 # [UNICODE_8077]
+    job_change_dialogue: str                   # [UNICODE_8077]
+    special_story_branches: List[str]          # [UNICODE_8077]
+    character_development_arc: str             # [UNICODE_30AD]
+
+
+class AdvancedJobSystem:
+    """[UNICODE_4E0A]"""
+    
+    def __init__(self, base_job_system: JobSystem):
+        self.base_job_system = base_job_system
+        self.advanced_unlock_conditions = self._initialize_advanced_conditions()
+        self.story_integrations = self._initialize_story_integrations()
+        self.achievement_tracker = AchievementTracker()
+    
+    def _initialize_advanced_conditions(self) -> Dict[JobType, List[UnlockCondition]]:
+        """[UNICODE_4E0A]"""
+        
+        return {
+            JobType.PALADIN: [
+                UnlockCondition(
+                    UnlockConditionType.JOB_LEVEL,
+                    "warrior_level",
+                    10,
+                    "[UNICODE_6226]10[UNICODE_4EE5]"
+                ),
+                UnlockCondition(
+                    UnlockConditionType.JOB_LEVEL,
+                    "priest_level",
+                    5,
+                    "[UNICODE_50E7]5[UNICODE_4EE5]"
+                ),
+                UnlockCondition(
+                    UnlockConditionType.TASK_COMPLETION,
+                    "social_tasks",
+                    50,
+                    "[UNICODE_793E]50[UNICODE_56DE]"
+                ),
+                UnlockCondition(
+                    UnlockConditionType.STORY_BRANCH,
+                    "helped_others_count",
+                    10,
+                    "[UNICODE_4ED6]10[UNICODE_56DE]"
+                ),
+                UnlockCondition(
+                    UnlockConditionType.ACHIEVEMENT,
+                    "community_leader",
+                    True,
+                    "[UNICODE_30B3]"
+                )
+            ],
+            
+            JobType.ARCHMAGE: [
+                UnlockCondition(
+                    UnlockConditionType.JOB_LEVEL,
+                    "mage_level",
+                    15,
+                    "[UNICODE_9B54]15[UNICODE_4EE5]"
+                ),
+                UnlockCondition(
+                    UnlockConditionType.STAT_VALUE,
+                    "wisdom",
+                    20,
+                    "[UNICODE_77E5]20[UNICODE_4EE5]"
+                ),
+                UnlockCondition(
+                    UnlockConditionType.TASK_COMPLETION,
+                    "creative_tasks",
+                    100,
+                    "[UNICODE_5275]100[UNICODE_56DE]"
+                ),
+                UnlockCondition(
+                    UnlockConditionType.STORY_BRANCH,
+                    "innovative_solutions",
+                    15,
+                    "[UNICODE_9769]15[UNICODE_56DE]"
+                ),
+                UnlockCondition(
+                    UnlockConditionType.ACHIEVEMENT,
+                    "master_innovator",
+                    True,
+                    "[UNICODE_30DE]"
+                ),
+                UnlockCondition(
+                    UnlockConditionType.TIME_BASED,
+                    "continuous_learning_days",
+                    30,
+                    "30[UNICODE_65E5]"
+                )
+            ],
+            
+            JobType.SHADOW_MASTER: [
+                UnlockCondition(
+                    UnlockConditionType.JOB_LEVEL,
+                    "ninja_level",
+                    12,
+                    "[UNICODE_5FCD]12[UNICODE_4EE5]"
+                ),
+                UnlockCondition(
+                    UnlockConditionType.STAT_VALUE,
+                    "resilience",
+                    25,
+                    "[UNICODE_56DE]25[UNICODE_4EE5]"
+                ),
+                UnlockCondition(
+                    UnlockConditionType.TASK_COMPLETION,
+                    "stress_overcome",
+                    30,
+                    "[UNICODE_30B9]30[UNICODE_56DE]"
+                ),
+                UnlockCondition(
+                    UnlockConditionType.STORY_BRANCH,
+                    "shadow_path_choices",
+                    20,
+                    "[UNICODE_5F71]20[UNICODE_56DE]"
+                ),
+                UnlockCondition(
+                    UnlockConditionType.ACHIEVEMENT,
+                    "stress_master",
+                    True,
+                    "[UNICODE_30B9]"
+                ),
+                UnlockCondition(
+                    UnlockConditionType.COMBINATION,
+                    "adaptation_mastery",
+                    {
+                        "environment_changes_adapted": 50,
+                        "crisis_overcome": 10,
+                        "flexibility_score": 0.8
+                    },
+                    "[UNICODE_9069]"
+                )
+            ]
+        }
+    
+    def _initialize_story_integrations(self) -> Dict[JobType, StoryIntegration]:
+        """[UNICODE_30B9]"""
+        
+        return {
+            JobType.PALADIN: StoryIntegration(
+                job_unlock_story_node="paladin_awakening",
+                job_change_dialogue="[UNICODE_5149]",
+                special_story_branches=[
+                    "divine_protection_choice",
+                    "righteous_judgment",
+                    "healing_others",
+                    "leadership_moment"
+                ],
+                character_development_arc="[UNICODE_81EA]"
+            ),
+            
+            JobType.ARCHMAGE: StoryIntegration(
+                job_unlock_story_node="archmage_ascension",
+                job_change_dialogue="[UNICODE_77E5]",
+                special_story_branches=[
+                    "reality_manipulation",
+                    "wisdom_sharing",
+                    "innovation_creation",
+                    "magical_breakthrough"
+                ],
+                character_development_arc="[UNICODE_77E5]"
+            ),
+            
+            JobType.SHADOW_MASTER: StoryIntegration(
+                job_unlock_story_node="shadow_mastery",
+                job_change_dialogue="[UNICODE_3042]",
+                special_story_branches=[
+                    "shadow_step_escape",
+                    "stress_immunity_test",
+                    "perfect_adaptation",
+                    "crisis_mastery"
+                ],
+                character_development_arc="[UNICODE_56F0]"
+            )
+        }
+    
+    def check_advanced_unlock_conditions(self, job_type: JobType, 
+                                       user_data: Dict[str, Any]) -> Dict[str, Any]:
+        """[UNICODE_4E0A]"""
+        
+        if job_type not in self.advanced_unlock_conditions:
+            return {"unlocked": False, "error": "Invalid advanced job type"}
+        
+        conditions = self.advanced_unlock_conditions[job_type]
+        results = {
+            "unlocked": True,
+            "conditions_met": [],
+            "conditions_failed": [],
+            "progress": {}
+        }
+        
+        for condition in conditions:
+            met, progress = self._check_single_condition(condition, user_data)
+            
+            condition_result = {
+                "type": condition.condition_type.value,
+                "key": condition.key,
+                "required": condition.required_value,
+                "current": progress.get("current_value"),
+                "description": condition.description,
+                "met": met
+            }
+            
+            if met:
+                results["conditions_met"].append(condition_result)
+            else:
+                results["conditions_failed"].append(condition_result)
+                results["unlocked"] = False
+            
+            results["progress"][condition.key] = progress
+        
+        return results
+    
+    def _check_single_condition(self, condition: UnlockCondition, 
+                               user_data: Dict[str, Any]) -> tuple[bool, Dict[str, Any]]:
+        """[UNICODE_5358]"""
+        
+        if condition.condition_type == UnlockConditionType.JOB_LEVEL:
+            current_level = user_data.get("job_levels", {}).get(condition.key.replace("_level", ""), 0)
+            return (
+                current_level >= condition.required_value,
+                {
+                    "current_value": current_level,
+                    "required_value": condition.required_value,
+                    "progress_percentage": min(100, (current_level / condition.required_value) * 100)
+                }
+            )
+        
+        elif condition.condition_type == UnlockConditionType.STAT_VALUE:
+            current_stat = user_data.get("stats", {}).get(condition.key, 0)
+            return (
+                current_stat >= condition.required_value,
+                {
+                    "current_value": current_stat,
+                    "required_value": condition.required_value,
+                    "progress_percentage": min(100, (current_stat / condition.required_value) * 100)
+                }
+            )
+        
+        elif condition.condition_type == UnlockConditionType.TASK_COMPLETION:
+            current_count = user_data.get("task_completions", {}).get(condition.key, 0)
+            return (
+                current_count >= condition.required_value,
+                {
+                    "current_value": current_count,
+                    "required_value": condition.required_value,
+                    "progress_percentage": min(100, (current_count / condition.required_value) * 100)
+                }
+            )
+        
+        elif condition.condition_type == UnlockConditionType.STORY_BRANCH:
+            current_count = user_data.get("story_branches", {}).get(condition.key, 0)
+            return (
+                current_count >= condition.required_value,
+                {
+                    "current_value": current_count,
+                    "required_value": condition.required_value,
+                    "progress_percentage": min(100, (current_count / condition.required_value) * 100)
+                }
+            )
+        
+        elif condition.condition_type == UnlockConditionType.ACHIEVEMENT:
+            has_achievement = user_data.get("achievements", {}).get(condition.key, False)
+            return (
+                has_achievement == condition.required_value,
+                {
+                    "current_value": has_achievement,
+                    "required_value": condition.required_value,
+                    "progress_percentage": 100 if has_achievement else 0
+                }
+            )
+        
+        elif condition.condition_type == UnlockConditionType.TIME_BASED:
+            current_days = user_data.get("time_based", {}).get(condition.key, 0)
+            return (
+                current_days >= condition.required_value,
+                {
+                    "current_value": current_days,
+                    "required_value": condition.required_value,
+                    "progress_percentage": min(100, (current_days / condition.required_value) * 100)
+                }
+            )
+        
+        elif condition.condition_type == UnlockConditionType.COMBINATION:
+            if isinstance(condition.required_value, dict):
+                all_met = True
+                progress_details = {}
+                
+                for sub_key, sub_required in condition.required_value.items():
+                    current_value = user_data.get("combination_conditions", {}).get(sub_key, 0)
+                    sub_met = current_value >= sub_required
+                    all_met = all_met and sub_met
+                    
+                    progress_details[sub_key] = {
+                        "current": current_value,
+                        "required": sub_required,
+                        "met": sub_met
+                    }
+                
+                return (
+                    all_met,
+                    {
+                        "current_value": progress_details,
+                        "required_value": condition.required_value,
+                        "progress_percentage": sum(
+                            min(100, (details["current"] / details["required"]) * 100)
+                            for details in progress_details.values()
+                        ) / len(progress_details)
+                    }
+                )
+        
+        # [UNICODE_30AB]
+        if condition.check_function:
+            result = condition.check_function(user_data)
+            return result, {"custom_check": True}
+        
+        return False, {"error": "Unknown condition type"}
+    
+    def get_unlock_progress_summary(self, user_data: Dict[str, Any]) -> Dict[str, Any]:
+        """[UNICODE_5168]"""
+        
+        summary = {}
+        
+        for job_type in [JobType.PALADIN, JobType.ARCHMAGE, JobType.SHADOW_MASTER]:
+            job_info = self.base_job_system.get_job(job_type)
+            unlock_status = self.check_advanced_unlock_conditions(job_type, user_data)
+            story_integration = self.story_integrations.get(job_type)
+            
+            summary[job_type.value] = {
+                "name": job_info.name,
+                "unlocked": unlock_status["unlocked"],
+                "conditions_met": len(unlock_status["conditions_met"]),
+                "conditions_total": len(unlock_status["conditions_met"]) + len(unlock_status["conditions_failed"]),
+                "overall_progress": self._calculate_overall_progress(unlock_status),
+                "next_milestone": self._get_next_milestone(unlock_status),
+                "story_integration": {
+                    "job_unlock_story_node": story_integration.job_unlock_story_node,
+                    "character_development_arc": story_integration.character_development_arc
+                } if story_integration else None
+            }
+        
+        return summary
+    
+    def _calculate_overall_progress(self, unlock_status: Dict[str, Any]) -> float:
+        """[UNICODE_5168]"""
+        
+        total_conditions = len(unlock_status["conditions_met"]) + len(unlock_status["conditions_failed"])
+        if total_conditions == 0:
+            return 0.0
+        
+        total_progress = 0.0
+        
+        # [UNICODE_6E80]100%
+        total_progress += len(unlock_status["conditions_met"]) * 100
+        
+        # [UNICODE_6E80]
+        for condition in unlock_status["conditions_failed"]:
+            progress_info = unlock_status["progress"].get(condition["key"], {})
+            total_progress += progress_info.get("progress_percentage", 0)
+        
+        return total_progress / total_conditions
+    
+    def _get_next_milestone(self, unlock_status: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """[UNICODE_6B21]"""
+        
+        if unlock_status["unlocked"]:
+            return None
+        
+        # [UNICODE_6700]
+        best_condition = None
+        best_progress = -1
+        
+        for condition in unlock_status["conditions_failed"]:
+            progress_info = unlock_status["progress"].get(condition["key"], {})
+            progress_pct = progress_info.get("progress_percentage", 0)
+            
+            if progress_pct > best_progress:
+                best_progress = progress_pct
+                best_condition = condition
+        
+        return best_condition
+    
+    def generate_job_change_story(self, job_type: JobType, user_context: Dict[str, Any]) -> Dict[str, Any]:
+        """[UNICODE_8077]"""
+        
+        story_integration = self.story_integrations.get(job_type)
+        if not story_integration:
+            return {"error": "No story integration found"}
+        
+        return {
+            "story_node": story_integration.job_unlock_story_node,
+            "dialogue": story_integration.job_change_dialogue,
+            "character_arc": story_integration.character_development_arc,
+            "special_choices": [
+                {
+                    "choice_id": branch,
+                    "text": self._generate_choice_text(branch),
+                    "story_impact": "high"
+                }
+                for branch in story_integration.special_story_branches[:3]  # [UNICODE_6700]3[UNICODE_9078]
+            ],
+            "therapeutic_message": self._generate_therapeutic_message(job_type, user_context)
+        }
+    
+    def _generate_choice_text(self, branch_id: str) -> str:
+        """[UNICODE_9078]"""
+        
+        choice_texts = {
+            "divine_protection_choice": "[UNICODE_4EF2]",
+            "righteous_judgment": "[UNICODE_6B63]",
+            "healing_others": "[UNICODE_4ED6]",
+            "leadership_moment": "[UNICODE_30C1]",
+            
+            "reality_manipulation": "[UNICODE_5275]",
+            "wisdom_sharing": "[UNICODE_77E5]",
+            "innovation_creation": "[UNICODE_9769]",
+            "magical_breakthrough": "[UNICODE_9B54]",
+            
+            "shadow_step_escape": "[UNICODE_56F0]",
+            "stress_immunity_test": "[UNICODE_6975]",
+            "perfect_adaptation": "[UNICODE_5909]",
+            "crisis_mastery": "[UNICODE_5371]"
+        }
+        
+        return choice_texts.get(branch_id, f"[UNICODE_9078]: {branch_id}")
+    
+    def _generate_therapeutic_message(self, job_type: JobType, user_context: Dict[str, Any]) -> str:
+        """[UNICODE_6CBB]"""
+        
+        messages = {
+            JobType.PALADIN: "[UNICODE_3042]",
+            JobType.ARCHMAGE: "[UNICODE_77E5]",
+            JobType.SHADOW_MASTER: "[UNICODE_3042]"
+        }
+        
+        return messages.get(job_type, "[UNICODE_65B0]")
+
+
+class AchievementTracker:
+    """[UNICODE_5B9F]"""
+    
+    def __init__(self):
+        self.achievements = self._initialize_achievements()
+    
+    def _initialize_achievements(self) -> Dict[str, Dict[str, Any]]:
+        """[UNICODE_5B9F]"""
+        
+        return {
+            "community_leader": {
+                "name": "[UNICODE_30B3]",
+                "description": "[UNICODE_4ED6]",
+                "requirements": {
+                    "help_others_count": 20,
+                    "group_activities": 10,
+                    "positive_feedback": 15
+                },
+                "therapeutic_value": "[UNICODE_30EA]"
+            },
+            
+            "master_innovator": {
+                "name": "[UNICODE_30DE]",
+                "description": "[UNICODE_5275]",
+                "requirements": {
+                    "creative_solutions": 50,
+                    "innovation_score": 0.8,
+                    "knowledge_sharing": 25
+                },
+                "therapeutic_value": "[UNICODE_5275]"
+            },
+            
+            "stress_master": {
+                "name": "[UNICODE_30B9]",
+                "description": "[UNICODE_6975]",
+                "requirements": {
+                    "high_stress_tasks": 40,
+                    "stress_recovery_rate": 0.9,
+                    "crisis_overcome": 15
+                },
+                "therapeutic_value": "[UNICODE_30B9]"
+            }
+        }
+    
+    def check_achievement(self, achievement_id: str, user_data: Dict[str, Any]) -> bool:
+        """[UNICODE_5B9F]"""
+        
+        achievement = self.achievements.get(achievement_id)
+        if not achievement:
+            return False
+        
+        requirements = achievement["requirements"]
+        
+        for req_key, req_value in requirements.items():
+            current_value = user_data.get(req_key, 0)
+            if current_value < req_value:
+                return False
+        
+        return True
+    
+    def get_achievement_progress(self, achievement_id: str, user_data: Dict[str, Any]) -> Dict[str, Any]:
+        """[UNICODE_5B9F]"""
+        
+        achievement = self.achievements.get(achievement_id)
+        if not achievement:
+            return {"error": "Achievement not found"}
+        
+        requirements = achievement["requirements"]
+        progress = {}
+        
+        for req_key, req_value in requirements.items():
+            current_value = user_data.get(req_key, 0)
+            progress[req_key] = {
+                "current": current_value,
+                "required": req_value,
+                "percentage": min(100, (current_value / req_value) * 100)
+            }
+        
+        return {
+            "achievement_id": achievement_id,
+            "name": achievement["name"],
+            "description": achievement["description"],
+            "progress": progress,
+            "completed": self.check_achievement(achievement_id, user_data),
+            "therapeutic_value": achievement["therapeutic_value"]
+        }
+
+
+class AdvancedJobManager(JobManager):
+    """[UNICODE_4E0A]"""
+    
+    def __init__(self):
+        super().__init__()
+        self.advanced_system = AdvancedJobSystem(self.job_system)
+    
+    def get_advanced_unlock_status(self, uid: str, user_stats: Dict[str, Any]) -> Dict[str, Any]:
+        """[UNICODE_4E0A]"""
+        
+        return self.advanced_system.get_unlock_progress_summary(user_stats)
+    
+    def attempt_advanced_job_change(self, uid: str, target_job: JobType, 
+                                  user_stats: Dict[str, Any]) -> Dict[str, Any]:
+        """[UNICODE_4E0A]"""
+        
+        # [UNICODE_8A73]
+        unlock_status = self.advanced_system.check_advanced_unlock_conditions(target_job, user_stats)
+        
+        if not unlock_status["unlocked"]:
+            return {
+                "success": False,
+                "reason": "conditions_not_met",
+                "unlock_status": unlock_status
+            }
+        
+        # [UNICODE_8077]
+        success = self._change_advanced_job(uid, target_job, user_stats)
+        
+        if success:
+            # [UNICODE_30B9]
+            story_content = self.advanced_system.generate_job_change_story(target_job, user_stats)
+            
+            return {
+                "success": True,
+                "job_changed": True,
+                "story_content": story_content,
+                "unlock_status": unlock_status
+            }
+        
+        return {
+            "success": False,
+            "reason": "job_change_failed"
+        }
+    
+    def get_next_milestones(self, uid: str, user_stats: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """[UNICODE_6B21]"""
+        
+        milestones = []
+        
+        for job_type in [JobType.PALADIN, JobType.ARCHMAGE, JobType.SHADOW_MASTER]:
+            unlock_status = self.advanced_system.check_advanced_unlock_conditions(job_type, user_stats)
+            
+            if not unlock_status["unlocked"]:
+                next_milestone = self.advanced_system._get_next_milestone(unlock_status)
+                if next_milestone:
+                    job_info = self.job_system.get_job(job_type)
+                    milestones.append({
+                        "job_type": job_type.value,
+                        "job_name": job_info.name,
+                        "milestone": next_milestone,
+                        "overall_progress": self.advanced_system._calculate_overall_progress(unlock_status)
+                    })
+        
+        # [UNICODE_9032]
+        milestones.sort(key=lambda x: x["overall_progress"], reverse=True)
+        
+        return milestones
+    
+    def _change_advanced_job(self, uid: str, new_job: JobType, user_stats: Dict[str, Any]) -> bool:
+        """[UNICODE_4E0A]"""
+        if uid not in self.user_jobs:
+            return False
+        
+        user_job_data = self.user_jobs[uid]
+        old_job = user_job_data.current_job
+        
+        # [UNICODE_8077]
+        user_job_data.current_job = new_job
+        user_job_data.job_level = 1  # [UNICODE_65B0]1[UNICODE_304B]
+        user_job_data.job_experience = 0
+        user_job_data.last_job_change = datetime.now()
+        
+        # [UNICODE_5C65]
+        user_job_data.job_change_history.append({
+            "from_job": old_job.value,
+            "to_job": new_job.value,
+            "timestamp": datetime.now().isoformat(),
+            "reason": "advanced_job_unlock"
+        })
+        
+        # [UNICODE_30A2]
+        if new_job not in user_job_data.unlocked_jobs:
+            user_job_data.unlocked_jobs.append(new_job)
+        
+        return True
+
+
+# API [UNICODE_30A8]
+def create_advanced_job_manager() -> AdvancedJobManager:
+    """AdvancedJobManager[UNICODE_30A4]"""
+    return AdvancedJobManager()
+
+
+if __name__ == "__main__":
+    # [UNICODE_4E0A]
+    advanced_manager = create_advanced_job_manager()
+    
+    # [UNICODE_30C6]
+    test_user_stats = {
+        "job_levels": {"warrior": 10, "priest": 5, "mage": 15, "ninja": 12},
+        "stats": {"wisdom": 20, "resilience": 25},
+        "task_completions": {"social_tasks": 50, "creative_tasks": 100, "stress_overcome": 30},
+        "story_branches": {"helped_others_count": 10, "innovative_solutions": 15, "shadow_path_choices": 20},
+        "achievements": {"community_leader": True, "master_innovator": True, "stress_master": True},
+        "time_based": {"continuous_learning_days": 30},
+        "combination_conditions": {
+            "environment_changes_adapted": 50,
+            "crisis_overcome": 10,
+            "flexibility_score": 0.8
+        }
+    }
+    
+    # [UNICODE_30A2]
+    unlock_status = advanced_manager.get_advanced_unlock_status("test_user", test_user_stats)
+    print("[UNICODE_4E0A]:")
+    print(json.dumps(unlock_status, indent=2, ensure_ascii=False))
+    
+    # [UNICODE_30E6]
+    advanced_manager.initialize_user_job("test_user", JobType.WARRIOR)
+    
+    # [UNICODE_30D1]
+    change_result = advanced_manager.attempt_advanced_job_change("test_user", JobType.PALADIN, test_user_stats)
+    print("\n[UNICODE_30D1]:")
+    print(json.dumps(change_result, indent=2, ensure_ascii=False))

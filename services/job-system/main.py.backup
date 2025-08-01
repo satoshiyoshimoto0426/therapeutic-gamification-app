@@ -1,0 +1,473 @@
+"""
+[UNICODE_8077] - [UNICODE_30E1]
+
+6[UNICODE_3064]
+[UNICODE_4E0A]
+"""
+
+from enum import Enum
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Any
+import json
+from datetime import datetime
+
+
+class JobType(Enum):
+    """[UNICODE_8077]"""
+    WARRIOR = "warrior"      # [UNICODE_6226]
+    HERO = "hero"           # [UNICODE_52C7]
+    MAGE = "mage"           # [UNICODE_9B54]
+    PRIEST = "priest"       # [UNICODE_50E7]
+    SAGE = "sage"           # [UNICODE_8CE2]
+    NINJA = "ninja"         # [UNICODE_5FCD]
+    
+    # [UNICODE_4E0A]
+    PALADIN = "paladin"         # [UNICODE_30D1]
+    ARCHMAGE = "archmage"       # [UNICODE_5927]
+    SHADOW_MASTER = "shadow_master"  # [UNICODE_5F71]
+
+
+@dataclass
+class JobSkill:
+    """[UNICODE_8077]"""
+    skill_id: str
+    name: str
+    description: str
+    effect_type: str  # "stat_bonus", "task_efficiency", "special_ability"
+    effect_value: float
+    unlock_level: int = 1
+
+
+@dataclass
+class Job:
+    """[UNICODE_8077]"""
+    job_type: JobType
+    name: str
+    focus_attribute: str  # [UNICODE_4E3B]
+    stat_bonuses: Dict[str, int]
+    skills: List[JobSkill]
+    therapeutic_focus: str
+    description: str
+    is_advanced: bool = False
+    unlock_requirements: Dict[str, Any] = field(default_factory=dict)
+
+
+class JobSystem:
+    """[UNICODE_57FA]"""
+    
+    def __init__(self):
+        self.base_jobs = self._initialize_base_jobs()
+        self.advanced_jobs = self._initialize_advanced_jobs()
+        self.all_jobs = {**self.base_jobs, **self.advanced_jobs}
+    
+    def _initialize_base_jobs(self) -> Dict[JobType, Job]:
+        """6[UNICODE_3064]"""
+        
+        # [UNICODE_6226]
+        warrior_skills = [
+            JobSkill("iron_will", "[UNICODE_9244]", "[UNICODE_56F0]+20%", "task_efficiency", 0.2, 1),
+            JobSkill("task_crusher", "[UNICODE_30BF]", "[UNICODE_30EB]XP+15%", "stat_bonus", 0.15, 3),
+            JobSkill("deadline_guardian", "[UNICODE_7DE0]", "[UNICODE_7DE0]24[UNICODE_6642]+30%", "special_ability", 0.3, 5)
+        ]
+        
+        # [UNICODE_52C7]
+        hero_skills = [
+            JobSkill("fear_conqueror", "[UNICODE_6050]", "[UNICODE_793E]-25%", "special_ability", 0.25, 1),
+            JobSkill("social_bridge", "[UNICODE_793E]", "[UNICODE_793E]XP+20%", "stat_bonus", 0.2, 3),
+            JobSkill("hope_bringer", "[UNICODE_5E0C]", "[UNICODE_30C1]+10%", "special_ability", 0.1, 5)
+        ]
+        
+        # [UNICODE_9B54]
+        mage_skills = [
+            JobSkill("idea_spark", "[UNICODE_30A2]", "[UNICODE_5275]+25%", "task_efficiency", 0.25, 1),
+            JobSkill("problem_solver", "[UNICODE_554F]", "[UNICODE_8907]+20%", "stat_bonus", 0.2, 3),
+            JobSkill("innovation_master", "[UNICODE_9769]", "[UNICODE_65B0]XP[UNICODE_30DC]+30%", "special_ability", 0.3, 5)
+        ]
+        
+        # [UNICODE_50E7]
+        priest_skills = [
+            JobSkill("emotional_heal", "[UNICODE_611F]", "[UNICODE_30B9]+30%", "special_ability", 0.3, 1),
+            JobSkill("empathy_boost", "[UNICODE_5171]", "[UNICODE_4ED6]+25%", "task_efficiency", 0.25, 3),
+            JobSkill("community_bond", "[UNICODE_30B3]", "[UNICODE_30B0]XP+20%", "stat_bonus", 0.2, 5)
+        ]
+        
+        # [UNICODE_8CE2]
+        sage_skills = [
+            JobSkill("deep_insight", "[UNICODE_6DF1]", "[UNICODE_5B66]+30%", "task_efficiency", 0.3, 1),
+            JobSkill("learning_accelerator", "[UNICODE_5B66]", "[UNICODE_30B9]XP+25%", "stat_bonus", 0.25, 3),
+            JobSkill("mindful_awareness", "[UNICODE_30DE]", "[UNICODE_81EA]+35%", "special_ability", 0.35, 5)
+        ]
+        
+        # [UNICODE_5FCD]
+        ninja_skills = [
+            JobSkill("stress_shadow", "[UNICODE_30B9]", "[UNICODE_9AD8]+20%", "special_ability", 0.2, 1),
+            JobSkill("adaptation_master", "[UNICODE_9069]", "[UNICODE_74B0]+25%", "task_efficiency", 0.25, 3),
+            JobSkill("stealth_progress", "[UNICODE_30B9]", "[UNICODE_5C0F]+30%", "stat_bonus", 0.3, 5)
+        ]
+        
+        return {
+            JobType.WARRIOR: Job(
+                job_type=JobType.WARRIOR,
+                name="[UNICODE_6226]",
+                focus_attribute="Self-Discipline",
+                stat_bonuses={"resilience": 2, "focus": 1},
+                skills=warrior_skills,
+                therapeutic_focus="[UNICODE_7FD2]",
+                description="[UNICODE_56F0]"
+            ),
+            JobType.HERO: Job(
+                job_type=JobType.HERO,
+                name="[UNICODE_52C7]",
+                focus_attribute="Courage",
+                stat_bonuses={"motivation": 2, "social": 1},
+                skills=hero_skills,
+                therapeutic_focus="[UNICODE_793E]",
+                description="[UNICODE_6050]"
+            ),
+            JobType.MAGE: Job(
+                job_type=JobType.MAGE,
+                name="[UNICODE_9B54]",
+                focus_attribute="Creativity",
+                stat_bonuses={"creativity": 2, "wisdom": 1},
+                skills=mage_skills,
+                therapeutic_focus="[UNICODE_5275]",
+                description="[UNICODE_77E5]"
+            ),
+            JobType.PRIEST: Job(
+                job_type=JobType.PRIEST,
+                name="[UNICODE_50E7]",
+                focus_attribute="Empathy",
+                stat_bonuses={"social": 2, "resilience": 1},
+                skills=priest_skills,
+                therapeutic_focus="[UNICODE_5171]",
+                description="[UNICODE_4ED6]"
+            ),
+            JobType.SAGE: Job(
+                job_type=JobType.SAGE,
+                name="[UNICODE_8CE2]",
+                focus_attribute="Wisdom",
+                stat_bonuses={"wisdom": 2, "focus": 1},
+                skills=sage_skills,
+                therapeutic_focus="[UNICODE_5B66]",
+                description="[UNICODE_6DF1]"
+            ),
+            JobType.NINJA: Job(
+                job_type=JobType.NINJA,
+                name="[UNICODE_5FCD]",
+                focus_attribute="Resilience",
+                stat_bonuses={"resilience": 2, "motivation": 1},
+                skills=ninja_skills,
+                therapeutic_focus="[UNICODE_30B9]",
+                description="[UNICODE_5909]"
+            )
+        }
+    
+    def _initialize_advanced_jobs(self) -> Dict[JobType, Job]:
+        """[UNICODE_4E0A]"""
+        
+        # [UNICODE_30D1]
+        paladin_skills = [
+            JobSkill("divine_protection", "[UNICODE_795E]", "[UNICODE_30C1]-20%", "special_ability", 0.2, 1),
+            JobSkill("righteous_fury", "[UNICODE_6B63]", "[UNICODE_4E0D]+40%", "task_efficiency", 0.4, 3),
+            JobSkill("healing_light", "[UNICODE_7652]", "[UNICODE_81EA]+35%", "stat_bonus", 0.35, 5)
+        ]
+        
+        # [UNICODE_5927]
+        archmage_skills = [
+            JobSkill("reality_shaper", "[UNICODE_73FE]", "[UNICODE_5275]+50%", "special_ability", 0.5, 1),
+            JobSkill("wisdom_amplifier", "[UNICODE_77E5]", "[UNICODE_5B66]+45%", "task_efficiency", 0.45, 3),
+            JobSkill("innovation_storm", "[UNICODE_9769]", "[UNICODE_65B0]XP[UNICODE_30DC]+60%", "stat_bonus", 0.6, 5)
+        ]
+        
+        # [UNICODE_5F71]
+        shadow_master_skills = [
+            JobSkill("shadow_step", "[UNICODE_5F71]", "[UNICODE_56F0]+40%", "special_ability", 0.4, 1),
+            JobSkill("stress_immunity", "[UNICODE_30B9]", "[UNICODE_9AD8]+50%", "task_efficiency", 0.5, 3),
+            JobSkill("perfect_adaptation", "[UNICODE_5B8C]", "[UNICODE_3042]+45%", "stat_bonus", 0.45, 5)
+        ]
+        
+        return {
+            JobType.PALADIN: Job(
+                job_type=JobType.PALADIN,
+                name="[UNICODE_30D1]",
+                focus_attribute="Courage + Empathy",
+                stat_bonuses={"resilience": 3, "social": 2, "motivation": 1},
+                skills=paladin_skills,
+                therapeutic_focus="[UNICODE_30EA]",
+                description="[UNICODE_6226]",
+                is_advanced=True,
+                unlock_requirements={"warrior": 10, "priest": 5, "social_tasks": 50}
+            ),
+            JobType.ARCHMAGE: Job(
+                job_type=JobType.ARCHMAGE,
+                name="[UNICODE_5927]",
+                focus_attribute="Creativity + Wisdom",
+                stat_bonuses={"creativity": 4, "wisdom": 3},
+                skills=archmage_skills,
+                therapeutic_focus="[UNICODE_9AD8]",
+                description="[UNICODE_9B54]",
+                is_advanced=True,
+                unlock_requirements={"mage": 15, "wisdom": 20, "creative_tasks": 100}
+            ),
+            JobType.SHADOW_MASTER: Job(
+                job_type=JobType.SHADOW_MASTER,
+                name="[UNICODE_5F71]",
+                focus_attribute="Resilience + Adaptation",
+                stat_bonuses={"resilience": 4, "focus": 2},
+                skills=shadow_master_skills,
+                therapeutic_focus="[UNICODE_6975]",
+                description="[UNICODE_5FCD]",
+                is_advanced=True,
+                unlock_requirements={"ninja": 12, "resilience": 25, "stress_overcome": 30}
+            )
+        }
+    
+    def get_job(self, job_type: JobType) -> Optional[Job]:
+        """[UNICODE_8077]"""
+        return self.all_jobs.get(job_type)
+    
+    def get_base_jobs(self) -> List[Job]:
+        """[UNICODE_57FA]"""
+        return list(self.base_jobs.values())
+    
+    def get_advanced_jobs(self) -> List[Job]:
+        """[UNICODE_4E0A]"""
+        return list(self.advanced_jobs.values())
+    
+    def check_job_unlock(self, user_stats: Dict[str, Any], target_job: JobType) -> bool:
+        """[UNICODE_8077]"""
+        job = self.all_jobs.get(target_job)
+        if not job or not job.is_advanced:
+            return True  # [UNICODE_57FA]
+        
+        requirements = job.unlock_requirements
+        for req_key, req_value in requirements.items():
+            if user_stats.get(req_key, 0) < req_value:
+                return False
+        return True
+    
+    def get_unlocked_jobs(self, user_stats: Dict[str, Any]) -> List[Job]:
+        """[UNICODE_30E6]"""
+        unlocked = []
+        for job in self.all_jobs.values():
+            if self.check_job_unlock(user_stats, job.job_type):
+                unlocked.append(job)
+        return unlocked
+    
+    def calculate_stat_bonuses(self, job_type: JobType, job_level: int = 1) -> Dict[str, int]:
+        """[UNICODE_8077]"""
+        job = self.all_jobs.get(job_type)
+        if not job:
+            return {}
+        
+        # [UNICODE_30EC]
+        level_multiplier = 1.0 + (job_level - 1) * 0.1  # [UNICODE_30EC]10%[UNICODE_5897]
+        
+        bonuses = {}
+        for stat, base_bonus in job.stat_bonuses.items():
+            bonuses[stat] = int(base_bonus * level_multiplier)
+        
+        return bonuses
+    
+    def get_available_skills(self, job_type: JobType, job_level: int) -> List[JobSkill]:
+        """[UNICODE_6307]"""
+        job = self.all_jobs.get(job_type)
+        if not job:
+            return []
+        
+        return [skill for skill in job.skills if skill.unlock_level <= job_level]
+    
+    def calculate_task_efficiency_bonus(self, job_type: JobType, job_level: int, 
+                                      task_type: str) -> float:
+        """[UNICODE_30BF]"""
+        available_skills = self.get_available_skills(job_type, job_level)
+        
+        total_bonus = 0.0
+        for skill in available_skills:
+            if skill.effect_type == "task_efficiency":
+                # [UNICODE_30B9]
+                if self._skill_applies_to_task(skill, task_type):
+                    total_bonus += skill.effect_value
+        
+        return total_bonus
+    
+    def _skill_applies_to_task(self, skill: JobSkill, task_type: str) -> bool:
+        """[UNICODE_30B9]"""
+        # [UNICODE_7C21]
+        skill_task_mapping = {
+            "iron_will": ["routine", "difficult"],
+            "task_crusher": ["routine"],
+            "fear_conqueror": ["social"],
+            "social_bridge": ["social"],
+            "idea_spark": ["creative", "skill_up"],
+            "problem_solver": ["skill_up", "complex"],
+            "emotional_heal": ["stress_related"],
+            "empathy_boost": ["social", "communication"],
+            "deep_insight": ["learning", "skill_up"],
+            "learning_accelerator": ["skill_up"],
+            "stress_shadow": ["high_stress"],
+            "adaptation_master": ["change_related"]
+        }
+        
+        applicable_tasks = skill_task_mapping.get(skill.skill_id, [])
+        return task_type in applicable_tasks or task_type == "all"
+
+
+@dataclass
+class UserJobData:
+    """[UNICODE_30E6]"""
+    uid: str
+    current_job: JobType
+    job_level: int = 1
+    job_experience: int = 0
+    unlocked_jobs: List[JobType] = field(default_factory=list)
+    job_change_history: List[Dict[str, Any]] = field(default_factory=list)
+    last_job_change: Optional[datetime] = None
+
+
+class JobManager:
+    """[UNICODE_8077]"""
+    
+    def __init__(self):
+        self.job_system = JobSystem()
+        self.user_jobs: Dict[str, UserJobData] = {}
+    
+    def initialize_user_job(self, uid: str, starting_job: JobType = JobType.WARRIOR) -> UserJobData:
+        """[UNICODE_30E6]"""
+        user_job_data = UserJobData(
+            uid=uid,
+            current_job=starting_job,
+            job_level=1,
+            job_experience=0,
+            unlocked_jobs=[job_type for job_type in JobType if not self.job_system.all_jobs[job_type].is_advanced],
+            job_change_history=[{
+                "job": starting_job.value,
+                "timestamp": datetime.now().isoformat(),
+                "reason": "initial_selection"
+            }]
+        )
+        
+        self.user_jobs[uid] = user_job_data
+        return user_job_data
+    
+    def change_job(self, uid: str, new_job: JobType, user_stats: Dict[str, Any]) -> bool:
+        """[UNICODE_8077]"""
+        if uid not in self.user_jobs:
+            return False
+        
+        # [UNICODE_30A2]
+        if not self.job_system.check_job_unlock(user_stats, new_job):
+            return False
+        
+        user_job_data = self.user_jobs[uid]
+        old_job = user_job_data.current_job
+        
+        # [UNICODE_8077]
+        user_job_data.current_job = new_job
+        user_job_data.job_level = 1  # [UNICODE_65B0]1[UNICODE_304B]
+        user_job_data.job_experience = 0
+        user_job_data.last_job_change = datetime.now()
+        
+        # [UNICODE_5C65]
+        user_job_data.job_change_history.append({
+            "from_job": old_job.value,
+            "to_job": new_job.value,
+            "timestamp": datetime.now().isoformat(),
+            "reason": "user_choice"
+        })
+        
+        # [UNICODE_30A2]
+        if new_job not in user_job_data.unlocked_jobs:
+            user_job_data.unlocked_jobs.append(new_job)
+        
+        return True
+    
+    def add_job_experience(self, uid: str, experience: int) -> bool:
+        """[UNICODE_8077]"""
+        if uid not in self.user_jobs:
+            return False
+        
+        user_job_data = self.user_jobs[uid]
+        user_job_data.job_experience += experience
+        
+        # [UNICODE_30EC]
+        required_exp = self._calculate_required_experience(user_job_data.job_level)
+        if user_job_data.job_experience >= required_exp:
+            user_job_data.job_level += 1
+            user_job_data.job_experience -= required_exp
+            return True  # [UNICODE_30EC]
+        
+        return False
+    
+    def _calculate_required_experience(self, current_level: int) -> int:
+        """[UNICODE_6B21]"""
+        return current_level * 100  # [UNICODE_30EC]100[UNICODE_306E]
+    
+    def get_user_job_info(self, uid: str) -> Optional[Dict[str, Any]]:
+        """[UNICODE_30E6]"""
+        if uid not in self.user_jobs:
+            return None
+        
+        user_job_data = self.user_jobs[uid]
+        current_job = self.job_system.get_job(user_job_data.current_job)
+        
+        if not current_job:
+            return None
+        
+        return {
+            "uid": uid,
+            "current_job": {
+                "type": current_job.job_type.value,
+                "name": current_job.name,
+                "level": user_job_data.job_level,
+                "experience": user_job_data.job_experience,
+                "required_exp": self._calculate_required_experience(user_job_data.job_level),
+                "focus_attribute": current_job.focus_attribute,
+                "therapeutic_focus": current_job.therapeutic_focus,
+                "description": current_job.description
+            },
+            "stat_bonuses": self.job_system.calculate_stat_bonuses(
+                user_job_data.current_job, user_job_data.job_level
+            ),
+            "available_skills": [
+                {
+                    "skill_id": skill.skill_id,
+                    "name": skill.name,
+                    "description": skill.description,
+                    "effect_type": skill.effect_type,
+                    "effect_value": skill.effect_value
+                }
+                for skill in self.job_system.get_available_skills(
+                    user_job_data.current_job, user_job_data.job_level
+                )
+            ],
+            "unlocked_jobs": [job_type.value for job_type in user_job_data.unlocked_jobs],
+            "job_change_history": user_job_data.job_change_history[-5:]  # [UNICODE_6700]5[UNICODE_4EF6]
+        }
+
+
+# API [UNICODE_30A8]
+def create_job_manager() -> JobManager:
+    """JobManager[UNICODE_30A4]"""
+    return JobManager()
+
+
+if __name__ == "__main__":
+    # [UNICODE_57FA]
+    job_manager = create_job_manager()
+    
+    # [UNICODE_30E6]
+    user_data = job_manager.initialize_user_job("test_user", JobType.WARRIOR)
+    print(f"[UNICODE_521D]: {user_data.current_job.value}")
+    
+    # [UNICODE_8077]
+    job_info = job_manager.get_user_job_info("test_user")
+    print(f"[UNICODE_8077]: {json.dumps(job_info, indent=2, ensure_ascii=False)}")
+    
+    # [UNICODE_7D4C]
+    leveled_up = job_manager.add_job_experience("test_user", 150)
+    print(f"[UNICODE_30EC]: {leveled_up}")
+    
+    # [UNICODE_66F4]
+    updated_info = job_manager.get_user_job_info("test_user")
+    print(f"[UNICODE_66F4]: {updated_info['current_job']['level']}")

@@ -1,0 +1,41 @@
+{
+  "timestamp": "20250730_112925",
+  "test_type": "simple_integration_test",
+  "test_results": {
+    "service_health": {
+      "auth": true,
+      "core_game": true,
+      "task_mgmt": true,
+      "mandala": true
+    },
+    "authentication": {
+      "success": true,
+      "token_received": true,
+      "guardian_id": "test_guardian_001",
+      "permission_level": "task_edit"
+    },
+    "core_game": {
+      "success": false,
+      "error": "Profile fetch failed: 404",
+      "response": "{\"detail\":\"Not Found\"}"
+    },
+    "task_management": {
+      "success": false,
+      "error": "Task creation failed: 404",
+      "response": "{\"detail\":\"Not Found\"}"
+    },
+    "mandala": {
+      "success": false,
+      "error": "Mandala grid fetch failed: 500",
+      "response": "{\"detail\":\"?: MandalaSystemInterface.get_grid_api_response() missing 1 required positional argument: 'chapter_type'\"}"
+    },
+    "data_flow": {
+      "success": false,
+      "error": "Could not get initial profile"
+    }
+  },
+  "summary": {
+    "total_tests": 6,
+    "passed_tests": 2
+  }
+}

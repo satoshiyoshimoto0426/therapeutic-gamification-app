@@ -1,0 +1,193 @@
+{
+  "overall_success": false,
+  "category_summary": {
+    "サービス可用性": {
+      "success_count": 3,
+      "total_count": 3,
+      "success_rate": 100.0
+    },
+    "API機能性": {
+      "success_count": 3,
+      "total_count": 7,
+      "success_rate": 42.857142857142854
+    },
+    "エラーハンドリング": {
+      "success_count": 0,
+      "total_count": 3,
+      "success_rate": 0.0
+    },
+    "レスポンス形式": {
+      "success_count": 3,
+      "total_count": 3,
+      "success_rate": 100.0
+    },
+    "CORS設定": {
+      "success_count": 3,
+      "total_count": 3,
+      "success_rate": 100.0
+    },
+    "サービス間連携": {
+      "success_count": 0,
+      "total_count": 1,
+      "success_rate": 0.0
+    }
+  },
+  "detailed_results": {
+    "service_availability": [
+      {
+        "service": "Core Game Engine",
+        "success": true,
+        "response_time_ms": 276.5223979949951,
+        "status_code": 200
+      },
+      {
+        "service": "Auth Service",
+        "success": true,
+        "response_time_ms": 256.24823570251465,
+        "status_code": 200
+      },
+      {
+        "service": "Task Management",
+        "success": true,
+        "response_time_ms": 259.86528396606445,
+        "status_code": 200
+      }
+    ],
+    "api_functionality": [
+      {
+        "service": "Core Game Engine",
+        "endpoint": "/health",
+        "method": "GET",
+        "success": true,
+        "status_code": 200,
+        "response_time_ms": 261.66272163391113
+      },
+      {
+        "service": "Core Game Engine",
+        "endpoint": "/xp/add",
+        "method": "POST",
+        "success": false,
+        "status_code": 404,
+        "response_time_ms": 3.0066967010498047
+      },
+      {
+        "service": "Core Game Engine",
+        "endpoint": "/level/progress",
+        "method": "POST",
+        "success": false,
+        "status_code": 404,
+        "response_time_ms": 1.878499984741211
+      },
+      {
+        "service": "Auth Service",
+        "endpoint": "/health",
+        "method": "GET",
+        "success": true,
+        "status_code": 200,
+        "response_time_ms": 255.4006576538086
+      },
+      {
+        "service": "Auth Service",
+        "endpoint": "/auth/token",
+        "method": "POST",
+        "success": false,
+        "status_code": 404,
+        "response_time_ms": 2.0034313201904297
+      },
+      {
+        "service": "Task Management",
+        "endpoint": "/health",
+        "method": "GET",
+        "success": true,
+        "status_code": 200,
+        "response_time_ms": 264.9228572845459
+      },
+      {
+        "service": "Task Management",
+        "endpoint": "/tasks/test_user/create",
+        "method": "POST",
+        "success": false,
+        "status_code": 404,
+        "response_time_ms": 2.968311309814453
+      }
+    ],
+    "error_handling": [
+      {
+        "description": "空のUID",
+        "service": "Core Game Engine",
+        "success": false,
+        "status_code": 404,
+        "has_error_detail": true
+      },
+      {
+        "description": "無効な権限レベル",
+        "service": "Auth Service",
+        "success": false,
+        "status_code": 404,
+        "has_error_detail": true
+      },
+      {
+        "description": "無効なタスクタイプ",
+        "service": "Task Management",
+        "success": false,
+        "status_code": 404,
+        "has_error_detail": true
+      }
+    ],
+    "response_format": [
+      {
+        "service": "Core Game Engine",
+        "success": true,
+        "status_code": 200
+      },
+      {
+        "service": "Auth Service",
+        "success": true,
+        "status_code": 200
+      },
+      {
+        "service": "Task Management",
+        "success": true,
+        "status_code": 200
+      }
+    ],
+    "cors_configuration": [
+      {
+        "service": "Core Game Engine",
+        "success": true,
+        "cors_headers": {
+          "Access-Control-Allow-Origin": "http://localhost:3000",
+          "Access-Control-Allow-Methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+          "Access-Control-Allow-Headers": "Content-Type"
+        }
+      },
+      {
+        "service": "Auth Service",
+        "success": true,
+        "cors_headers": {
+          "Access-Control-Allow-Origin": "http://localhost:3000",
+          "Access-Control-Allow-Methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+          "Access-Control-Allow-Headers": "Content-Type"
+        }
+      },
+      {
+        "service": "Task Management",
+        "success": true,
+        "cors_headers": {
+          "Access-Control-Allow-Origin": "http://localhost:3000",
+          "Access-Control-Allow-Methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+          "Access-Control-Allow-Headers": "Content-Type"
+        }
+      }
+    ],
+    "service_integration": [
+      {
+        "scenario": "認証→XP追加フロー",
+        "success": false,
+        "auth_success": false,
+        "xp_success": false
+      }
+    ]
+  },
+  "timestamp": "2025-07-30T09:39:35.786555"
+}

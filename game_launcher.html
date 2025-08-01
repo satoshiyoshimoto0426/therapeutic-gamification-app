@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 治療的ゲーミフィケーションアプリ - ゲームランチャー</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+        }
+        .container {
+            max-width: 800px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        .service-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .service-card {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.3s ease;
+            border: 2px solid transparent;
+        }
+        .service-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        .service-card.available {
+            border-color: #4CAF50;
+            background: rgba(76, 175, 80, 0.2);
+        }
+        .service-card.unavailable {
+            border-color: #f44336;
+            background: rgba(244, 67, 54, 0.2);
+            opacity: 0.7;
+        }
+        .service-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .service-url {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-bottom: 15px;
+        }
+        .btn {
+            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        .btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .main-game-btn {
+            font-size: 1.5em;
+            padding: 20px 40px;
+            margin: 20px 0;
+        }
+        .status {
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .instructions {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+        .instructions h3 {
+            margin-top: 0;
+        }
+        .instructions ul {
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 治療的ゲーミフィケーションアプリ</h1>
+        
+        <div class="status">
+            <h3>🚀 ゲーム起動状況</h3>
+            <p id="status-text">サービス状況を確認中...</p>
+        </div>
+        
+        <div class="service-grid">
+            <div class="service-card" id="frontend-card">
+                <div class="service-title">🎨 メインゲーム</div>
+                <div class="service-url">http://localhost:3000</div>
+                <a href="http://localhost:3000" class="btn" id="frontend-btn">ゲーム開始</a>
+            </div>
+            
+            <div class="service-card" id="core-game-card">
+                <div class="service-title">⚡ コアゲーム</div>
+                <div class="service-url">http://localhost:8001</div>
+                <a href="http://localhost:8001/docs" class="btn" id="core-game-btn">API確認</a>
+            </div>
+            
+            <div class="service-card" id="auth-card">
+                <div class="service-title">🔐 認証</div>
+                <div class="service-url">http://localhost:8002</div>
+                <a href="http://localhost:8002/docs" class="btn" id="auth-btn">API確認</a>
+            </div>
+            
+            <div class="service-card" id="task-card">
+                <div class="service-title">📋 タスク管理</div>
+                <div class="service-url">http://localhost:8003</div>
+                <a href="http://localhost:8003/docs" class="btn" id="task-btn">API確認</a>
+            </div>
+            
+            <div class="service-card" id="mandala-card">
+                <div class="service-title">🌸 Mandala</div>
+                <div class="service-url">http://localhost:8004</div>
+                <a href="http://localhost:8004/docs" class="btn" id="mandala-btn">API確認</a>
+            </div>
+            
+            <div class="service-card" id="story-card">
+                <div class="service-title">📚 AIストーリー</div>
+                <div class="service-url">http://localhost:8005</div>
+                <a href="http://localhost:8005/docs" class="btn" id="story-btn">API確認</a>
+            </div>
+            
+            <div class="service-card" id="mood-card">
+                <div class="service-title">😊 気分追跡</div>
+                <div class="service-url">http://localhost:8006</div>
+                <a href="http://localhost:8006/docs" class="btn" id="mood-btn">API確認</a>
+            </div>
+            
+            <div class="service-card" id="adhd-card">
+                <div class="service-title">🧠 ADHD支援</div>
+                <div class="service-url">http://localhost:8007</div>
+                <a href="http://localhost:8007/docs" class="btn" id="adhd-btn">API確認</a>
+            </div>
+            
+            <div class="service-card" id="safety-card">
+                <div class="service-title">🛡️ 治療安全性</div>
+                <div class="service-url">http://localhost:8008</div>
+                <a href="http://localhost:8008/docs" class="btn" id="safety-btn">API確認</a>
+            </div>
+            
+            <div class="service-card" id="linebot-card">
+                <div class="service-title">💬 LINE Bot</div>
+                <div class="service-url">http://localhost:8009</div>
+                <a href="http://localhost:8009/docs" class="btn" id="linebot-btn">API確認</a>
+            </div>
+        </div>
+        
+        <div class="instructions">
+            <h3>🎯 ゲームの始め方</h3>
+            <ul>
+                <li><strong>メインゲーム</strong>をクリックしてゲームを開始</li>
+                <li>初回は簡単なアカウント設定を行います</li>
+                <li>朝のタスク配信から1日が始まります</li>
+                <li>タスクを完了してXPを獲得しましょう</li>
+                <li>夜にはAIが生成したストーリーを楽しめます</li>
+            </ul>
+            
+            <h3>🔧 開発者向け</h3>
+            <ul>
+                <li>各サービスの<strong>API確認</strong>ボタンでSwagger UIにアクセス</li>
+                <li>APIの動作確認やテストが可能</li>
+                <li>ログはターミナルで確認できます</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        // サービス状況チェック
+        async function checkServices() {
+            const services = [
+                { id: 'frontend', url: 'http://localhost:3000', name: 'メインゲーム' },
+                { id: 'core-game', url: 'http://localhost:8001/health', name: 'コアゲーム' },
+                { id: 'auth', url: 'http://localhost:8002/health', name: '認証' },
+                { id: 'task', url: 'http://localhost:8003/health', name: 'タスク管理' },
+                { id: 'mandala', url: 'http://localhost:8004/health', name: 'Mandala' },
+                { id: 'story', url: 'http://localhost:8005/health', name: 'AIストーリー' },
+                { id: 'mood', url: 'http://localhost:8006/health', name: '気分追跡' },
+                { id: 'adhd', url: 'http://localhost:8007/health', name: 'ADHD支援' },
+                { id: 'safety', url: 'http://localhost:8008/health', name: '治療安全性' },
+                { id: 'linebot', url: 'http://localhost:8009/health', name: 'LINE Bot' }
+            ];
+            
+            let availableCount = 0;
+            
+            for (const service of services) {
+                const card = document.getElementById(service.id + '-card');
+                const btn = document.getElementById(service.id + '-btn');
+                
+                if (!card || !btn) {
+                    console.warn(`要素が見つかりません: ${service.id}`);
+                    continue;
+                }
+                
+                try {
+                    // 複数のエンドポイントを試行
+                    let isAvailable = false;
+                    
+                    // 1. /healthエンドポイント
+                    try {
+                        const healthResponse = await fetch(service.url, { 
+                            method: 'GET',
+                            mode: 'no-cors',
+                            timeout: 2000
+                        });
+                        isAvailable = true;
+                    } catch (e) {
+                        // 2. ルートエンドポイント
+                        try {
+                            const rootUrl = service.url.replace('/health', '');
+                            const rootResponse = await fetch(rootUrl, { 
+                                method: 'GET',
+                                mode: 'no-cors',
+                                timeout: 2000
+                            });
+                            isAvailable = true;
+                        } catch (e2) {
+                            // 3. /docsエンドポイント
+                            try {
+                                const docsUrl = service.url.replace('/health', '/docs');
+                                const docsResponse = await fetch(docsUrl, { 
+                                    method: 'GET',
+                                    mode: 'no-cors',
+                                    timeout: 2000
+                                });
+                                isAvailable = true;
+                            } catch (e3) {
+                                isAvailable = false;
+                            }
+                        }
+                    }
+                    
+                    if (isAvailable) {
+                        card.classList.add('available');
+                        card.classList.remove('unavailable');
+                        btn.disabled = false;
+                        availableCount++;
+                    } else {
+                        card.classList.add('unavailable');
+                        card.classList.remove('available');
+                        btn.disabled = true;
+                    }
+                    
+                } catch (error) {
+                    console.warn(`${service.name}のチェックでエラー:`, error);
+                    card.classList.add('unavailable');
+                    card.classList.remove('available');
+                    btn.disabled = true;
+                }
+            }
+            
+            // ステータス更新
+            const statusText = document.getElementById('status-text');
+            if (availableCount === services.length) {
+                statusText.innerHTML = '🎉 全サービス正常動作中！ゲームを開始できます。';
+            } else if (availableCount > 0) {
+                statusText.innerHTML = `⚠️ ${availableCount}/${services.length} サービスが動作中。一部機能が制限される可能性があります。`;
+            } else {
+                statusText.innerHTML = '❌ サービスが起動していません。deploy_local.pyを実行してください。';
+            }
+        }
+        
+        // 5秒ごとにサービス状況をチェック
+        checkServices();
+        setInterval(checkServices, 5000);
+    </script>
+</body>
+</html>

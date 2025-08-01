@@ -1,0 +1,165 @@
+"""
+KPI Dashboard Service [UNICODE_7C21]
+"""
+import asyncio
+import json
+from datetime import datetime, date, timedelta
+from main import KPIDashboardEngine, UserState
+
+async def test_kpi_dashboard():
+    """KPI[UNICODE_30C0]"""
+    print("=== KPI Dashboard Service [UNICODE_30C6] ===")
+    
+    # KPI[UNICODE_30C0]
+    dashboard = KPIDashboardEngine()
+    print(f"[UNICODE_2713] [UNICODE_30C0]")
+    print(f"  - [UNICODE_30E1]: {len(dashboard.kpi_metrics)}")
+    print(f"  - [UNICODE_30B5]: {len(dashboard.user_data)}")
+    
+    # [UNICODE_91CD]
+    print("\n=== [UNICODE_91CD] ===")
+    critical_metrics = [m for m in dashboard.kpi_metrics.values() if m.is_critical]
+    for metric in critical_metrics:
+        print(f"[UNICODE_2713] {metric.name}")
+        print(f"  - [UNICODE_73FE]: {metric.current_value:.3f} {metric.unit}")
+        print(f"  - [UNICODE_76EE]: {metric.target_value:.3f} {metric.unit}")
+        achievement = (metric.current_value / metric.target_value * 100) if metric.target_value > 0 else 0
+        print(f"  - [UNICODE_9054]: {achievement:.1f}%")
+    
+    # KPI[UNICODE_8A08]
+    print("\n=== KPI[UNICODE_8A08] ===")
+    calculation_result = await dashboard.calculate_kpi_metrics()
+    print(f"[UNICODE_2713] KPI[UNICODE_8A08]")
+    print(f"  - [UNICODE_66F4]: {calculation_result['metrics_updated']}")
+    print(f"  - [UNICODE_751F]: {calculation_result['alerts_generated']}")
+    
+    # [UNICODE_30C0]
+    print("\n=== [UNICODE_30C0] ===")
+    summary = await dashboard.get_dashboard_summary()
+    print(f"[UNICODE_2713] [UNICODE_5168]: {summary['overall_health_score']:.3f}")
+    print(f"[UNICODE_2713] [UNICODE_7DCF]: {summary['total_users']}")
+    print(f"[UNICODE_2713] [UNICODE_30A2]: {len(summary['active_alerts'])}")
+    
+    # [UNICODE_91CD]
+    print("\n=== [UNICODE_91CD] ===")
+    for metric_id, metric_data in summary['critical_metrics'].items():
+        print(f"[UNICODE_2022] {metric_data['name']}")
+        print(f"  [UNICODE_73FE]: {metric_data['current_value']:.3f} {metric_data['unit']}")
+        print(f"  [UNICODE_76EE]: {metric_data['target_value']:.3f} {metric_data['unit']}")
+        print(f"  [UNICODE_9054]: {metric_data['achievement_rate']:.1f}%")
+        print(f"  [UNICODE_30C8]: {metric_data['trend']}")
+    
+    # [UNICODE_30A2]
+    if summary['active_alerts']:
+        print("\n=== [UNICODE_30A2] ===")
+        for alert in summary['active_alerts']:
+            print(f"[UNICODE_26A0]  {alert['severity'].upper()}: {alert['message']}")
+            print(f"   [UNICODE_30E1]: {alert['metric_name']}")
+            print(f"   [UNICODE_4F5C]: {alert['created_at']}")
+    else:
+        print("\n[UNICODE_2713] [UNICODE_30A2]")
+    
+    # [UNICODE_6D1E]
+    if summary['summary_insights']:
+        print("\n=== [UNICODE_30B7] ===")
+        for i, insight in enumerate(summary['summary_insights'], 1):
+            print(f"{i}. {insight}")
+    
+    # [UNICODE_500B]
+    print("\n=== [UNICODE_500B] ===")
+    d1_details = await dashboard.get_metric_details("d1_retention")
+    print(f"[UNICODE_2713] D1[UNICODE_30EA]")
+    print(f"  - [UNICODE_5C65]: {len(d1_details['historical_data'])}")
+    print(f"  - [UNICODE_30C8]: {d1_details['trend_analysis']['trend']}")
+    print(f"  - [UNICODE_5909]: {d1_details['trend_analysis']['change_rate']:.3f}")
+    
+    # [UNICODE_30E6]
+    print("\n=== [UNICODE_30E6] ===")
+    state_counts = {}
+    for user in dashboard.user_data.values():
+        state = user.current_state.value
+        state_counts[state] = state_counts.get(state, 0) + 1
+    
+    total_users = len(dashboard.user_data)
+    for state, count in state_counts.items():
+        percentage = (count / total_users) * 100
+        print(f"  {state}: {count}[UNICODE_4EBA] ({percentage:.1f}%)")
+    
+    # [UNICODE_53CE]
+    print("\n=== [UNICODE_53CE] ===")
+    paying_users = [u for u in dashboard.user_data.values() if u.revenue_generated > 0]
+    total_revenue = sum(u.revenue_generated for u in dashboard.user_data.values())
+    avg_revenue_per_paying_user = total_revenue / len(paying_users) if paying_users else 0
+    
+    print(f"  [UNICODE_7DCF]: [UNICODE_00A5]{total_revenue:.0f}")
+    print(f"  [UNICODE_8AB2]: {len(paying_users)}[UNICODE_4EBA]")
+    print(f"  [UNICODE_8AB2]: {len(paying_users)/total_users*100:.1f}%")
+    print(f"  [UNICODE_8AB2]: [UNICODE_00A5]{avg_revenue_per_paying_user:.0f}")
+    
+    # [UNICODE_6CBB]
+    print("\n=== [UNICODE_6CBB] ===")
+    efficacy_users = [u for u in dashboard.user_data.values() 
+                     if u.therapeutic_progress.get("self_efficacy", 0) > 0]
+    avg_efficacy = sum(u.therapeutic_progress.get("self_efficacy", 0) 
+                      for u in efficacy_users) / len(efficacy_users) if efficacy_users else 0
+    
+    cbt_users = [u for u in dashboard.user_data.values() 
+                if u.therapeutic_progress.get("cbt_engagement", 0) > 0]
+    
+    print(f"  [UNICODE_81EA]: {len(efficacy_users)}[UNICODE_4EBA]")
+    print(f"  [UNICODE_5E73]: {avg_efficacy:.3f}")
+    print(f"  CBT[UNICODE_53C2]: {len(cbt_users)}[UNICODE_4EBA]")
+    print(f"  CBT[UNICODE_53C2]: {len(cbt_users)/total_users*100:.1f}%")
+    
+    print("\n=== [UNICODE_30C6] ===")
+    return True
+
+def test_api_endpoints():
+    """API [UNICODE_30A8]"""
+    print("\n=== API [UNICODE_30A8] ===")
+    
+    from fastapi.testclient import TestClient
+    from main import app
+    
+    client = TestClient(app)
+    
+    # [UNICODE_30C0]
+    response = client.get("/kpi/dashboard")
+    assert response.status_code == 200
+    print("[UNICODE_2713] GET /kpi/dashboard")
+    
+    # [UNICODE_30E1]
+    response = client.get("/kpi/metrics")
+    assert response.status_code == 200
+    print("[UNICODE_2713] GET /kpi/metrics")
+    
+    # [UNICODE_500B]
+    response = client.get("/kpi/metrics/d1_retention")
+    assert response.status_code == 200
+    print("[UNICODE_2713] GET /kpi/metrics/d1_retention")
+    
+    # [UNICODE_30A2]
+    response = client.get("/kpi/alerts")
+    assert response.status_code == 200
+    print("[UNICODE_2713] GET /kpi/alerts")
+    
+    # KPI[UNICODE_8A08]
+    response = client.post("/kpi/calculate")
+    assert response.status_code == 200
+    print("[UNICODE_2713] POST /kpi/calculate")
+    
+    # [UNICODE_30B7]
+    response = client.get("/kpi/health")
+    assert response.status_code == 200
+    print("[UNICODE_2713] GET /kpi/health")
+    
+    print("[UNICODE_2713] [UNICODE_5168]API[UNICODE_30A8]")
+
+if __name__ == "__main__":
+    # [UNICODE_975E]
+    asyncio.run(test_kpi_dashboard())
+    
+    # API [UNICODE_30C6]
+    test_api_endpoints()
+    
+    print("\n[UNICODE_1F389] KPI Dashboard Service [UNICODE_30C6]")

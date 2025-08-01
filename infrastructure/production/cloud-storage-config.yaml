@@ -1,0 +1,181 @@
+# Cloud Storage本番環境設定
+apiVersion: storage.googleapis.com/v1
+kind: Bucket
+metadata:
+  name: therapeutic-app-storage-prod
+  project: PROJECT_ID
+spec:
+  location: asia-northeast1
+  storageClass: STANDARD
+  
+  # バージョニング設定
+  versioning:
+    enabled: true
+  
+  # ライフサイクル管理
+  lifecycle:
+    rule:
+    - action:
+        type: SetStorageClass
+        storageClass: NEARLINE
+      condition:
+        age: 30
+        matchesStorageClass:
+        - STANDARD
+    - action:
+        type: SetStorageClass
+        storageClass: COLDLINE
+      condition:
+        age: 90
+        matchesStorageClass:
+        - NEARLINE
+    - action:
+        type: Delete
+      condition:
+        age: 2555  # 7年（治療データ保持期間）
+  
+  # 暗号化設定
+  encryption:
+    defaultKmsKeyName: projects/PROJECT_ID/locations/asia-northeast1/keyRings/therapeutic-app-keyring/cryptoKeys/storage-key
+  
+  # CORS設定
+  cors:
+  - origin:
+    - https://therapeutic-app.example.com
+    - https://api.therapeutic-app.example.com
+    method:
+    - GET
+    - POST
+    - PUT
+    - DELETE
+    - OPTIONS
+    responseHeader:
+    - Content-Type
+    - Authorization
+    - X-Requested-With
+    maxAgeSeconds: 3600
+  
+  # ログ設定
+  logging:
+    logBucket: therapeutic-app-access-logs-prod
+    logObjectPrefix: storage-access/
+  
+  # 通知設定
+  notification:
+  - topic: projects/PROJECT_ID/topics/storage-events
+    eventType:
+    - OBJECT_FINALIZE
+    - OBJECT_DELETE
+    payloadFormat: JSON_API_V1
+  
+  # IAM設定
+  iamConfiguration:
+    uniformBucketLevelAccess:
+      enabled: true
+    publicAccessPrevention: enforced
+  
+  # ラベル
+  labels:
+    app: therapeutic-gamification
+    environment: production
+    data-classification: sensitive
+    retention-period: 7-years
+
+---
+# ユーザーデータ用バケット
+apiVersion: storage.googleapis.com/v1
+kind: Bucket
+metadata:
+  name: therapeutic-app-user-data-prod
+  project: PROJECT_ID
+spec:
+  location: asia-northeast1
+  storageClass: STANDARD
+  
+  versioning:
+    enabled: true
+  
+  # より厳格なライフサイクル（個人データ）
+  lifecycle:
+    rule:
+    - action:
+        type: SetStorageClass
+        storageClass: NEARLINE
+      condition:
+        age: 7  # 1週間でNEARLINE
+    - action:
+        type: SetStorageClass
+        storageClass: COLDLINE
+      condition:
+        age: 30  # 1ヶ月でCOLDLINE
+    - action:
+        type: Delete
+      condition:
+        age: 2555  # 7年で削除
+  
+  encryption:
+    defaultKmsKeyName: projects/PROJECT_ID/locations/asia-northeast1/keyRings/therapeutic-app-keyring/cryptoKeys/user-data-key
+  
+  # 個人データ用の厳格なIAM
+  iamConfiguration:
+    uniformBucketLevelAccess:
+      enabled: true
+    publicAccessPrevention: enforced
+  
+  labels:
+    app: therapeutic-gamification
+    environment: production
+    data-classification: personal
+    gdpr-applicable: true
+
+---
+# バックアップ用バケット
+apiVersion: storage.googleapis.com/v1
+kind: Bucket
+metadata:
+  name: therapeutic-app-backup-prod
+  project: PROJECT_ID
+spec:
+  location: asia-northeast2  # 異なるリージョン
+  storageClass: COLDLINE
+  
+  versioning:
+    enabled: true
+  
+  lifecycle:
+    rule:
+    - action:
+        type: Delete
+      condition:
+        age: 2555  # 7年保持
+  
+  encryption:
+    defaultKmsKeyName: projects/PROJECT_ID/locations/asia-northeast2/keyRings/therapeutic-app-keyring/cryptoKeys/backup-key
+  
+  labels:
+    app: therapeutic-gamification
+    environment: production
+    purpose: backup
+
+---
+# アクセスログ用バケット
+apiVersion: storage.googleapis.com/v1
+kind: Bucket
+metadata:
+  name: therapeutic-app-access-logs-prod
+  project: PROJECT_ID
+spec:
+  location: asia-northeast1
+  storageClass: COLDLINE
+  
+  lifecycle:
+    rule:
+    - action:
+        type: Delete
+      condition:
+        age: 365  # 1年保持
+  
+  labels:
+    app: therapeutic-gamification
+    environment: production
+    purpose: access-logs

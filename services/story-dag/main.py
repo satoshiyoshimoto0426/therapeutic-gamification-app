@@ -1,0 +1,1146 @@
+# Story DAG Management System
+# Directed Acyclic Graph for story progression with CHAPTER > NODE > EDGE hierarchy
+
+from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
+from typing import Dict, List, Optional, Any, Set, Tuple, Union
+from datetime import datetime, timedelta
+from pydantic import BaseModel, Field, validator
+from enum import Enum
+import uuid
+import sys
+import os
+import json
+
+# Add shared modules to path
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'shared'))
+
+from interfaces.core_types import (
+    ChapterType, NodeType, UnlockConditionType, UnlockCondition,
+    StoryChapter, StoryNode, StoryEdge, UserStoryState
+)
+
+app = FastAPI(title="Story DAG Management System", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Companion System Model
+class CompanionInfo(BaseModel):
+    companion_id: str
+    name: str
+    description: str
+    relationship_level: int = 0
+    max_relationship: int = 100
+    special_abilities: List[str] = []
+    unlock_chapter: ChapterType
+
+# Mock Database with CHAPTER > NODE > EDGE hierarchy
+class StoryDatabase:
+    def __init__(self):
+        self.chapters: Dict[str, StoryChapter] = {}
+        self.nodes: Dict[str, StoryNode] = {}
+        self.edges: Dict[str, StoryEdge] = {}
+        self.user_states: Dict[str, UserStoryState] = {}
+        self.companions: Dict[str, CompanionInfo] = {}
+        
+        # Initialize with sample data
+        self._initialize_sample_story()
+
+    def _initialize_sample_story(self):
+        """Initialize with sample story structure following CHAPTER > NODE > EDGE hierarchy"""
+        
+        # Create sample chapter - ?
+        chapter_id = "reincarnation_prologue"
+        chapter = StoryChapter(
+            chapter_id=chapter_id,
+            chapter_type=ChapterType.SELF_DISCIPLINE,
+            title="?",
+            description="60?",
+            unlock_conditions=[],
+            estimated_completion_time=45,
+            therapeutic_focus=["second_chance", "self_improvement", "daily_growth"],
+            created_at=datetime.utcnow()
+        )
+        self.chapters[chapter_id] = chapter
+        
+        # Create sample nodes - ?
+        opening_node = StoryNode(
+            node_id="reincarnation_awakening",
+            chapter_id=chapter_id,
+            node_type=NodeType.OPENING,
+            title="?",
+            content="""60?
+?...?
+?
+
+し
+?
+
+?
+こ
+?...こ""",
+            estimated_read_time=4,
+            therapeutic_tags=["second_chance", "hope", "new_beginning"],
+            unlock_conditions=[],
+            companion_effects={"angel_guide": 10},
+            mood_effects={"hope": 0.3, "determination": 0.2},
+            ending_flags={"reincarnated": True},
+            created_at=datetime.utcnow()
+        )
+        self.nodes[opening_node.node_id] = opening_node
+        
+        choice_node = StoryNode(
+            node_id="first_hero_choice",
+            chapter_id=chapter_id,
+            node_type=NodeType.CHOICE,
+            title="勇",
+            content="""?
+?
+?
+さ
+
+あ60?
+?""",
+            estimated_read_time=3,
+            therapeutic_tags=["decision_making", "new_beginning", "hero_journey"],
+            unlock_conditions=[],
+            companion_effects={},
+            mood_effects={"determination": 0.1},
+            ending_flags={},
+            created_at=datetime.utcnow()
+        )
+        self.nodes[choice_node.node_id] = choice_node
+        
+        resolution_node = StoryNode(
+            node_id="first_growth",
+            chapter_id=chapter_id,
+            node_type=NodeType.RESOLUTION,
+            title="成",
+            content="""あ
+?
+
+?
+?
+?...
+こ
+
+レベル
+?""",
+            estimated_read_time=4,
+            therapeutic_tags=["achievement", "growth", "level_up", "second_chance"],
+            unlock_conditions=[
+                UnlockCondition(
+                    condition_type=UnlockConditionType.TASK_COMPLETION,
+                    parameters={"task_id": "daily_training", "habit_tag": "hero_growth"},
+                    required=True
+                )
+            ],
+            companion_effects={"angel_guide": 15, "yu": 10},
+            mood_effects={"confidence": 0.3, "satisfaction": 0.2},
+            ending_flags={"first_level_up": True},
+            created_at=datetime.utcnow()
+        )
+        self.nodes[resolution_node.node_id] = resolution_node
+        
+        # Create sample edges - ?
+        edge1 = StoryEdge(
+            edge_id="awakening_to_choice",
+            from_node_id=opening_node.node_id,
+            to_node_id=choice_node.node_id,
+            choice_text="?",
+            real_task_id=None,
+            habit_tag="acceptance",
+            probability=1.0,
+            therapeutic_weight=1.2,
+            companion_requirements={},
+            achievement_rewards=["reincarnation_accepted"],
+            ending_influence={"hero_path": 0.2}
+        )
+        self.edges[edge1.edge_id] = edge1
+        
+        edge2 = StoryEdge(
+            edge_id="choice_to_growth",
+            from_node_id=choice_node.node_id,
+            to_node_id=resolution_node.node_id,
+            choice_text="?",
+            real_task_id="daily_training",
+            habit_tag="hero_growth",
+            probability=1.0,
+            therapeutic_weight=2.0,
+            companion_requirements={},
+            achievement_rewards=["first_level_up", "dedication"],
+            ending_influence={"hero_development": 0.4}
+        )
+        self.edges[edge2.edge_id] = edge2
+        
+        # Sample companions - ?
+        self.companions["angel_guide"] = CompanionInfo(
+            companion_id="angel_guide",
+            name="?",
+            description="あ",
+            unlock_chapter=ChapterType.SELF_DISCIPLINE
+        )
+        
+        self.companions["yu"] = CompanionInfo(
+            companion_id="yu",
+            name="ユーザー",
+            description="?",
+            unlock_chapter=ChapterType.EMPATHY
+        )
+        
+        self.companions["wise_sage"] = CompanionInfo(
+            companion_id="wise_sage",
+            name="?",
+            description="?",
+            unlock_chapter=ChapterType.WISDOM
+        )
+
+db = StoryDatabase()
+
+# Simple JWT verification for testing
+async def verify_jwt_token() -> dict:
+    """Mock JWT verification for testing purposes"""
+    return {"uid": "test_user_123", "email": "test@example.com"}
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "service": "story-dag"}
+
+# Chapter Management (CHAPTER level)
+@app.post("/chapters")
+async def create_story_chapter(
+    chapter_data: Dict[str, Any],
+    current_user: dict = Depends(verify_jwt_token)
+):
+    """Create a new story chapter"""
+    
+    chapter_id = str(uuid.uuid4())
+    
+    # Parse unlock conditions
+    unlock_conditions = []
+    for condition_data in chapter_data.get("unlock_conditions", []):
+        unlock_conditions.append(UnlockCondition(**condition_data))
+    
+    chapter = StoryChapter(
+        chapter_id=chapter_id,
+        chapter_type=ChapterType(chapter_data["chapter_type"]),
+        title=chapter_data["title"],
+        description=chapter_data["description"],
+        unlock_conditions=unlock_conditions,
+        estimated_completion_time=chapter_data.get("estimated_completion_time", 30),
+        therapeutic_focus=chapter_data.get("therapeutic_focus", []),
+        created_at=datetime.utcnow()
+    )
+    
+    db.chapters[chapter_id] = chapter
+    
+    return {
+        "chapter_id": chapter_id,
+        "message": "Story chapter created successfully",
+        "chapter": chapter
+    }
+
+@app.get("/chapters")
+async def list_story_chapters(
+    current_user: dict = Depends(verify_jwt_token)
+):
+    """List all story chapters"""
+    return {
+        "chapters": list(db.chapters.values()),
+        "total_count": len(db.chapters)
+    }
+
+@app.get("/chapters/{chapter_id}")
+async def get_story_chapter(
+    chapter_id: str,
+    current_user: dict = Depends(verify_jwt_token)
+):
+    """Get a specific story chapter"""
+    
+    if chapter_id not in db.chapters:
+        raise HTTPException(status_code=404, detail="Story chapter not found")
+    
+    return db.chapters[chapter_id]
+
+# Story Node Management (NODE level)
+@app.post("/nodes")
+async def create_story_node(
+    node_data: Dict[str, Any],
+    current_user: dict = Depends(verify_jwt_token)
+):
+    """Create a new story node"""
+    
+    node_id = str(uuid.uuid4())
+    chapter_id = node_data["chapter_id"]
+    
+    # Validate chapter exists
+    if chapter_id not in db.chapters:
+        raise HTTPException(status_code=400, detail="Chapter does not exist")
+    
+    # Parse unlock conditions
+    unlock_conditions = []
+    for condition_data in node_data.get("unlock_conditions", []):
+        unlock_conditions.append(UnlockCondition(**condition_data))
+    
+    node = StoryNode(
+        node_id=node_id,
+        chapter_id=chapter_id,
+        node_type=NodeType(node_data["node_type"]),
+        title=node_data["title"],
+        content=node_data["content"],
+        estimated_read_time=node_data.get("estimated_read_time", 5),
+        therapeutic_tags=node_data.get("therapeutic_tags", []),
+        unlock_conditions=unlock_conditions,
+        companion_effects=node_data.get("companion_effects", {}),
+        mood_effects=node_data.get("mood_effects", {}),
+        ending_flags=node_data.get("ending_flags", {}),
+        created_at=datetime.utcnow()
+    )
+    
+    db.nodes[node_id] = node
+    
+    return {
+        "node_id": node_id,
+        "message": "Story node created successfully",
+        "node": node
+    }
+
+@app.get("/nodes/{node_id}")
+async def get_story_node(
+    node_id: str,
+    current_user: dict = Depends(verify_jwt_token)
+):
+    """Get a specific story node"""
+    
+    if node_id not in db.nodes:
+        raise HTTPException(status_code=404, detail="Story node not found")
+    
+    return db.nodes[node_id]
+
+@app.get("/nodes")
+async def list_story_nodes(
+    chapter_id: Optional[str] = None,
+    node_type: Optional[NodeType] = None,
+    current_user: dict = Depends(verify_jwt_token)
+):
+    """List story nodes with optional filtering"""
+    
+    nodes = list(db.nodes.values())
+    
+    if chapter_id:
+        nodes = [n for n in nodes if n.chapter_id == chapter_id]
+    
+    if node_type:
+        nodes = [n for n in nodes if n.node_type == node_type]
+    
+    return {
+        "nodes": nodes,
+        "total_count": len(nodes)
+    }
+
+# Story Edge Management (EDGE level)
+@app.post("/edges")
+async def create_story_edge(
+    edge_data: Dict[str, Any],
+    current_user: dict = Depends(verify_jwt_token)
+):
+    """Create a new story edge"""
+    
+    edge_id = str(uuid.uuid4())
+    
+    # Validate that nodes exist
+    from_node_id = edge_data["from_node_id"]
+    to_node_id = edge_data["to_node_id"]
+    
+    if from_node_id not in db.nodes:
+        raise HTTPException(status_code=400, detail="From node does not exist")
+    
+    if to_node_id not in db.nodes:
+        raise HTTPException(status_code=400, detail="To node does not exist")
+    
+    edge = StoryEdge(
+        edge_id=edge_id,
+        from_node_id=from_node_id,
+        to_node_id=to_node_id,
+        choice_text=edge_data["choice_text"],
+        real_task_id=edge_data.get("real_task_id"),
+        habit_tag=edge_data.get("habit_tag"),
+        probability=edge_data.get("probability", 1.0),
+        therapeutic_weight=edge_data.get("therapeutic_weight", 1.0),
+        companion_requirements=edge_data.get("companion_requirements", {}),
+        achievement_rewards=edge_data.get("achievement_rewards", []),
+        ending_influence=edge_data.get("ending_influence", {})
+    )
+    
+    db.edges[edge_id] = edge
+    
+    # Check for cycles after adding edge
+    if detect_cycle():
+        del db.edges[edge_id]
+        raise HTTPException(status_code=400, detail="Edge would create a cycle in the DAG")
+    
+    return {
+        "edge_id": edge_id,
+        "message": "Story edge created successfully",
+        "edge": edge
+    }
+
+@app.get("/edges/{edge_id}")
+async def get_story_edge(
+    edge_id: str,
+    current_user: dict = Depends(verify_jwt_token)
+):
+    """Get a specific story edge"""
+    
+    if edge_id not in db.edges:
+        raise HTTPException(status_code=404, detail="Story edge not found")
+    
+    return db.edges[edge_id]
+
+@app.get("/edges")
+async def list_story_edges(
+    from_node_id: Optional[str] = None,
+    to_node_id: Optional[str] = None,
+    current_user: dict = Depends(verify_jwt_token)
+):
+    """List story edges with optional filtering"""
+    
+    edges = list(db.edges.values())
+    
+    if from_node_id:
+        edges = [e for e in edges if e.from_node_id == from_node_id]
+    
+    if to_node_id:
+        edges = [e for e in edges if e.to_node_id == to_node_id]
+    
+    return {
+        "edges": edges,
+        "total_count": len(edges)
+    }
+
+# DAG Validation Functions
+def detect_cycle() -> bool:
+    """Detect cycles in the story DAG using DFS"""
+    visited = set()
+    rec_stack = set()
+    
+    def dfs(node_id: str) -> bool:
+        visited.add(node_id)
+        rec_stack.add(node_id)
+        
+        # Get outgoing edges
+        outgoing_edges = [e for e in db.edges.values() if e.from_node_id == node_id]
+        
+        for edge in outgoing_edges:
+            next_node = edge.to_node_id
+            if next_node not in visited:
+                if dfs(next_node):
+                    return True
+            elif next_node in rec_stack:
+                return True
+        
+        rec_stack.remove(node_id)
+        return False
+    
+    for node_id in db.nodes.keys():
+        if node_id not in visited:
+            if dfs(node_id):
+                return True
+    
+    return False
+
+def find_isolated_nodes(chapter_id: Optional[str] = None) -> List[str]:
+    """Find nodes with no incoming or outgoing edges"""
+    nodes_to_check = db.nodes.keys()
+    if chapter_id:
+        nodes_to_check = [nid for nid, node in db.nodes.items() if node.chapter_id == chapter_id]
+    
+    isolated = []
+    for node_id in nodes_to_check:
+        has_incoming = any(e.to_node_id == node_id for e in db.edges.values())
+        has_outgoing = any(e.from_node_id == node_id for e in db.edges.values())
+        
+        if not has_incoming and not has_outgoing:
+            isolated.append(node_id)
+    
+    return isolated
+
+def find_unreachable_nodes(chapter_id: Optional[str] = None) -> List[str]:
+    """Find nodes that cannot be reached from opening nodes"""
+    nodes_to_check = db.nodes.keys()
+    if chapter_id:
+        nodes_to_check = [nid for nid, node in db.nodes.items() if node.chapter_id == chapter_id]
+    
+    # Find opening nodes
+    opening_nodes = [nid for nid, node in db.nodes.items() 
+                    if node.node_type == NodeType.OPENING and 
+                    (not chapter_id or node.chapter_id == chapter_id)]
+    
+    if not opening_nodes:
+        return list(nodes_to_check)  # All unreachable if no opening nodes
+    
+    # BFS from opening nodes
+    reachable = set()
+    queue = opening_nodes.copy()
+    
+    while queue:
+        current = queue.pop(0)
+        if current in reachable:
+            continue
+        
+        reachable.add(current)
+        
+        # Add connected nodes
+        outgoing_edges = [e for e in db.edges.values() if e.from_node_id == current]
+        for edge in outgoing_edges:
+            if edge.to_node_id not in reachable:
+                queue.append(edge.to_node_id)
+    
+    unreachable = [nid for nid in nodes_to_check if nid not in reachable]
+    return unreachable
+
+def ensure_connectivity() -> Dict[str, List[str]]:
+    """Ensure DAG connectivity and suggest merge paths for isolated nodes"""
+    isolated = find_isolated_nodes()
+    unreachable = find_unreachable_nodes()
+    
+    merge_suggestions = {}
+    
+    # Suggest connections for isolated nodes
+    for isolated_node in isolated:
+        node = db.nodes[isolated_node]
+        # Find nodes in same chapter that could connect
+        same_chapter_nodes = [nid for nid, n in db.nodes.items() 
+                             if n.chapter_id == node.chapter_id and nid != isolated_node]
+        
+        if same_chapter_nodes:
+            merge_suggestions[isolated_node] = same_chapter_nodes[:3]  # Top 3 suggestions
+    
+    return {
+        "isolated_nodes": isolated,
+        "unreachable_nodes": unreachable,
+        "merge_suggestions": merge_suggestions
+    }
+
+def auto_merge_isolated_nodes(chapter_id: Optional[str] = None) -> Dict[str, Any]:
+    """Automatically merge isolated nodes by creating rescue paths"""
+    isolated = find_isolated_nodes(chapter_id)
+    merge_results = []
+    
+    for isolated_node_id in isolated:
+        isolated_node = db.nodes[isolated_node_id]
+        
+        # Find potential connection points in the same chapter
+        same_chapter_nodes = [
+            nid for nid, node in db.nodes.items() 
+            if node.chapter_id == isolated_node.chapter_id and nid != isolated_node_id
+        ]
+        
+        if not same_chapter_nodes:
+            continue
+        
+        # Find nodes that could logically connect to this isolated node
+        potential_sources = []
+        for node_id in same_chapter_nodes:
+            node = db.nodes[node_id]
+            # Prefer choice nodes or nodes with similar therapeutic tags
+            if (node.node_type == NodeType.CHOICE or 
+                any(tag in isolated_node.therapeutic_tags for tag in node.therapeutic_tags)):
+                potential_sources.append(node_id)
+        
+        if not potential_sources:
+            potential_sources = same_chapter_nodes[:1]  # Fallback to any node
+        
+        # Create rescue edge from the best potential source
+        if potential_sources:
+            source_node_id = potential_sources[0]
+            rescue_edge_id = str(uuid.uuid4())
+            
+            rescue_edge = StoryEdge(
+                edge_id=rescue_edge_id,
+                from_node_id=source_node_id,
+                to_node_id=isolated_node_id,
+                choice_text=f"? - {isolated_node.title}?",
+                real_task_id=None,
+                habit_tag="exploration",
+                probability=0.3,  # Lower probability for rescue paths
+                therapeutic_weight=0.8,
+                companion_requirements={},
+                achievement_rewards=["path_finder"],
+                ending_influence={"exploration_path": 0.1}
+            )
+            
+            db.edges[rescue_edge_id] = rescue_edge
+            
+            merge_results.append({
+                "isolated_node": isolated_node_id,
+                "connected_to": source_node_id,
+                "rescue_edge": rescue_edge_id,
+                "method": "auto_rescue_path"
+            })
+    
+    return {
+        "merged_count": len(merge_results),
+        "merge_details": merge_results,
+        "remaining_isolated": find_isolated_nodes(chapter_id)
+    }
+
+# DAG Validation API
+@app.get("/dag/validate")
+async def validate_dag(
+    chapter_id: Optional[str] = None,
+    current_user: dict = Depends(verify_jwt_token)
+):
+    """Validate DAG structure for cycles and connectivity"""
+    
+    validation_result = {
+        "is_valid": True,
+        "has_cycles": False,
+        "isolated_nodes": [],
+        "unreachable_nodes": [],
+        "validation_errors": [],
+        "connectivity_suggestions": {}
+    }
+    
+    # Check for cycles
+    if detect_cycle():
+        validation_result["is_valid"] = False
+        validation_result["has_cycles"] = True
+        validation_result["validation_errors"].append("DAG contains cycles")
+    
+    # Check for isolated nodes
+    isolated = find_isolated_nodes(chapter_id)
+    if isolated:
+        validation_result["isolated_nodes"] = isolated
+        validation_result["validation_errors"].append(f"Found {len(isolated)} isolated nodes")
+    
+    # Check connectivity
+    unreachable = find_unreachable_nodes(chapter_id)
+    if unreachable:
+        validation_result["unreachable_nodes"] = unreachable
+        validation_result["validation_errors"].append(f"Found {len(unreachable)} unreachable nodes")
+    
+    # Get connectivity suggestions
+    connectivity_info = ensure_connectivity()
+    validation_result["connectivity_suggestions"] = connectivity_info["merge_suggestions"]
+    
+    return validation_result
+
+@app.post("/dag/auto-merge")
+async def auto_merge_dag_nodes(
+    chapter_id: Optional[str] = None,
+    current_user: dict = Depends(verify_jwt_token)
+):
+    """Automatically merge isolated nodes by creating rescue paths"""
+    
+    merge_result = auto_merge_isolated_nodes(chapter_id)
+    
+    return {
+        "message": f"Auto-merged {merge_result['merged_count']} isolated nodes",
+        "merge_result": merge_result
+    }
+
+# Enhanced Story Navigation
+@app.get("/navigation/{uid}/available-choices")
+async def get_available_choices(
+    uid: str,
+    current_user: dict = Depends(verify_jwt_token)
+):
+    """Get available story choices for user's current position"""
+    
+    if current_user["uid"] != uid:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    user_state = db.user_states.get(uid)
+    if not user_state or not user_state.current_node_id:
+        return {"choices": [], "current_node": None}
+    
+    current_node = db.nodes.get(user_state.current_node_id)
+    if not current_node:
+        return {"choices": [], "current_node": None}
+    
+    # Get outgoing edges from current node
+    available_edges = [
+        e for e in db.edges.values() 
+        if e.from_node_id == user_state.current_node_id
+    ]
+    
+    # Filter edges based on unlock conditions and companion requirements
+    valid_choices = []
+    for edge in available_edges:
+        target_node = db.nodes.get(edge.to_node_id)
+        if not target_node:
+            continue
+        
+        # Check unlock conditions
+        can_unlock = await check_unlock_conditions(uid, target_node.unlock_conditions)
+        
+        # Check companion requirements
+        meets_companion_reqs = True
+        for companion_id, required_level in edge.companion_requirements.items():
+            current_level = user_state.companion_relationships.get(companion_id, 0)
+            if current_level < required_level:
+                meets_companion_reqs = False
+                break
+        
+        choice_info = {
+            "edge_id": edge.edge_id,
+            "choice_text": edge.choice_text,
+            "target_node": {
+                "node_id": target_node.node_id,
+                "title": target_node.title,
+                "node_type": target_node.node_type.value,
+                "estimated_read_time": target_node.estimated_read_time
+            },
+            "can_choose": can_unlock and meets_companion_reqs,
+            "unlock_requirements": {
+                "conditions_met": can_unlock,
+                "companion_requirements_met": meets_companion_reqs,
+                "required_companions": edge.companion_requirements
+            },
+            "real_task_id": edge.real_task_id,
+            "habit_tag": edge.habit_tag,
+            "probability": edge.probability,
+            "therapeutic_weight": edge.therapeutic_weight
+        }
+        
+        valid_choices.append(choice_info)
+    
+    return {
+        "current_node": {
+            "node_id": current_node.node_id,
+            "title": current_node.title,
+            "content": current_node.content,
+            "node_type": current_node.node_type.value,
+            "therapeutic_tags": current_node.therapeutic_tags
+        },
+        "choices": valid_choices,
+        "total_choices": len(valid_choices)
+    }
+
+@app.get("/navigation/{uid}/story-path")
+async def get_story_path(
+    uid: str,
+    current_user: dict = Depends(verify_jwt_token)
+):
+    """Get user's complete story path and progression"""
+    
+    if current_user["uid"] != uid:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    user_state = db.user_states.get(uid)
+    if not user_state:
+        return {"path": [], "progression": {}}
+    
+    # Build story path from choice history
+    story_path = []
+    for choice in user_state.choice_history:
+        edge_id = choice.get("edge_id")
+        if edge_id and edge_id in db.edges:
+            edge = db.edges[edge_id]
+            from_node = db.nodes.get(edge.from_node_id)
+            to_node = db.nodes.get(edge.to_node_id)
+            
+            path_step = {
+                "timestamp": choice.get("timestamp"),
+                "from_node": {
+                    "node_id": from_node.node_id,
+                    "title": from_node.title,
+                    "node_type": from_node.node_type.value
+                } if from_node else None,
+                "to_node": {
+                    "node_id": to_node.node_id,
+                    "title": to_node.title,
+                    "node_type": to_node.node_type.value
+                } if to_node else None,
+                "choice_text": choice.get("choice_text"),
+                "edge_id": edge_id
+            }
+            story_path.append(path_step)
+    
+    # Calculate progression statistics
+    total_nodes_in_chapters = 0
+    completed_nodes_in_chapters = 0
+    
+    for chapter_id in user_state.unlocked_chapters:
+        chapter_nodes = [n for n in db.nodes.values() if n.chapter_id == chapter_id]
+        total_nodes_in_chapters += len(chapter_nodes)
+        completed_nodes_in_chapters += len([n for n in chapter_nodes if n.node_id in user_state.completed_nodes])
+    
+    progression = {
+        "unlocked_chapters": len(user_state.unlocked_chapters),
+        "total_chapters": len(db.chapters),
+        "completed_nodes": len(user_state.completed_nodes),
+        "unlocked_nodes": len(user_state.unlocked_nodes),
+        "total_nodes_in_unlocked_chapters": total_nodes_in_chapters,
+        "completion_percentage": (completed_nodes_in_chapters / total_nodes_in_chapters * 100) if total_nodes_in_chapters > 0 else 0,
+        "companion_relationships": user_state.companion_relationships,
+        "ending_scores": user_state.ending_scores,
+        "story_flags": user_state.story_flags
+    }
+    
+    return {
+        "story_path": story_path,
+        "progression": progression,
+        "current_position": {
+            "chapter_id": user_state.current_chapter_id,
+            "node_id": user_state.current_node_id
+        }
+    }
+
+# Chapter Navigation
+@app.get("/chapters/{chapter_id}/structure")
+async def get_chapter_structure(
+    chapter_id: str,
+    current_user: dict = Depends(verify_jwt_token)
+):
+    """Get the complete structure of a chapter including nodes and edges"""
+    
+    if chapter_id not in db.chapters:
+        raise HTTPException(status_code=404, detail="Chapter not found")
+    
+    chapter = db.chapters[chapter_id]
+    
+    # Get all nodes in this chapter
+    chapter_nodes = [n for n in db.nodes.values() if n.chapter_id == chapter_id]
+    
+    # Get all edges between nodes in this chapter
+    chapter_edges = []
+    for edge in db.edges.values():
+        if (edge.from_node_id in [n.node_id for n in chapter_nodes] and 
+            edge.to_node_id in [n.node_id for n in chapter_nodes]):
+            chapter_edges.append(edge)
+    
+    # Build node structure with connections
+    nodes_with_connections = []
+    for node in chapter_nodes:
+        outgoing_edges = [e for e in chapter_edges if e.from_node_id == node.node_id]
+        incoming_edges = [e for e in chapter_edges if e.to_node_id == node.node_id]
+        
+        node_info = {
+            "node_id": node.node_id,
+            "title": node.title,
+            "content": node.content,
+            "node_type": node.node_type.value,
+            "therapeutic_tags": node.therapeutic_tags,
+            "estimated_read_time": node.estimated_read_time,
+            "outgoing_connections": len(outgoing_edges),
+            "incoming_connections": len(incoming_edges),
+            "unlock_conditions": [
+                {
+                    "condition_type": cond.condition_type.value,
+                    "parameters": cond.parameters,
+                    "required": cond.required
+                } for cond in node.unlock_conditions
+            ]
+        }
+        nodes_with_connections.append(node_info)
+    
+    return {
+        "chapter": {
+            "chapter_id": chapter.chapter_id,
+            "title": chapter.title,
+            "description": chapter.description,
+            "chapter_type": chapter.chapter_type.value,
+            "therapeutic_focus": chapter.therapeutic_focus,
+            "estimated_completion_time": chapter.estimated_completion_time
+        },
+        "nodes": nodes_with_connections,
+        "edges": [
+            {
+                "edge_id": edge.edge_id,
+                "from_node_id": edge.from_node_id,
+                "to_node_id": edge.to_node_id,
+                "choice_text": edge.choice_text,
+                "real_task_id": edge.real_task_id,
+                "habit_tag": edge.habit_tag,
+                "probability": edge.probability,
+                "therapeutic_weight": edge.therapeutic_weight
+            } for edge in chapter_edges
+        ],
+        "structure_stats": {
+            "total_nodes": len(chapter_nodes),
+            "total_edges": len(chapter_edges),
+            "opening_nodes": len([n for n in chapter_nodes if n.node_type == NodeType.OPENING]),
+            "choice_nodes": len([n for n in chapter_nodes if n.node_type == NodeType.CHOICE]),
+            "ending_nodes": len([n for n in chapter_nodes if n.node_type == NodeType.ENDING])
+        }
+    }
+
+# User Story State Management
+@app.get("/user-state/{uid}")
+async def get_user_story_state(
+    uid: str,
+    current_user: dict = Depends(verify_jwt_token)
+):
+    """Get user's current story state"""
+    
+    if current_user["uid"] != uid:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    if uid not in db.user_states:
+        # Initialize new user state
+        db.user_states[uid] = UserStoryState(
+            uid=uid,
+            current_chapter_id="",
+            current_node_id="",
+            unlocked_chapters=[],
+            unlocked_nodes=[],
+            completed_nodes=[],
+            choice_history=[],
+            companion_relationships={},
+            ending_scores={},
+            story_flags={},
+            last_updated=datetime.utcnow()
+        )
+    
+    return db.user_states[uid]
+
+@app.post("/user-state/{uid}/progress")
+async def progress_story(
+    uid: str,
+    progress_data: Dict[str, Any],
+    current_user: dict = Depends(verify_jwt_token)
+):
+    """Progress user through story based on choice"""
+    
+    if current_user["uid"] != uid:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    edge_id = progress_data["edge_id"]
+    
+    if edge_id not in db.edges:
+        raise HTTPException(status_code=404, detail="Story edge not found")
+    
+    edge = db.edges[edge_id]
+    
+    # Get or create user state
+    if uid not in db.user_states:
+        db.user_states[uid] = UserStoryState(
+            uid=uid,
+            current_chapter_id="",
+            current_node_id=edge.from_node_id,
+            unlocked_chapters=[],
+            unlocked_nodes=[edge.from_node_id],
+            completed_nodes=[],
+            choice_history=[],
+            companion_relationships={},
+            ending_scores={},
+            story_flags={},
+            last_updated=datetime.utcnow()
+        )
+    
+    user_state = db.user_states[uid]
+    
+    # Validate current position
+    if user_state.current_node_id != edge.from_node_id:
+        raise HTTPException(status_code=400, detail="Invalid story progression")
+    
+    # Check unlock conditions for target node
+    target_node = db.nodes[edge.to_node_id]
+    if not await check_unlock_conditions(uid, target_node.unlock_conditions):
+        raise HTTPException(status_code=400, detail="Target node unlock conditions not met")
+    
+    # Progress to next node
+    user_state.current_node_id = edge.to_node_id
+    user_state.current_chapter_id = target_node.chapter_id
+    
+    if edge.to_node_id not in user_state.unlocked_nodes:
+        user_state.unlocked_nodes.append(edge.to_node_id)
+    
+    if edge.from_node_id not in user_state.completed_nodes:
+        user_state.completed_nodes.append(edge.from_node_id)
+    
+    if target_node.chapter_id not in user_state.unlocked_chapters:
+        user_state.unlocked_chapters.append(target_node.chapter_id)
+    
+    # Record choice
+    choice_record = {
+        "timestamp": datetime.utcnow(),
+        "from_node": edge.from_node_id,
+        "to_node": edge.to_node_id,
+        "choice_text": edge.choice_text,
+        "edge_id": edge_id
+    }
+    user_state.choice_history.append(choice_record)
+    
+    # Apply companion effects
+    for companion_id, effect in target_node.companion_effects.items():
+        if companion_id not in user_state.companion_relationships:
+            user_state.companion_relationships[companion_id] = 0
+        user_state.companion_relationships[companion_id] += effect
+    
+    # Apply ending influences
+    for ending_type, influence in edge.ending_influence.items():
+        if ending_type not in user_state.ending_scores:
+            user_state.ending_scores[ending_type] = 0.0
+        user_state.ending_scores[ending_type] += influence
+    
+    # Update story flags
+    user_state.story_flags.update(target_node.ending_flags)
+    
+    user_state.last_updated = datetime.utcnow()
+    
+    return {
+        "message": "Story progressed successfully",
+        "current_node": target_node,
+        "user_state": user_state
+    }
+
+async def check_unlock_conditions(uid: str, conditions: List[UnlockCondition]) -> bool:
+    """Check if user meets unlock conditions with real-world task integration"""
+    
+    for condition in conditions:
+        if not condition.required:
+            continue
+        
+        if condition.condition_type == UnlockConditionType.TASK_COMPLETION:
+            # Integration point with task management service
+            task_id = condition.parameters.get("task_id")
+            habit_tag = condition.parameters.get("habit_tag")
+            
+            # TODO: Call task management service to check completion
+            # For now, placeholder logic
+            if task_id or habit_tag:
+                # Assume task is completed for demo
+                continue
+        
+        elif condition.condition_type == UnlockConditionType.COMPANION_RELATIONSHIP:
+            companion_id = condition.parameters.get("companion_id")
+            required_level = condition.parameters.get("level", 0)
+            
+            user_state = db.user_states.get(uid)
+            if not user_state:
+                return False
+            
+            current_level = user_state.companion_relationships.get(companion_id, 0)
+            if current_level < required_level:
+                return False
+        
+        elif condition.condition_type == UnlockConditionType.MOOD_THRESHOLD:
+            # Integration point with mood tracking service
+            required_mood = condition.parameters.get("mood_score", 3)
+            # TODO: Call mood tracking service
+            continue
+        
+        elif condition.condition_type == UnlockConditionType.LEVEL_REQUIREMENT:
+            # Integration point with core game service
+            required_level = condition.parameters.get("level", 1)
+            # TODO: Call core game service to check user level
+            continue
+        
+        elif condition.condition_type == UnlockConditionType.DIARY_COMPLETION:
+            # Integration point with diary system
+            required_days = condition.parameters.get("days", 1)
+            # TODO: Call diary service
+            continue
+    
+    return True
+
+# Real-world Task Integration
+@app.get("/edges/by-task/{task_id}")
+async def get_edges_by_task(
+    task_id: str,
+    current_user: dict = Depends(verify_jwt_token)
+):
+    """Get story edges linked to a specific real-world task"""
+    
+    linked_edges = [e for e in db.edges.values() if e.real_task_id == task_id]
+    
+    return {
+        "task_id": task_id,
+        "linked_edges": linked_edges,
+        "count": len(linked_edges)
+    }
+
+@app.get("/edges/by-habit/{habit_tag}")
+async def get_edges_by_habit(
+    habit_tag: str,
+    current_user: dict = Depends(verify_jwt_token)
+):
+    """Get story edges linked to a specific habit tag"""
+    
+    linked_edges = [e for e in db.edges.values() if e.habit_tag == habit_tag]
+    
+    return {
+        "habit_tag": habit_tag,
+        "linked_edges": linked_edges,
+        "count": len(linked_edges)
+    }
+
+# Companion System
+@app.get("/companions")
+async def list_companions(
+    current_user: dict = Depends(verify_jwt_token)
+):
+    """List available companions"""
+    return {
+        "companions": list(db.companions.values())
+    }
+
+@app.get("/companions/{uid}/relationships")
+async def get_companion_relationships(
+    uid: str,
+    current_user: dict = Depends(verify_jwt_token)
+):
+    """Get user's companion relationships"""
+    
+    if current_user["uid"] != uid:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    user_state = db.user_states.get(uid)
+    if not user_state:
+        return {"relationships": {}}
+    
+    # Enrich with companion info
+    relationships = {}
+    for companion_id, level in user_state.companion_relationships.items():
+        if companion_id in db.companions:
+            companion = db.companions[companion_id]
+            relationships[companion_id] = {
+                "companion": companion,
+                "relationship_level": level,
+                "relationship_percentage": min(100, (level / companion.max_relationship) * 100)
+            }
+    
+    return {"relationships": relationships}
+
+# Story Analytics
+@app.get("/analytics/story-paths")
+async def analyze_story_paths(
+    chapter_id: Optional[str] = None,
+    current_user: dict = Depends(verify_jwt_token)
+):
+    """Analyze story paths and popular choices"""
+    
+    # Analyze user choice patterns
+    choice_analytics = {}
+    ending_analytics = {}
+    
+    for user_state in db.user_states.values():
+        for choice in user_state.choice_history:
+            edge_id = choice["edge_id"]
+            if edge_id not in choice_analytics:
+                choice_analytics[edge_id] = 0
+            choice_analytics[edge_id] += 1
+        
+        for ending_type, score in user_state.ending_scores.items():
+            if ending_type not in ending_analytics:
+                ending_analytics[ending_type] = []
+            ending_analytics[ending_type].append(score)
+    
+    return {
+        "popular_choices": choice_analytics,
+        "ending_trends": ending_analytics,
+        "total_users": len(db.user_states)
+    }
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8005)

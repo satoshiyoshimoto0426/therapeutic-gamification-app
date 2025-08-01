@@ -1,0 +1,357 @@
+"""
+Task Management Service Simple Validation
+
+[UNICODE_30BF]
+
+Requirements: 5.1, 5.5
+"""
+
+import sys
+import os
+from datetime import datetime, timedelta
+
+# Add project root to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+from shared.interfaces.task_system import (
+    Task, TaskType, TaskDifficulty, TaskPriority, TaskStatus, ADHDSupportLevel,
+    TaskXPCalculator, TaskTypeRecommender
+)
+from shared.interfaces.core_types import CrystalAttribute
+
+
+def test_task_creation():
+    """[UNICODE_30BF]"""
+    print("=== [UNICODE_30BF] ===")
+    
+    # 1. [UNICODE_30EB]
+    print("\n1. [UNICODE_30EB]")
+    routine_task = Task(
+        task_id="routine_001",
+        uid="test_user",
+        task_type=TaskType.ROUTINE,
+        title="[UNICODE_671D]",
+        description="[UNICODE_6BCE]30[UNICODE_5206]",
+        difficulty=TaskDifficulty.EASY,
+        priority=TaskPriority.HIGH,
+        estimated_duration=30,
+        adhd_support_level=ADHDSupportLevel.BASIC,
+        primary_crystal_attribute=CrystalAttribute.SELF_DISCIPLINE,
+        tags=["[UNICODE_5065]", "[UNICODE_7FD2]"],
+        is_recurring=True,
+        recurrence_pattern="daily"
+    )
+    
+    print(f"[UNICODE_2713] [UNICODE_30EB]")
+    print(f"  - [UNICODE_30BF]ID: {routine_task.task_id}")
+    print(f"  - [UNICODE_30BF]: {routine_task.title}")
+    print(f"  - [UNICODE_30BF]: {routine_task.task_type.value}")
+    print(f"  - [UNICODE_96E3]: {routine_task.difficulty.value}")
+    print(f"  - [UNICODE_57FA]XP: {routine_task.base_xp}")
+    print(f"  - [UNICODE_4E3B]: {routine_task.primary_crystal_attribute.value}")
+    
+    # 2. [UNICODE_30B9]
+    print("\n2. [UNICODE_30B9]")
+    skill_task = Task(
+        task_id="skill_001",
+        uid="test_user",
+        task_type=TaskType.SKILL_UP,
+        title="Python[UNICODE_5B66]",
+        description="Python[UNICODE_306E]",
+        difficulty=TaskDifficulty.MEDIUM,
+        estimated_duration=60,
+        adhd_support_level=ADHDSupportLevel.INTENSIVE,
+        pomodoro_sessions_planned=2,
+        focus_music_enabled=True,
+        primary_crystal_attribute=CrystalAttribute.WISDOM,
+        secondary_crystal_attributes=[CrystalAttribute.CREATIVITY],
+        tags=["[UNICODE_5B66]", "[UNICODE_30D7]"]
+    )
+    
+    print(f"[UNICODE_2713] [UNICODE_30B9]")
+    print(f"  - [UNICODE_30BF]ID: {skill_task.task_id}")
+    print(f"  - [UNICODE_30BF]: {skill_task.title}")
+    print(f"  - [UNICODE_30BF]: {skill_task.task_type.value}")
+    print(f"  - [UNICODE_57FA]XP: {skill_task.base_xp}")
+    print(f"  - ADHD[UNICODE_652F]: {skill_task.adhd_support_level.value}")
+    
+    # 3. [UNICODE_793E]
+    print("\n3. [UNICODE_793E]")
+    social_task = Task(
+        task_id="social_001",
+        uid="test_user",
+        task_type=TaskType.SOCIAL,
+        title="[UNICODE_53CB]",
+        description="[UNICODE_4E45]",
+        difficulty=TaskDifficulty.EASY,
+        estimated_duration=45,
+        primary_crystal_attribute=CrystalAttribute.COMMUNICATION,
+        secondary_crystal_attributes=[CrystalAttribute.EMPATHY],
+        tags=["[UNICODE_793E]", "[UNICODE_53CB]"]
+    )
+    
+    print(f"[UNICODE_2713] [UNICODE_793E]")
+    print(f"  - [UNICODE_30BF]ID: {social_task.task_id}")
+    print(f"  - [UNICODE_30BF]: {social_task.title}")
+    print(f"  - [UNICODE_30BF]: {social_task.task_type.value}")
+    print(f"  - [UNICODE_57FA]XP: {social_task.base_xp}")
+    
+    # 4. [UNICODE_5358]
+    print("\n4. [UNICODE_5358]")
+    oneshot_task = Task(
+        task_id="oneshot_001",
+        uid="test_user",
+        task_type=TaskType.ONE_SHOT,
+        title="[UNICODE_30D7]",
+        description="[UNICODE_6765]",
+        difficulty=TaskDifficulty.HARD,
+        priority=TaskPriority.URGENT,
+        estimated_duration=120,
+        due_date=datetime.utcnow() + timedelta(days=7),
+        adhd_support_level=ADHDSupportLevel.MODERATE,
+        pomodoro_sessions_planned=4,
+        primary_crystal_attribute=CrystalAttribute.COURAGE,
+        tags=["[UNICODE_4ED5]", "[UNICODE_91CD]"]
+    )
+    
+    print(f"[UNICODE_2713] [UNICODE_5358]")
+    print(f"  - [UNICODE_30BF]ID: {oneshot_task.task_id}")
+    print(f"  - [UNICODE_30BF]: {oneshot_task.title}")
+    print(f"  - [UNICODE_30BF]: {oneshot_task.task_type.value}")
+    print(f"  - [UNICODE_512A]: {oneshot_task.priority.value}")
+    print(f"  - [UNICODE_671F]: {oneshot_task.due_date}")
+    print(f"  - [UNICODE_57FA]XP: {oneshot_task.base_xp}")
+    
+    return [routine_task, skill_task, social_task, oneshot_task]
+
+
+def test_task_lifecycle():
+    """[UNICODE_30BF]"""
+    print("\n=== [UNICODE_30BF] ===")
+    
+    # [UNICODE_30BF]
+    task = Task(
+        task_id="lifecycle_001",
+        uid="test_user",
+        task_type=TaskType.SKILL_UP,
+        title="[UNICODE_30E9]",
+        description="[UNICODE_30BF]",
+        difficulty=TaskDifficulty.MEDIUM,
+        estimated_duration=45,
+        adhd_support_level=ADHDSupportLevel.MODERATE,
+        pomodoro_sessions_planned=2
+    )
+    
+    print(f"\n1. [UNICODE_30BF]")
+    print(f"[UNICODE_2713] [UNICODE_521D]: {task.status.value}")
+    print(f"[UNICODE_2713] [UNICODE_57FA]XP: {task.base_xp}")
+    
+    # [UNICODE_30BF]
+    print(f"\n2. [UNICODE_30BF]")
+    task.start_task()
+    print(f"[UNICODE_2713] [UNICODE_958B]: {task.status.value}")
+    print(f"[UNICODE_2713] [UNICODE_958B]: {task.started_at}")
+    
+    # [UNICODE_30BF]
+    print(f"\n3. [UNICODE_30BF]")
+    mood_score = 4
+    actual_duration = 40
+    notes = "[UNICODE_96C6]"
+    
+    # Pomodoro[UNICODE_30BB]
+    task.pomodoro_sessions_completed = 2
+    
+    xp_earned = task.complete_task(mood_score, actual_duration, notes)
+    
+    print(f"[UNICODE_2713] [UNICODE_5B8C]: {task.status.value}")
+    print(f"[UNICODE_2713] [UNICODE_5B8C]: {task.completed_at}")
+    print(f"[UNICODE_2713] [UNICODE_6C17]: {task.mood_at_completion}")
+    print(f"[UNICODE_2713] [UNICODE_5B9F]: {task.actual_duration}[UNICODE_5206]")
+    print(f"[UNICODE_2713] [UNICODE_7372]XP: {xp_earned}")
+    print(f"[UNICODE_2713] [UNICODE_30E1]: {task.notes}")
+    
+    return task
+
+
+def test_xp_calculation():
+    """XP[UNICODE_8A08]"""
+    print("\n=== XP[UNICODE_8A08] ===")
+    
+    # [UNICODE_7570]XP[UNICODE_8A08]
+    test_cases = [
+        {
+            "name": "[UNICODE_57FA]",
+            "task_type": TaskType.ROUTINE,
+            "difficulty": TaskDifficulty.EASY,
+            "mood_score": 3,
+            "adhd_support": ADHDSupportLevel.NONE
+        },
+        {
+            "name": "[UNICODE_9AD8]",
+            "task_type": TaskType.SKILL_UP,
+            "difficulty": TaskDifficulty.VERY_HARD,
+            "mood_score": 5,
+            "adhd_support": ADHDSupportLevel.INTENSIVE
+        },
+        {
+            "name": "[UNICODE_793E]",
+            "task_type": TaskType.SOCIAL,
+            "difficulty": TaskDifficulty.MEDIUM,
+            "mood_score": 2,
+            "adhd_support": ADHDSupportLevel.BASIC
+        }
+    ]
+    
+    for case in test_cases:
+        print(f"\n{case['name']}:")
+        
+        # [UNICODE_30C6]
+        task = Task(
+            task_id=f"xp_test_{case['name']}",
+            uid="test_user",
+            task_type=case["task_type"],
+            title=f"XP[UNICODE_30C6] - {case['name']}",
+            difficulty=case["difficulty"],
+            adhd_support_level=case["adhd_support"],
+            pomodoro_sessions_planned=2
+        )
+        
+        # Pomodoro[UNICODE_30BB]ADHD[UNICODE_652F]
+        task.pomodoro_sessions_completed = 2
+        
+        # [UNICODE_8A73]XP[UNICODE_8A08]
+        xp_result = TaskXPCalculator.calculate_detailed_xp(
+            task, case["mood_score"], 30
+        )
+        
+        print(f"  - [UNICODE_30BF]: {case['task_type'].value}")
+        print(f"  - [UNICODE_96E3]: {case['difficulty'].value}")
+        print(f"  - [UNICODE_6C17]: {case['mood_score']}")
+        print(f"  - ADHD[UNICODE_652F]: {case['adhd_support'].value}")
+        print(f"  - [UNICODE_57FA]XP: {xp_result.base_xp}")
+        print(f"  - [UNICODE_6C17]: {xp_result.mood_coefficient:.2f}")
+        print(f"  - ADHD[UNICODE_652F]: {xp_result.adhd_assist_multiplier:.2f}")
+        print(f"  - [UNICODE_6642]: {xp_result.time_efficiency_bonus:.2f}")
+        print(f"  - [UNICODE_512A]: {xp_result.priority_bonus:.2f}")
+        print(f"  - [UNICODE_6700]XP: {xp_result.final_xp}")
+
+
+def test_task_recommendations():
+    """[UNICODE_30BF]"""
+    print("\n=== [UNICODE_30BF] ===")
+    
+    # [UNICODE_76EE]
+    test_goals = [
+        "[UNICODE_6BCE]",
+        "[UNICODE_30D7]", 
+        "[UNICODE_53CB]",
+        "[UNICODE_4ECA]"
+    ]
+    
+    print("\n1. [UNICODE_76EE]:")
+    for goal in test_goals:
+        recommended_type = TaskTypeRecommender.recommend_task_type(goal)
+        recommended_crystals = TaskTypeRecommender.recommend_crystal_attributes(recommended_type)
+        
+        print(f"  [UNICODE_76EE]: {goal}")
+        print(f"  [UNICODE_63A8]: {recommended_type.value}")
+        print(f"  [UNICODE_63A8]: {[c.value for c in recommended_crystals]}")
+        print()
+    
+    # [UNICODE_96E3]
+    print("2. [UNICODE_96E3]:")
+    difficulty_cases = [
+        {"experience": 1, "complexity": "simple", "confidence": 2},
+        {"experience": 3, "complexity": "moderate", "confidence": 4},
+        {"experience": 5, "complexity": "complex", "confidence": 5}
+    ]
+    
+    for case in difficulty_cases:
+        recommended_difficulty = TaskTypeRecommender.recommend_difficulty(
+            case["experience"], case["complexity"], case["confidence"]
+        )
+        
+        print(f"  [UNICODE_7D4C]: {case['experience']}, [UNICODE_8907]: {case['complexity']}, [UNICODE_81EA]: {case['confidence']}")
+        print(f"  [UNICODE_63A8]: {recommended_difficulty.value}")
+        print()
+
+
+def test_crystal_growth_events():
+    """[UNICODE_30AF]"""
+    print("\n=== [UNICODE_30AF] ===")
+    
+    # [UNICODE_7570]
+    tasks = [
+        Task(
+            task_id="crystal_routine",
+            uid="test_user",
+            task_type=TaskType.ROUTINE,
+            title="[UNICODE_7FD2]",
+            difficulty=TaskDifficulty.EASY,
+            primary_crystal_attribute=CrystalAttribute.SELF_DISCIPLINE,
+            secondary_crystal_attributes=[CrystalAttribute.RESILIENCE]
+        ),
+        Task(
+            task_id="crystal_skill",
+            uid="test_user", 
+            task_type=TaskType.SKILL_UP,
+            title="[UNICODE_5B66]",
+            difficulty=TaskDifficulty.MEDIUM,
+            primary_crystal_attribute=CrystalAttribute.WISDOM,
+            secondary_crystal_attributes=[CrystalAttribute.CREATIVITY, CrystalAttribute.CURIOSITY]
+        )
+    ]
+    
+    for task in tasks:
+        growth_events = task.get_crystal_growth_events()
+        
+        print(f"\n[UNICODE_30BF]: {task.title} ({task.task_type.value})")
+        print(f"[UNICODE_30AF]: {len(growth_events)}")
+        
+        for attribute, event_type in growth_events:
+            print(f"  - {attribute.value}: {event_type.value}")
+
+
+def main():
+    """[UNICODE_30E1]"""
+    print("Task Management Service Simple Validation")
+    print("=" * 50)
+    
+    try:
+        # 1. [UNICODE_30BF]
+        tasks = test_task_creation()
+        
+        # 2. [UNICODE_30BF]
+        completed_task = test_task_lifecycle()
+        
+        # 3. XP[UNICODE_8A08]
+        test_xp_calculation()
+        
+        # 4. [UNICODE_30BF]
+        test_task_recommendations()
+        
+        # 5. [UNICODE_30AF]
+        test_crystal_growth_events()
+        
+        print("\n" + "=" * 50)
+        print("[UNICODE_2705] [UNICODE_5168]")
+        print(f"[UNICODE_5B9F]:")
+        print(f"  - 4[UNICODE_7A2E]Routine[UNICODE_3001]One-Shot[UNICODE_3001]Skill-Up[UNICODE_3001]Social[UNICODE_FF09]")
+        print(f"  - XP[UNICODE_8A08]ADHD[UNICODE_652F]")
+        print(f"  - [UNICODE_30BF]")
+        print(f"  - [UNICODE_30AF]")
+        print(f"  - [UNICODE_30BF]")
+        print(f"  - ADHD[UNICODE_652F]")
+        
+        return True
+        
+    except Exception as e:
+        print(f"\n[UNICODE_274C] [UNICODE_691C]: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+if __name__ == "__main__":
+    success = main()
+    exit(0 if success else 1)

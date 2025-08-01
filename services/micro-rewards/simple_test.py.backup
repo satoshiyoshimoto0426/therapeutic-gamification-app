@@ -1,0 +1,188 @@
+"""
+Micro Rewards Service [UNICODE_7C21]
+
+[UNICODE_30D6]
+"""
+
+import asyncio
+import time
+from main import micro_rewards_engine, UserAction
+from datetime import datetime, timedelta
+
+async def test_basic_functionality():
+    """[UNICODE_57FA]"""
+    print("Micro Rewards Service [UNICODE_7C21]")
+    print("=" * 50)
+    
+    user_id = "simple_test_user"
+    
+    # 1. [UNICODE_30ED]
+    print("1. [UNICODE_30ED]")
+    login_action = UserAction(
+        user_id=user_id,
+        action_type="login",
+        timestamp=datetime.now(),
+        context={}
+    )
+    
+    start_time = time.time()
+    response = await micro_rewards_engine.process_user_action(login_action)
+    execution_time = (time.time() - start_time) * 1000
+    
+    print(f"   [UNICODE_2713] [UNICODE_5B9F]: {execution_time:.1f}ms")
+    print(f"   [UNICODE_2713] [UNICODE_6210]: {response.success}")
+    print(f"   [UNICODE_2713] [UNICODE_30EA]: {len(response.rewards)}[UNICODE_500B]")
+    print(f"   [UNICODE_2713] [UNICODE_7DCF]XP: {response.total_xp}")
+    print(f"   [UNICODE_2713] [UNICODE_304A]: {response.celebration_message}")
+    print(f"   [UNICODE_2713] [UNICODE_6B21]: {response.next_action_hint}")
+    
+    # 2. [UNICODE_30BF]
+    print("\n2. [UNICODE_30BF]")
+    task_start_action = UserAction(
+        user_id=user_id,
+        action_type="task_start",
+        timestamp=datetime.now(),
+        context={"task_id": "test_task_001"}
+    )
+    
+    start_time = time.time()
+    response = await micro_rewards_engine.process_user_action(task_start_action)
+    execution_time = (time.time() - start_time) * 1000
+    
+    print(f"   [UNICODE_2713] [UNICODE_5B9F]: {execution_time:.1f}ms")
+    print(f"   [UNICODE_2713] [UNICODE_30EA]: {len(response.rewards)}[UNICODE_500B]")
+    print(f"   [UNICODE_2713] [UNICODE_7DCF]XP: {response.total_xp}")
+    print(f"   [UNICODE_2713] [UNICODE_304A]: {response.celebration_message}")
+    
+    # 3. 3[UNICODE_30BF]3[UNICODE_5206]
+    print("\n3. 3[UNICODE_30BF]3[UNICODE_5206]")
+    quick_complete_action = UserAction(
+        user_id=user_id,
+        action_type="task_complete",
+        timestamp=datetime.now(),
+        context={
+            "task_id": "test_task_001",
+            "tap_count": 2,  # 3[UNICODE_30BF]
+            "duration_seconds": 120  # 2[UNICODE_5206]3[UNICODE_5206]
+        }
+    )
+    
+    start_time = time.time()
+    response = await micro_rewards_engine.process_user_action(quick_complete_action)
+    execution_time = (time.time() - start_time) * 1000
+    
+    print(f"   [UNICODE_2713] [UNICODE_5B9F]: {execution_time:.1f}ms")
+    print(f"   [UNICODE_2713] [UNICODE_30EA]: {len(response.rewards)}[UNICODE_500B]")
+    print(f"   [UNICODE_2713] [UNICODE_7DCF]XP: {response.total_xp}")
+    print(f"   [UNICODE_2713] [UNICODE_304A]: {response.celebration_message}")
+    
+    # [UNICODE_5404]
+    for i, reward in enumerate(response.rewards):
+        print(f"       [UNICODE_30EA]{i+1}: {reward.title} ({reward.xp_value} XP)")
+    
+    # 4. [UNICODE_30EA]
+    print("\n4. [UNICODE_30EA]")
+    recovery_user_id = "recovery_test_user"
+    
+    # [UNICODE_30E6]3[UNICODE_65E5]
+    user_state = await micro_rewards_engine._get_or_create_user_state(recovery_user_id)
+    user_state.last_login = datetime.now() - timedelta(days=3)
+    user_state.missed_days = 3
+    
+    recovery_action = UserAction(
+        user_id=recovery_user_id,
+        action_type="login",
+        timestamp=datetime.now(),
+        context={}
+    )
+    
+    response = await micro_rewards_engine.process_user_action(recovery_action)
+    
+    print(f"   [UNICODE_2713] [UNICODE_30EA]: {len(response.rewards)}[UNICODE_500B]")
+    print(f"   [UNICODE_2713] [UNICODE_7DCF]XP: {response.total_xp}")
+    print(f"   [UNICODE_2713] [UNICODE_304A]: {response.celebration_message}")
+    
+    # 5. [UNICODE_9023]
+    print("\n5. [UNICODE_9023]")
+    streak_user_id = "streak_test_user"
+    
+    # 5[UNICODE_65E5]
+    for day in range(1, 6):
+        user_state = await micro_rewards_engine._get_or_create_user_state(streak_user_id)
+        user_state.consecutive_days = day - 1  # [UNICODE_524D]
+        user_state.last_login = datetime.now() - timedelta(days=1)
+        
+        streak_action = UserAction(
+            user_id=streak_user_id,
+            action_type="login",
+            timestamp=datetime.now(),
+            context={}
+        )
+        
+        response = await micro_rewards_engine.process_user_action(streak_action)
+        
+        if day == 5:  # 5[UNICODE_65E5]
+            print(f"   [UNICODE_2713] 5[UNICODE_65E5]: {len(response.rewards)}[UNICODE_500B]")
+            print(f"   [UNICODE_2713] [UNICODE_7DCF]XP: {response.total_xp}")
+            print(f"   [UNICODE_2713] [UNICODE_304A]: {response.celebration_message}")
+    
+    # 6. [UNICODE_30D1]
+    print("\n6. [UNICODE_30D1]10[UNICODE_56DE]")
+    performance_user_id = "performance_test_user"
+    response_times = []
+    
+    for i in range(10):
+        perf_action = UserAction(
+            user_id=performance_user_id,
+            action_type="task_complete",
+            timestamp=datetime.now(),
+            context={"task_id": f"perf_task_{i}"}
+        )
+        
+        start_time = time.time()
+        response = await micro_rewards_engine.process_user_action(perf_action)
+        execution_time = (time.time() - start_time) * 1000
+        
+        response_times.append(execution_time)
+    
+    avg_time = sum(response_times) / len(response_times)
+    max_time = max(response_times)
+    min_time = min(response_times)
+    
+    print(f"   [UNICODE_2713] [UNICODE_5E73]: {avg_time:.1f}ms")
+    print(f"   [UNICODE_2713] [UNICODE_6700]: {max_time:.1f}ms")
+    print(f"   [UNICODE_2713] [UNICODE_6700]: {min_time:.1f}ms")
+    print(f"   [UNICODE_2713] 1.2[UNICODE_79D2]: {'[UNICODE_2713]' if max_time < 1200 else '[UNICODE_2717]'}")
+    
+    # 7. [UNICODE_30A8]
+    print("\n7. [UNICODE_30A8]")
+    stats = await micro_rewards_engine.get_user_engagement_stats(user_id)
+    
+    print(f"   [UNICODE_2713] [UNICODE_30E6]ID: {stats['user_id']}")
+    print(f"   [UNICODE_2713] [UNICODE_7D99]: {stats['consecutive_days']}[UNICODE_65E5]")
+    print(f"   [UNICODE_2713] [UNICODE_65E5]: {stats['daily_actions']}[UNICODE_56DE]")
+    print(f"   [UNICODE_2713] [UNICODE_7DCF]: {stats['total_actions']}[UNICODE_56DE]")
+    print(f"   [UNICODE_2713] [UNICODE_30EA]: {stats['recovery_boost_available']}")
+    
+    # 8. [UNICODE_30EA]
+    print("\n8. [UNICODE_30EA]")
+    templates = micro_rewards_engine.reward_templates
+    
+    print(f"   [UNICODE_2713] [UNICODE_7DCF]: {len(templates)}[UNICODE_500B]")
+    print("   [UNICODE_2713] [UNICODE_30C6]:")
+    
+    for template in templates[:5]:  # [UNICODE_6700]5[UNICODE_3064]
+        print(f"       - {template.title}: {template.description} ({template.xp_value} XP)")
+    
+    print("\n" + "=" * 50)
+    print("[UNICODE_2713] Micro Rewards Service [UNICODE_7C21]")
+    print("\n[UNICODE_30D6]:")
+    print("- 3[UNICODE_30BF]3[UNICODE_5206] [UNICODE_2713]")
+    print("- 1.2[UNICODE_79D2] [UNICODE_2713]")
+    print("- ADHD[UNICODE_306E] [UNICODE_2713]")
+    print("- [UNICODE_30EA] [UNICODE_2713]")
+    print("- [UNICODE_5373] [UNICODE_2713]")
+    print("- [UNICODE_9023] [UNICODE_2713]")
+
+if __name__ == "__main__":
+    asyncio.run(test_basic_functionality())

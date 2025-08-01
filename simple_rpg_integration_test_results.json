@@ -1,0 +1,83 @@
+{
+  "test_suite": "RPG要素統合テスト（簡易版）",
+  "timestamp": "2025-07-28T11:21:02.570250",
+  "tests": [
+    {
+      "test_name": "コイン経済システム基本計算",
+      "passed": true,
+      "details": {
+        "base_coins": 10,
+        "difficulty": 3,
+        "mood_coefficient": 1.1,
+        "adhd_assist": 1.2,
+        "calculated_coins": 39
+      }
+    },
+    {
+      "test_name": "XPシステム統合",
+      "passed": true,
+      "details": {
+        "base_xp": 15,
+        "calculated_xp": 19,
+        "total_xp": 1000,
+        "calculated_level": 3
+      }
+    },
+    {
+      "test_name": "職業システム基本",
+      "passed": true,
+      "details": {
+        "available_jobs": 6,
+        "job_level": 3,
+        "base_bonus": 2,
+        "calculated_bonus": 2
+      }
+    },
+    {
+      "test_name": "魔物バトルシステム基本",
+      "passed": true,
+      "details": {
+        "available_demons": 4,
+        "user_actions": [
+          "routine_task_completion",
+          "pomodoro_usage"
+        ],
+        "calculated_damage": 50
+      }
+    },
+    {
+      "test_name": "経済バランス調整",
+      "passed": true,
+      "details": {
+        "inflation_results": [
+          {
+            "coins": 500,
+            "adjustment": 1.0,
+            "reduction_percent": 0
+          },
+          {
+            "coins": 2000,
+            "adjustment": 0.95,
+            "reduction_percent": 5
+          },
+          {
+            "coins": 7000,
+            "adjustment": 0.9,
+            "reduction_percent": 9
+          },
+          {
+            "coins": 15000,
+            "adjustment": 0.8,
+            "reduction_percent": 19
+          }
+        ]
+      }
+    }
+  ],
+  "summary": {
+    "total_tests": 5,
+    "passed_tests": 5,
+    "failed_tests": 0,
+    "success_rate": 100.0
+  }
+}

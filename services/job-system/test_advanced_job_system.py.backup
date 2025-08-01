@@ -1,0 +1,443 @@
+"""
+[UNICODE_4E0A]
+"""
+
+import pytest
+from datetime import datetime, timedelta
+from advanced_job_system import (
+    AdvancedJobSystem, AdvancedJobManager, UnlockCondition, UnlockConditionType,
+    StoryIntegration, AchievementTracker, create_advanced_job_manager
+)
+from main import JobSystem, JobType
+
+
+class TestAdvancedJobSystem:
+    """AdvancedJobSystem[UNICODE_30AF]"""
+    
+    def setup_method(self):
+        """[UNICODE_5404]"""
+        self.base_job_system = JobSystem()
+        self.advanced_system = AdvancedJobSystem(self.base_job_system)
+    
+    def test_advanced_unlock_conditions_initialization(self):
+        """[UNICODE_4E0A]"""
+        conditions = self.advanced_system.advanced_unlock_conditions
+        
+        # 3[UNICODE_3064]
+        assert JobType.PALADIN in conditions
+        assert JobType.ARCHMAGE in conditions
+        assert JobType.SHADOW_MASTER in conditions
+        
+        # [UNICODE_30D1]
+        paladin_conditions = conditions[JobType.PALADIN]
+        assert len(paladin_conditions) == 5
+        
+        # [UNICODE_6761]
+        condition_types = [cond.condition_type for cond in paladin_conditions]
+        assert UnlockConditionType.JOB_LEVEL in condition_types
+        assert UnlockConditionType.TASK_COMPLETION in condition_types
+        assert UnlockConditionType.STORY_BRANCH in condition_types
+        assert UnlockConditionType.ACHIEVEMENT in condition_types
+    
+    def test_paladin_unlock_conditions_success(self):
+        """[UNICODE_30D1]"""
+        user_data = {
+            "job_levels": {"warrior": 10, "priest": 5},
+            "task_completions": {"social_tasks": 50},
+            "story_branches": {"helped_others_count": 10},
+            "achievements": {"community_leader": True}
+        }
+        
+        result = self.advanced_system.check_advanced_unlock_conditions(JobType.PALADIN, user_data)
+        
+        assert result["unlocked"] == True
+        assert len(result["conditions_met"]) == 5
+        assert len(result["conditions_failed"]) == 0
+    
+    def test_paladin_unlock_conditions_failure(self):
+        """[UNICODE_30D1]"""
+        user_data = {
+            "job_levels": {"warrior": 8, "priest": 3},  # [UNICODE_6761]
+            "task_completions": {"social_tasks": 30},   # [UNICODE_6761]
+            "story_branches": {"helped_others_count": 5}, # [UNICODE_6761]
+            "achievements": {"community_leader": False}  # [UNICODE_6761]
+        }
+        
+        result = self.advanced_system.check_advanced_unlock_conditions(JobType.PALADIN, user_data)
+        
+        assert result["unlocked"] == False
+        assert len(result["conditions_met"]) == 0
+        assert len(result["conditions_failed"]) == 5
+        
+        # [UNICODE_9032]
+        warrior_progress = result["progress"]["warrior_level"]
+        assert warrior_progress["current_value"] == 8
+        assert warrior_progress["required_value"] == 10
+        assert warrior_progress["progress_percentage"] == 80.0
+    
+    def test_archmage_unlock_conditions(self):
+        """[UNICODE_5927]"""
+        user_data = {
+            "job_levels": {"mage": 15},
+            "stats": {"wisdom": 20},
+            "task_completions": {"creative_tasks": 100},
+            "story_branches": {"innovative_solutions": 15},
+            "achievements": {"master_innovator": True},
+            "time_based": {"continuous_learning_days": 30}
+        }
+        
+        result = self.advanced_system.check_advanced_unlock_conditions(JobType.ARCHMAGE, user_data)
+        
+        assert result["unlocked"] == True
+        assert len(result["conditions_met"]) == 6
+    
+    def test_shadow_master_combination_condition(self):
+        """[UNICODE_5F71]"""
+        user_data = {
+            "job_levels": {"ninja": 12},
+            "stats": {"resilience": 25},
+            "task_completions": {"stress_overcome": 30},
+            "story_branches": {"shadow_path_choices": 20},
+            "achievements": {"stress_master": True},
+            "combination_conditions": {
+                "environment_changes_adapted": 50,
+                "crisis_overcome": 10,
+                "flexibility_score": 0.8
+            }
+        }
+        
+        result = self.advanced_system.check_advanced_unlock_conditions(JobType.SHADOW_MASTER, user_data)
+        
+        assert result["unlocked"] == True
+        
+        # [UNICODE_8907]
+        combination_progress = result["progress"]["adaptation_mastery"]
+        assert "current_value" in combination_progress
+        assert isinstance(combination_progress["current_value"], dict)
+    
+    def test_unlock_progress_summary(self):
+        """[UNICODE_30A2]"""
+        user_data = {
+            "job_levels": {"warrior": 8, "priest": 3, "mage": 10, "ninja": 8},
+            "stats": {"wisdom": 15, "resilience": 20},
+            "task_completions": {"social_tasks": 30, "creative_tasks": 60, "stress_overcome": 20},
+            "story_branches": {"helped_others_count": 5, "innovative_solutions": 8, "shadow_path_choices": 12},
+            "achievements": {"community_leader": False, "master_innovator": False, "stress_master": False},
+            "time_based": {"continuous_learning_days": 20},
+            "combination_conditions": {
+                "environment_changes_adapted": 30,
+                "crisis_overcome": 5,
+                "flexibility_score": 0.6
+            }
+        }
+        
+        summary = self.advanced_system.get_unlock_progress_summary(user_data)
+        
+        # 3[UNICODE_3064]
+        assert "paladin" in summary
+        assert "archmage" in summary
+        assert "shadow_master" in summary
+        
+        # [UNICODE_30D1]
+        paladin_info = summary["paladin"]
+        assert paladin_info["name"] == "[UNICODE_30D1]"
+        assert paladin_info["unlocked"] == False
+        assert paladin_info["conditions_total"] == 5
+        assert "overall_progress" in paladin_info
+        assert "next_milestone" in paladin_info
+    
+    def test_story_integration(self):
+        """[UNICODE_30B9]"""
+        story_integrations = self.advanced_system.story_integrations
+        
+        # 3[UNICODE_3064]
+        assert JobType.PALADIN in story_integrations
+        assert JobType.ARCHMAGE in story_integrations
+        assert JobType.SHADOW_MASTER in story_integrations
+        
+        # [UNICODE_30D1]
+        paladin_story = story_integrations[JobType.PALADIN]
+        assert paladin_story.job_unlock_story_node == "paladin_awakening"
+        assert "[UNICODE_5149]" in paladin_story.job_change_dialogue
+        assert len(paladin_story.special_story_branches) == 4
+        assert "[UNICODE_81EA]" in paladin_story.character_development_arc
+    
+    def test_job_change_story_generation(self):
+        """[UNICODE_8077]"""
+        user_context = {"current_level": 15, "recent_achievements": ["community_leader"]}
+        
+        story = self.advanced_system.generate_job_change_story(JobType.PALADIN, user_context)
+        
+        assert "story_node" in story
+        assert story["story_node"] == "paladin_awakening"
+        assert "dialogue" in story
+        assert "character_arc" in story
+        assert "special_choices" in story
+        assert len(story["special_choices"]) <= 3  # ADHD[UNICODE_914D]3[UNICODE_9078]
+        assert "therapeutic_message" in story
+        
+        # [UNICODE_9078]
+        for choice in story["special_choices"]:
+            assert "choice_id" in choice
+            assert "text" in choice
+            assert "story_impact" in choice
+
+
+class TestAchievementTracker:
+    """AchievementTracker[UNICODE_30AF]"""
+    
+    def setup_method(self):
+        """[UNICODE_5404]"""
+        self.achievement_tracker = AchievementTracker()
+    
+    def test_achievement_initialization(self):
+        """[UNICODE_5B9F]"""
+        achievements = self.achievement_tracker.achievements
+        
+        # 3[UNICODE_3064]
+        assert "community_leader" in achievements
+        assert "master_innovator" in achievements
+        assert "stress_master" in achievements
+        
+        # [UNICODE_30B3]
+        community_leader = achievements["community_leader"]
+        assert community_leader["name"] == "[UNICODE_30B3]"
+        assert "requirements" in community_leader
+        assert "therapeutic_value" in community_leader
+    
+    def test_achievement_check_success(self):
+        """[UNICODE_5B9F]"""
+        user_data = {
+            "help_others_count": 25,
+            "group_activities": 15,
+            "positive_feedback": 20
+        }
+        
+        result = self.achievement_tracker.check_achievement("community_leader", user_data)
+        assert result == True
+    
+    def test_achievement_check_failure(self):
+        """[UNICODE_5B9F]"""
+        user_data = {
+            "help_others_count": 15,  # [UNICODE_6761]
+            "group_activities": 8,    # [UNICODE_6761]
+            "positive_feedback": 10   # [UNICODE_6761]
+        }
+        
+        result = self.achievement_tracker.check_achievement("community_leader", user_data)
+        assert result == False
+    
+    def test_achievement_progress(self):
+        """[UNICODE_5B9F]"""
+        user_data = {
+            "help_others_count": 15,
+            "group_activities": 8,
+            "positive_feedback": 10
+        }
+        
+        progress = self.achievement_tracker.get_achievement_progress("community_leader", user_data)
+        
+        assert progress["achievement_id"] == "community_leader"
+        assert progress["name"] == "[UNICODE_30B3]"
+        assert progress["completed"] == False
+        assert "progress" in progress
+        
+        # [UNICODE_500B]
+        help_progress = progress["progress"]["help_others_count"]
+        assert help_progress["current"] == 15
+        assert help_progress["required"] == 20
+        assert help_progress["percentage"] == 75.0
+
+
+class TestAdvancedJobManager:
+    """AdvancedJobManager[UNICODE_30AF]"""
+    
+    def setup_method(self):
+        """[UNICODE_5404]"""
+        self.advanced_manager = AdvancedJobManager()
+    
+    def test_advanced_unlock_status(self):
+        """[UNICODE_4E0A]"""
+        user_stats = {
+            "job_levels": {"warrior": 8, "priest": 4, "mage": 12},
+            "stats": {"wisdom": 18, "resilience": 22},
+            "task_completions": {"social_tasks": 40, "creative_tasks": 80},
+            "achievements": {"community_leader": False, "master_innovator": False}
+        }
+        
+        status = self.advanced_manager.get_advanced_unlock_status("test_user", user_stats)
+        
+        assert "paladin" in status
+        assert "archmage" in status
+        assert "shadow_master" in status
+        
+        # [UNICODE_5404]
+        for job_key in status:
+            job_info = status[job_key]
+            assert "name" in job_info
+            assert "unlocked" in job_info
+            assert "conditions_met" in job_info
+            assert "conditions_total" in job_info
+            assert "overall_progress" in job_info
+    
+    def test_advanced_job_change_success(self):
+        """[UNICODE_4E0A]"""
+        # [UNICODE_30E6]
+        self.advanced_manager.initialize_user_job("test_user", JobType.WARRIOR)
+        
+        # [UNICODE_30D1]
+        user_stats = {
+            "job_levels": {"warrior": 10, "priest": 5},
+            "task_completions": {"social_tasks": 50},
+            "story_branches": {"helped_others_count": 10},
+            "achievements": {"community_leader": True}
+        }
+        
+        result = self.advanced_manager.attempt_advanced_job_change("test_user", JobType.PALADIN, user_stats)
+        
+        assert result["success"] == True
+        assert result["job_changed"] == True
+        assert "story_content" in result
+        assert "unlock_status" in result
+        
+        # [UNICODE_30B9]
+        story = result["story_content"]
+        assert "dialogue" in story
+        assert "special_choices" in story
+        assert "therapeutic_message" in story
+    
+    def test_advanced_job_change_failure(self):
+        """[UNICODE_4E0A]"""
+        # [UNICODE_30E6]
+        self.advanced_manager.initialize_user_job("test_user", JobType.WARRIOR)
+        
+        # [UNICODE_6761]
+        user_stats = {
+            "job_levels": {"warrior": 5, "priest": 2},
+            "task_completions": {"social_tasks": 20},
+            "story_branches": {"helped_others_count": 3},
+            "achievements": {"community_leader": False}
+        }
+        
+        result = self.advanced_manager.attempt_advanced_job_change("test_user", JobType.PALADIN, user_stats)
+        
+        assert result["success"] == False
+        assert result["reason"] == "conditions_not_met"
+        assert "unlock_status" in result
+        
+        # [UNICODE_30A2]
+        unlock_status = result["unlock_status"]
+        assert unlock_status["unlocked"] == False
+        assert len(unlock_status["conditions_failed"]) > 0
+    
+    def test_next_milestones(self):
+        """[UNICODE_6B21]"""
+        user_stats = {
+            "job_levels": {"warrior": 8, "priest": 4, "mage": 12, "ninja": 10},
+            "stats": {"wisdom": 18, "resilience": 22},
+            "task_completions": {"social_tasks": 40, "creative_tasks": 80, "stress_overcome": 25},
+            "story_branches": {"helped_others_count": 8, "innovative_solutions": 12, "shadow_path_choices": 15},
+            "achievements": {"community_leader": False, "master_innovator": False, "stress_master": False},
+            "time_based": {"continuous_learning_days": 25},
+            "combination_conditions": {
+                "environment_changes_adapted": 40,
+                "crisis_overcome": 8,
+                "flexibility_score": 0.7
+            }
+        }
+        
+        milestones = self.advanced_manager.get_next_milestones("test_user", user_stats)
+        
+        # [UNICODE_30DE]
+        assert len(milestones) > 0
+        
+        for i in range(len(milestones) - 1):
+            assert milestones[i]["overall_progress"] >= milestones[i + 1]["overall_progress"]
+        
+        # [UNICODE_30DE]
+        for milestone in milestones:
+            assert "job_type" in milestone
+            assert "job_name" in milestone
+            assert "milestone" in milestone
+            assert "overall_progress" in milestone
+
+
+class TestIntegration:
+    """[UNICODE_7D71]"""
+    
+    def test_complete_advanced_job_workflow(self):
+        """[UNICODE_5B8C]"""
+        advanced_manager = create_advanced_job_manager()
+        
+        # 1. [UNICODE_30E6]
+        advanced_manager.initialize_user_job("integration_user", JobType.WARRIOR)
+        
+        # 2. [UNICODE_57FA]
+        for _ in range(10):
+            advanced_manager.add_job_experience("integration_user", 100)
+        
+        # 3. [UNICODE_50E7]
+        advanced_manager.change_job("integration_user", JobType.PRIEST, {})
+        for _ in range(5):
+            advanced_manager.add_job_experience("integration_user", 100)
+        
+        # 4. [UNICODE_30D1]
+        user_stats = {
+            "job_levels": {"warrior": 10, "priest": 5},
+            "task_completions": {"social_tasks": 50},
+            "story_branches": {"helped_others_count": 10},
+            "achievements": {"community_leader": True}
+        }
+        
+        # 5. [UNICODE_30A2]
+        unlock_status = advanced_manager.get_advanced_unlock_status("integration_user", user_stats)
+        assert unlock_status["paladin"]["unlocked"] == True
+        
+        # 6. [UNICODE_30D1]
+        change_result = advanced_manager.attempt_advanced_job_change("integration_user", JobType.PALADIN, user_stats)
+        assert change_result["success"] == True
+        
+        # 7. [UNICODE_5909]
+        job_info = advanced_manager.get_user_job_info("integration_user")
+        assert job_info["current_job"]["type"] == "paladin"
+        assert job_info["current_job"]["name"] == "[UNICODE_30D1]"
+        
+        # 8. [UNICODE_30B9]
+        story = change_result["story_content"]
+        assert "[UNICODE_30D1]" in story["dialogue"] or "[UNICODE_5149]" in story["dialogue"]
+        assert len(story["special_choices"]) <= 3  # ADHD[UNICODE_914D]
+    
+    def test_multiple_advanced_jobs_progression(self):
+        """[UNICODE_8907]"""
+        advanced_manager = create_advanced_job_manager()
+        
+        # [UNICODE_5168]
+        super_user_stats = {
+            "job_levels": {"warrior": 15, "priest": 10, "mage": 20, "ninja": 15},
+            "stats": {"wisdom": 25, "resilience": 30},
+            "task_completions": {"social_tasks": 100, "creative_tasks": 150, "stress_overcome": 50},
+            "story_branches": {"helped_others_count": 20, "innovative_solutions": 25, "shadow_path_choices": 30},
+            "achievements": {"community_leader": True, "master_innovator": True, "stress_master": True},
+            "time_based": {"continuous_learning_days": 45},
+            "combination_conditions": {
+                "environment_changes_adapted": 80,
+                "crisis_overcome": 20,
+                "flexibility_score": 0.95
+            }
+        }
+        
+        # [UNICODE_5168]
+        unlock_status = advanced_manager.get_advanced_unlock_status("super_user", super_user_stats)
+        
+        assert unlock_status["paladin"]["unlocked"] == True
+        assert unlock_status["archmage"]["unlocked"] == True
+        assert unlock_status["shadow_master"]["unlocked"] == True
+        
+        # [UNICODE_5404]100%[UNICODE_3067]
+        for job_key in unlock_status:
+            assert unlock_status[job_key]["overall_progress"] == 100.0
+
+
+if __name__ == "__main__":
+    # [UNICODE_30C6]
+    pytest.main([__file__, "-v"])

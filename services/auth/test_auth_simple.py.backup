@@ -1,0 +1,312 @@
+"""
+[UNICODE_8A8D]
+
+JWT[UNICODE_8A8D]
+[UNICODE_8981]6.1, 10.3[UNICODE_306B]
+
+Requirements: 6.1, 10.3
+"""
+
+import sys
+import os
+
+# Add project root to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+from services.auth.jwt_service import jwt_service, TokenType
+from shared.interfaces.rbac_system import PermissionLevel
+
+# [UNICODE_8A8D]
+auth_service = None
+
+
+def test_jwt_token_creation():
+    """JWT[UNICODE_30C8]"""
+    print("=== JWT[UNICODE_30C8] ===")
+    
+    guardian_id = "test_guardian_001"
+    user_id = "test_user_001"
+    permission_level = PermissionLevel.TASK_EDIT.value
+    
+    try:
+        # [UNICODE_30C8]
+        token_pair = jwt_service.create_token_pair(
+            guardian_id, user_id, permission_level
+        )
+        
+        print(f"[UNICODE_2713] [UNICODE_30A2]")
+        print(f"[UNICODE_2713] [UNICODE_30EA]")
+        print(f"[UNICODE_2713] [UNICODE_30C8]: {token_pair.token_type}")
+        print(f"[UNICODE_2713] [UNICODE_6709]: {token_pair.expires_in}[UNICODE_79D2]")
+        
+        # [UNICODE_30A2]
+        access_token_data = jwt_service.verify_token(token_pair.access_token)
+        assert access_token_data.guardian_id == guardian_id
+        assert access_token_data.user_id == user_id
+        assert access_token_data.permission_level == permission_level
+        assert access_token_data.token_type == TokenType.ACCESS
+        print(f"[UNICODE_2713] [UNICODE_30A2]")
+        
+        # [UNICODE_30EA]
+        refresh_token_data = jwt_service.verify_token(token_pair.refresh_token)
+        assert refresh_token_data.guardian_id == guardian_id
+        assert refresh_token_data.user_id == user_id
+        assert refresh_token_data.permission_level == permission_level
+        assert refresh_token_data.token_type == TokenType.REFRESH
+        print(f"[UNICODE_2713] [UNICODE_30EA]")
+        
+        return True
+        
+    except Exception as e:
+        print(f"[UNICODE_2717] JWT[UNICODE_30C8]: {str(e)}")
+        return False
+
+
+def test_token_refresh():
+    """[UNICODE_30C8]"""
+    print("\n=== [UNICODE_30C8] ===")
+    
+    guardian_id = "test_guardian_002"
+    user_id = "test_user_002"
+    permission_level = PermissionLevel.CHAT_SEND.value
+    
+    try:
+        # [UNICODE_521D]
+        original_token_pair = jwt_service.create_token_pair(
+            guardian_id, user_id, permission_level
+        )
+        print(f"[UNICODE_2713] [UNICODE_521D]")
+        
+        # [UNICODE_30C8]
+        new_token_pair = jwt_service.refresh_access_token(original_token_pair.refresh_token)
+        print(f"[UNICODE_2713] [UNICODE_30C8]")
+        
+        # [UNICODE_65B0]
+        assert new_token_pair.access_token != original_token_pair.access_token
+        assert new_token_pair.refresh_token != original_token_pair.refresh_token
+        print(f"[UNICODE_2713] [UNICODE_65B0]")
+        
+        # [UNICODE_65B0]
+        new_access_token_data = jwt_service.verify_token(new_token_pair.access_token)
+        assert new_access_token_data.guardian_id == guardian_id
+        assert new_access_token_data.user_id == user_id
+        assert new_access_token_data.permission_level == permission_level
+        print(f"[UNICODE_2713] [UNICODE_65B0]")
+        
+        return True
+        
+    except Exception as e:
+        print(f"[UNICODE_2717] [UNICODE_30C8]: {str(e)}")
+        return False
+
+
+def test_token_revocation():
+    """[UNICODE_30C8]"""
+    print("\n=== [UNICODE_30C8] ===")
+    
+    guardian_id = "test_guardian_003"
+    user_id = "test_user_003"
+    permission_level = PermissionLevel.VIEW_ONLY.value
+    
+    try:
+        # [UNICODE_30C8]
+        token_pair = jwt_service.create_token_pair(
+            guardian_id, user_id, permission_level
+        )
+        print(f"[UNICODE_2713] [UNICODE_30C8]")
+        
+        # [UNICODE_30C8]
+        jwt_service.verify_token(token_pair.access_token)
+        print(f"[UNICODE_2713] [UNICODE_53D6]")
+        
+        # [UNICODE_30C8]
+        revoke_success = jwt_service.revoke_token(token_pair.access_token)
+        assert revoke_success is True
+        print(f"[UNICODE_2713] [UNICODE_30C8]")
+        
+        # [UNICODE_53D6]
+        try:
+            jwt_service.verify_token(token_pair.access_token)
+            print(f"[UNICODE_2717] [UNICODE_53D6]")
+            return False
+        except:
+            print(f"[UNICODE_2713] [UNICODE_53D6]")
+        
+        return True
+        
+    except Exception as e:
+        print(f"[UNICODE_2717] [UNICODE_30C8]: {str(e)}")
+        return False
+
+
+def test_token_info_extraction():
+    """[UNICODE_30C8]"""
+    print("\n=== [UNICODE_30C8] ===")
+    
+    guardian_id = "test_guardian_004"
+    user_id = "test_user_004"
+    permission_level = PermissionLevel.TASK_EDIT.value
+    
+    try:
+        # [UNICODE_30AB]
+        access_token = jwt_service.create_access_token(
+            guardian_id, user_id, permission_level,
+            {"custom_claim": "test_value"}
+        )
+        print(f"[UNICODE_2713] [UNICODE_30AB]")
+        
+        # [UNICODE_30C8]
+        token_info = jwt_service.get_token_info(access_token)
+        
+        assert token_info["guardian_id"] == guardian_id
+        assert token_info["user_id"] == user_id
+        assert token_info["permission_level"] == permission_level
+        assert token_info["token_type"] == "access"
+        assert token_info["is_expired"] is False
+        assert token_info["is_revoked"] is False
+        assert "jti" in token_info
+        assert "issued_at" in token_info
+        assert "expires_at" in token_info
+        
+        print(f"[UNICODE_2713] [UNICODE_30C8]")
+        print(f"  - Guardian ID: {token_info['guardian_id']}")
+        print(f"  - User ID: {token_info['user_id']}")
+        print(f"  - Permission Level: {token_info['permission_level']}")
+        print(f"  - Token Type: {token_info['token_type']}")
+        print(f"  - JTI: {token_info['jti']}")
+        
+        return True
+        
+    except Exception as e:
+        print(f"[UNICODE_2717] [UNICODE_30C8]: {str(e)}")
+        return False
+
+
+async def test_authentication_service():
+    """[UNICODE_8A8D]"""
+    print("\n=== [UNICODE_8A8D] ===")
+    
+    try:
+        # [UNICODE_8A8D]
+        from services.auth.auth_middleware import auth_service
+        
+        guardian_id = "test_guardian_005"
+        user_id = "test_user_005"
+        permission_level = PermissionLevel.CHAT_SEND
+        
+        # [UNICODE_8A8D]
+        auth_result = await auth_service.authenticate_and_authorize(
+            guardian_id, user_id, permission_level
+        )
+        
+        assert auth_result["authorized"] is True
+        assert "authentication" in auth_result
+        assert "tokens" in auth_result
+        print(f"[UNICODE_2713] [UNICODE_8A8D]")
+        
+        tokens = auth_result["tokens"]
+        assert "access_token" in tokens
+        assert "refresh_token" in tokens
+        print(f"[UNICODE_2713] [UNICODE_30C8]")
+        
+        # [UNICODE_8A8D]
+        refresh_result = await auth_service.refresh_authentication(
+            tokens["refresh_token"]
+        )
+        
+        assert "tokens" in refresh_result
+        assert refresh_result["guardian_id"] == guardian_id
+        assert refresh_result["user_id"] == user_id
+        print(f"[UNICODE_2713] [UNICODE_8A8D]")
+        
+        # [UNICODE_30ED]
+        logout_result = await auth_service.logout(
+            refresh_result["tokens"]["access_token"],
+            refresh_result["tokens"]["refresh_token"]
+        )
+        
+        assert logout_result["success"] is True
+        print(f"[UNICODE_2713] [UNICODE_30ED]")
+        
+        return True
+        
+    except Exception as e:
+        print(f"[UNICODE_2717] [UNICODE_8A8D]: {str(e)}")
+        return False
+
+
+def test_permission_levels():
+    """[UNICODE_6A29]"""
+    print("\n=== [UNICODE_6A29] ===")
+    
+    try:
+        # [UNICODE_5404]
+        permission_levels = [
+            PermissionLevel.VIEW_ONLY,
+            PermissionLevel.TASK_EDIT,
+            PermissionLevel.CHAT_SEND
+        ]
+        
+        for level in permission_levels:
+            guardian_id = f"test_guardian_{level.value}"
+            user_id = f"test_user_{level.value}"
+            
+            token = jwt_service.create_access_token(
+                guardian_id, user_id, level.value
+            )
+            
+            token_data = jwt_service.verify_token(token)
+            assert token_data.permission_level == level.value
+            
+            print(f"[UNICODE_2713] {level.value} [UNICODE_6A29]")
+        
+        return True
+        
+    except Exception as e:
+        print(f"[UNICODE_2717] [UNICODE_6A29]: {str(e)}")
+        return False
+
+
+async def run_all_tests():
+    """[UNICODE_5168]"""
+    print("=== [UNICODE_8A8D] ===")
+    
+    tests = [
+        ("JWT[UNICODE_30C8]", test_jwt_token_creation),
+        ("[UNICODE_30C8]", test_token_refresh),
+        ("[UNICODE_30C8]", test_token_revocation),
+        ("[UNICODE_30C8]", test_token_info_extraction),
+        ("[UNICODE_8A8D]", test_authentication_service),
+        ("[UNICODE_6A29]", test_permission_levels),
+    ]
+    
+    passed = 0
+    total = len(tests)
+    
+    for test_name, test_func in tests:
+        try:
+            if test_name == "[UNICODE_8A8D]":
+                result = await test_func()
+            else:
+                result = test_func()
+            
+            if result:
+                passed += 1
+            
+        except Exception as e:
+            print(f"[UNICODE_2717] {test_name}[UNICODE_30C6]: {str(e)}")
+    
+    print(f"\n=== [UNICODE_30C6]: {passed}/{total} [UNICODE_6210] ===")
+    
+    if passed == total:
+        print("[UNICODE_1F389] [UNICODE_5168]")
+        return True
+    else:
+        print("[UNICODE_274C] [UNICODE_4E00]")
+        return False
+
+
+if __name__ == "__main__":
+    import asyncio
+    success = asyncio.run(run_all_tests())
+    exit(0 if success else 1)

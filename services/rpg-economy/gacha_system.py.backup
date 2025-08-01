@@ -1,0 +1,511 @@
+"""
+[UNICODE_30AC]
+
+5[UNICODE_6BB5]common[UNICODE_301C]legendary[UNICODE_FF09]
+[UNICODE_6CBB]
+"""
+
+import random
+import uuid
+from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from enum import Enum
+from datetime import datetime
+
+# [UNICODE_5171]
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+
+from shared.utils.exceptions import ValidationError, InsufficientCoinsError
+
+
+class ItemRarity(Enum):
+    """[UNICODE_30A2]"""
+    COMMON = "common"
+    UNCOMMON = "uncommon"
+    RARE = "rare"
+    EPIC = "epic"
+    LEGENDARY = "legendary"
+
+
+class ItemType(Enum):
+    """[UNICODE_30A2]"""
+    WEAPON = "weapon"
+    ARMOR = "armor"
+    ACCESSORY = "accessory"
+    CONSUMABLE = "consumable"
+    MAGIC = "magic"
+
+
+class TherapeuticTheme(Enum):
+    """[UNICODE_6CBB]"""
+    FOCUS = "focus"           # [UNICODE_96C6]
+    RESILIENCE = "resilience" # [UNICODE_56DE]
+    MOTIVATION = "motivation" # [UNICODE_3084]
+    SOCIAL = "social"         # [UNICODE_793E]
+    CREATIVITY = "creativity" # [UNICODE_5275]
+    WISDOM = "wisdom"         # [UNICODE_77E5]
+
+
+@dataclass
+class Item:
+    """[UNICODE_30A2]"""
+    id: str
+    name: str
+    description: str
+    rarity: ItemRarity
+    item_type: ItemType
+    therapeutic_theme: TherapeuticTheme
+    stat_bonuses: Dict[str, int]
+    special_effects: List[str]
+    flavor_text: str
+    created_at: datetime
+
+
+@dataclass
+class GachaResult:
+    """[UNICODE_30AC]"""
+    success: bool
+    items: List[Item]
+    coins_spent: int
+    gacha_type: str
+    guaranteed_rare: bool
+    timestamp: datetime
+    error_message: Optional[str] = None
+
+
+class GachaSystem:
+    """
+    [UNICODE_30AC]
+    
+    5[UNICODE_6BB5]
+    [UNICODE_30A2]
+    """
+    
+    def __init__(self):
+        # [UNICODE_30EC]
+        self.rarity_rates = {
+            ItemRarity.COMMON: 0.60,     # 60%
+            ItemRarity.UNCOMMON: 0.25,   # 25%
+            ItemRarity.RARE: 0.10,       # 10%
+            ItemRarity.EPIC: 0.04,       # 4%
+            ItemRarity.LEGENDARY: 0.01   # 1%
+        }
+        
+        # [UNICODE_30AC]
+        self.gacha_costs = {
+            "single": 100,
+            "ten_pull": 900,    # 10%[UNICODE_5272]
+            "premium": 300      # [UNICODE_30EC]2[UNICODE_500D]
+        }
+        
+        # [UNICODE_6CBB]
+        self.item_templates = self._initialize_item_templates()
+        
+        # [UNICODE_30EC]
+        self.stat_bonus_ranges = {
+            ItemRarity.COMMON: (1, 3),
+            ItemRarity.UNCOMMON: (2, 5),
+            ItemRarity.RARE: (4, 8),
+            ItemRarity.EPIC: (7, 12),
+            ItemRarity.LEGENDARY: (10, 20)
+        }
+    
+    def _initialize_item_templates(self) -> Dict:
+        """[UNICODE_30A2]"""
+        return {
+            TherapeuticTheme.FOCUS: {
+                ItemType.WEAPON: {
+                    "names": ["[UNICODE_96C6]", "[UNICODE_30D5]", "[UNICODE_6CE8]", "[UNICODE_7CBE]"],
+                    "descriptions": ["[UNICODE_96C6]", "[UNICODE_96D1]", "[UNICODE_6CE8]", "[UNICODE_5FC3]"],
+                    "effects": ["task_focus_boost", "distraction_resistance", "deep_work_mode"]
+                },
+                ItemType.ARMOR: {
+                    "names": ["[UNICODE_96C6]", "[UNICODE_30D5]", "[UNICODE_7791]", "[UNICODE_9759]"],
+                    "descriptions": ["[UNICODE_5916]", "[UNICODE_96C6]", "[UNICODE_5FC3]", "[UNICODE_6C17]"],
+                    "effects": ["noise_cancellation", "focus_duration_extend", "meditation_boost"]
+                },
+                ItemType.ACCESSORY: {
+                    "names": ["[UNICODE_96C6]", "[UNICODE_30D5]", "[UNICODE_6CE8]", "[UNICODE_7CBE]"],
+                    "descriptions": ["[UNICODE_96C6]", "[UNICODE_5FC3]", "[UNICODE_6CE8]", "[UNICODE_7CBE]"],
+                    "effects": ["attention_sustain", "mind_clarity", "focus_recovery"]
+                }
+            },
+            TherapeuticTheme.RESILIENCE: {
+                ItemType.WEAPON: {
+                    "names": ["[UNICODE_56DE]", "[UNICODE_30EC]", "[UNICODE_518D]", "[UNICODE_5E0C]"],
+                    "descriptions": ["[UNICODE_5FC3]", "[UNICODE_56F0]", "[UNICODE_7CBE]", "[UNICODE_5E0C]"],
+                    "effects": ["stress_recovery", "emotional_healing", "bounce_back_boost"]
+                },
+                ItemType.ARMOR: {
+                    "names": ["[UNICODE_56DE]", "[UNICODE_30EC]", "[UNICODE_518D]", "[UNICODE_5E0C]"],
+                    "descriptions": ["[UNICODE_30C0]", "[UNICODE_5FC3]", "[UNICODE_7CBE]", "[UNICODE_5E0C]"],
+                    "effects": ["damage_reduction", "quick_recovery", "emotional_armor"]
+                },
+                ItemType.CONSUMABLE: {
+                    "names": ["[UNICODE_56DE]", "[UNICODE_30EC]", "[UNICODE_5E0C]", "[UNICODE_518D]"],
+                    "descriptions": ["[UNICODE_5FC3]", "[UNICODE_7CBE]", "[UNICODE_5E0C]", "[UNICODE_6D3B]"],
+                    "effects": ["instant_recovery", "stress_relief", "energy_restore"]
+                }
+            },
+            TherapeuticTheme.MOTIVATION: {
+                ItemType.WEAPON: {
+                    "names": ["[UNICODE_3084]", "[UNICODE_30E2]", "[UNICODE_60C5]", "[UNICODE_610F]"],
+                    "descriptions": ["[UNICODE_3084]", "[UNICODE_30E2]", "[UNICODE_60C5]", "[UNICODE_610F]"],
+                    "effects": ["motivation_boost", "passion_ignite", "drive_enhance"]
+                },
+                ItemType.ACCESSORY: {
+                    "names": ["[UNICODE_3084]", "[UNICODE_30E2]", "[UNICODE_60C5]", "[UNICODE_610F]"],
+                    "descriptions": ["[UNICODE_3084]", "[UNICODE_30E2]", "[UNICODE_60C5]", "[UNICODE_610F]"],
+                    "effects": ["motivation_sustain", "goal_clarity", "persistence_boost"]
+                }
+            },
+            TherapeuticTheme.SOCIAL: {
+                ItemType.WEAPON: {
+                    "names": ["[UNICODE_30B3]", "[UNICODE_793E]", "[UNICODE_5171]", "[UNICODE_7D46]"],
+                    "descriptions": ["[UNICODE_4EBA]", "[UNICODE_793E]", "[UNICODE_5171]", "[UNICODE_7D46]"],
+                    "effects": ["communication_boost", "empathy_enhance", "social_confidence"]
+                },
+                ItemType.ACCESSORY: {
+                    "names": ["[UNICODE_53CB]", "[UNICODE_793E]", "[UNICODE_5171]", "[UNICODE_7D46]"],
+                    "descriptions": ["[UNICODE_53CB]", "[UNICODE_793E]", "[UNICODE_5171]", "[UNICODE_4EBA]"],
+                    "effects": ["friendship_boost", "social_ease", "connection_strengthen"]
+                }
+            },
+            TherapeuticTheme.CREATIVITY: {
+                ItemType.WEAPON: {
+                    "names": ["[UNICODE_5275]", "[UNICODE_30A2]", "[UNICODE_767A]", "[UNICODE_60F3]"],
+                    "descriptions": ["[UNICODE_65B0]", "[UNICODE_5275]", "[UNICODE_767A]", "[UNICODE_60F3]"],
+                    "effects": ["creativity_boost", "idea_generation", "artistic_inspiration"]
+                },
+                ItemType.ACCESSORY: {
+                    "names": ["[UNICODE_5275]", "[UNICODE_30A2]", "[UNICODE_767A]", "[UNICODE_60F3]"],
+                    "descriptions": ["[UNICODE_5275]", "[UNICODE_30A2]", "[UNICODE_767A]", "[UNICODE_60F3]"],
+                    "effects": ["creative_flow", "innovation_boost", "artistic_vision"]
+                }
+            },
+            TherapeuticTheme.WISDOM: {
+                ItemType.WEAPON: {
+                    "names": ["[UNICODE_77E5]", "[UNICODE_6D1E]", "[UNICODE_7406]", "[UNICODE_5B66]"],
+                    "descriptions": ["[UNICODE_6DF1]", "[UNICODE_7269]", "[UNICODE_7406]", "[UNICODE_5B66]"],
+                    "effects": ["wisdom_boost", "insight_enhance", "learning_accelerate"]
+                },
+                ItemType.ACCESSORY: {
+                    "names": ["[UNICODE_77E5]", "[UNICODE_6D1E]", "[UNICODE_7406]", "[UNICODE_5B66]"],
+                    "descriptions": ["[UNICODE_77E5]", "[UNICODE_6D1E]", "[UNICODE_7406]", "[UNICODE_5B66]"],
+                    "effects": ["knowledge_retention", "analytical_thinking", "study_efficiency"]
+                }
+            }
+        }
+    
+    def perform_gacha(self, gacha_type: str, user_coins: int) -> GachaResult:
+        """
+        [UNICODE_30AC]
+        
+        Args:
+            gacha_type: [UNICODE_30AC] ("single", "ten_pull", "premium")
+            user_coins: [UNICODE_30E6]
+            
+        Returns:
+            GachaResult: [UNICODE_30AC]
+        """
+        # [UNICODE_30D0]
+        if gacha_type not in self.gacha_costs:
+            return GachaResult(
+                success=False,
+                items=[],
+                coins_spent=0,
+                gacha_type=gacha_type,
+                guaranteed_rare=False,
+                timestamp=datetime.now(),
+                error_message=f"[UNICODE_7121]: {gacha_type}"
+            )
+        
+        cost = self.gacha_costs[gacha_type]
+        if user_coins < cost:
+            return GachaResult(
+                success=False,
+                items=[],
+                coins_spent=0,
+                gacha_type=gacha_type,
+                guaranteed_rare=False,
+                timestamp=datetime.now(),
+                error_message=f"[UNICODE_30B3]: {cost}, [UNICODE_6240]: {user_coins}"
+            )
+        
+        # [UNICODE_30AC]
+        items = []
+        pulls = 10 if gacha_type == "ten_pull" else 1
+        is_premium = gacha_type == "premium"
+        
+        for i in range(pulls):
+            # 10[UNICODE_9023]
+            if gacha_type == "ten_pull" and i == 9:
+                has_rare_or_better = any(
+                    item.rarity in [ItemRarity.RARE, ItemRarity.EPIC, ItemRarity.LEGENDARY] 
+                    for item in items
+                )
+                if not has_rare_or_better:
+                    rarity = self._determine_guaranteed_rare_rarity()
+                else:
+                    rarity = self._determine_rarity(is_premium)
+            else:
+                rarity = self._determine_rarity(is_premium)
+            
+            item = self._generate_item(rarity)
+            items.append(item)
+        
+        # 10[UNICODE_9023]
+        guaranteed_rare = (gacha_type == "ten_pull" and 
+                          not any(item.rarity in [ItemRarity.RARE, ItemRarity.EPIC, ItemRarity.LEGENDARY] 
+                                 for item in items[:-1]))
+        
+        return GachaResult(
+            success=True,
+            items=items,
+            coins_spent=cost,
+            gacha_type=gacha_type,
+            guaranteed_rare=guaranteed_rare,
+            timestamp=datetime.now()
+        )
+    
+    def _determine_rarity(self, is_premium: bool = False) -> ItemRarity:
+        """[UNICODE_30EC]"""
+        rates = self.rarity_rates.copy()
+        
+        # [UNICODE_30D7]2[UNICODE_500D]
+        if is_premium:
+            rates[ItemRarity.RARE] *= 2
+            rates[ItemRarity.EPIC] *= 2
+            rates[ItemRarity.LEGENDARY] *= 2
+            
+            # [UNICODE_78BA]
+            total = sum(rates.values())
+            rates = {k: v / total for k, v in rates.items()}
+        
+        # [UNICODE_7D2F]
+        rand = random.random()
+        cumulative = 0
+        
+        for rarity, rate in rates.items():
+            cumulative += rate
+            if rand <= cumulative:
+                return rarity
+        
+        return ItemRarity.COMMON  # [UNICODE_30D5]
+    
+    def _determine_guaranteed_rare_rarity(self) -> ItemRarity:
+        """[UNICODE_4FDD]"""
+        rare_rates = {
+            ItemRarity.RARE: 0.85,      # 85%
+            ItemRarity.EPIC: 0.13,      # 13%
+            ItemRarity.LEGENDARY: 0.02  # 2%
+        }
+        
+        rand = random.random()
+        cumulative = 0
+        
+        for rarity, rate in rare_rates.items():
+            cumulative += rate
+            if rand <= cumulative:
+                return rarity
+        
+        return ItemRarity.RARE  # [UNICODE_30D5]
+    
+    def _generate_item(self, rarity: ItemRarity) -> Item:
+        """[UNICODE_30A2]"""
+        # [UNICODE_30E9]
+        theme = random.choice(list(TherapeuticTheme))
+        available_types = list(self.item_templates[theme].keys())
+        item_type = random.choice(available_types)
+        
+        # [UNICODE_30C6]
+        template = self.item_templates[theme][item_type]
+        name = random.choice(template["names"])
+        description = random.choice(template["descriptions"])
+        effects = random.sample(template["effects"], min(len(template["effects"]), 2))
+        
+        # [UNICODE_30B9]
+        stat_bonuses = self._generate_stat_bonuses(rarity, theme)
+        
+        # [UNICODE_30D5]
+        flavor_text = self._generate_flavor_text(name, rarity, theme)
+        
+        return Item(
+            id=str(uuid.uuid4()),
+            name=f"{self._get_rarity_prefix(rarity)}{name}",
+            description=description,
+            rarity=rarity,
+            item_type=item_type,
+            therapeutic_theme=theme,
+            stat_bonuses=stat_bonuses,
+            special_effects=effects,
+            flavor_text=flavor_text,
+            created_at=datetime.now()
+        )
+    
+    def _generate_stat_bonuses(self, rarity: ItemRarity, theme: TherapeuticTheme) -> Dict[str, int]:
+        """[UNICODE_30B9]"""
+        min_bonus, max_bonus = self.stat_bonus_ranges[rarity]
+        
+        # [UNICODE_6CBB]
+        primary_stats = {
+            TherapeuticTheme.FOCUS: ["focus"],
+            TherapeuticTheme.RESILIENCE: ["resilience"],
+            TherapeuticTheme.MOTIVATION: ["motivation"],
+            TherapeuticTheme.SOCIAL: ["social"],
+            TherapeuticTheme.CREATIVITY: ["creativity"],
+            TherapeuticTheme.WISDOM: ["wisdom"]
+        }
+        
+        bonuses = {}
+        
+        # [UNICODE_4E3B]
+        for stat in primary_stats[theme]:
+            bonuses[stat] = random.randint(max(min_bonus, max_bonus - 2), max_bonus)
+        
+        # [UNICODE_30EC]
+        if rarity in [ItemRarity.EPIC, ItemRarity.LEGENDARY]:
+            all_stats = ["focus", "resilience", "motivation", "social", "creativity", "wisdom"]
+            secondary_stats = [s for s in all_stats if s not in primary_stats[theme]]
+            
+            num_secondary = 1 if rarity == ItemRarity.EPIC else 2
+            for stat in random.sample(secondary_stats, min(num_secondary, len(secondary_stats))):
+                bonuses[stat] = random.randint(min_bonus, max(min_bonus + 2, max_bonus - 3))
+        
+        return bonuses
+    
+    def _get_rarity_prefix(self, rarity: ItemRarity) -> str:
+        """[UNICODE_30EC]"""
+        prefixes = {
+            ItemRarity.COMMON: "",
+            ItemRarity.UNCOMMON: "[UNICODE_4E0A]",
+            ItemRarity.RARE: "[UNICODE_5E0C]",
+            ItemRarity.EPIC: "[UNICODE_4F1D]",
+            ItemRarity.LEGENDARY: "[UNICODE_795E]"
+        }
+        return prefixes.get(rarity, "")
+    
+    def _generate_flavor_text(self, name: str, rarity: ItemRarity, theme: TherapeuticTheme) -> str:
+        """[UNICODE_30D5]"""
+        theme_messages = {
+            TherapeuticTheme.FOCUS: "[UNICODE_96C6]",
+            TherapeuticTheme.RESILIENCE: "[UNICODE_56F0]",
+            TherapeuticTheme.MOTIVATION: "[UNICODE_3084]",
+            TherapeuticTheme.SOCIAL: "[UNICODE_4EBA]",
+            TherapeuticTheme.CREATIVITY: "[UNICODE_65B0]",
+            TherapeuticTheme.WISDOM: "[UNICODE_6DF1]"
+        }
+        
+        rarity_messages = {
+            ItemRarity.COMMON: "[UNICODE_65E5]",
+            ItemRarity.UNCOMMON: "[UNICODE_3084]",
+            ItemRarity.RARE: "[UNICODE_6EC5]",
+            ItemRarity.EPIC: "[UNICODE_4F1D]",
+            ItemRarity.LEGENDARY: "[UNICODE_795E]"
+        }
+        
+        return f"{rarity_messages[rarity]}{name}[UNICODE_3002]{theme_messages[theme]}[UNICODE_3002]"
+    
+    def get_gacha_rates(self, gacha_type: str) -> Dict:
+        """[UNICODE_30AC]"""
+        if gacha_type not in self.gacha_costs:
+            raise ValidationError(f"[UNICODE_7121]: {gacha_type}")
+        
+        rates = self.rarity_rates.copy()
+        
+        # [UNICODE_30D7]
+        if gacha_type == "premium":
+            rates[ItemRarity.RARE] *= 2
+            rates[ItemRarity.EPIC] *= 2
+            rates[ItemRarity.LEGENDARY] *= 2
+            
+            total = sum(rates.values())
+            rates = {k: v / total for k, v in rates.items()}
+        
+        return {
+            "gacha_type": gacha_type,
+            "cost": self.gacha_costs[gacha_type],
+            "rates": {rarity.value: f"{rate * 100:.1f}%" for rarity, rate in rates.items()},
+            "guaranteed_rare": gacha_type == "ten_pull",
+            "premium_bonus": gacha_type == "premium"
+        }
+    
+    def get_item_statistics(self, items: List[Item]) -> Dict:
+        """[UNICODE_30A2]"""
+        if not items:
+            return {"total": 0, "by_rarity": {}, "by_theme": {}, "by_type": {}}
+        
+        rarity_count = {}
+        theme_count = {}
+        type_count = {}
+        
+        for item in items:
+            # [UNICODE_30EC]
+            rarity_count[item.rarity.value] = rarity_count.get(item.rarity.value, 0) + 1
+            
+            # [UNICODE_30C6]
+            theme_count[item.therapeutic_theme.value] = theme_count.get(item.therapeutic_theme.value, 0) + 1
+            
+            # [UNICODE_30BF]
+            type_count[item.item_type.value] = type_count.get(item.item_type.value, 0) + 1
+        
+        return {
+            "total": len(items),
+            "by_rarity": rarity_count,
+            "by_theme": theme_count,
+            "by_type": type_count,
+            "average_stats": self._calculate_average_stats(items)
+        }
+    
+    def _calculate_average_stats(self, items: List[Item]) -> Dict[str, float]:
+        """[UNICODE_5E73]"""
+        if not items:
+            return {}
+        
+        all_stats = ["focus", "resilience", "motivation", "social", "creativity", "wisdom"]
+        stat_totals = {stat: 0 for stat in all_stats}
+        stat_counts = {stat: 0 for stat in all_stats}
+        
+        for item in items:
+            for stat, value in item.stat_bonuses.items():
+                if stat in stat_totals:
+                    stat_totals[stat] += value
+                    stat_counts[stat] += 1
+        
+        return {
+            stat: round(stat_totals[stat] / stat_counts[stat], 2) if stat_counts[stat] > 0 else 0
+            for stat in all_stats
+        }
+
+
+if __name__ == "__main__":
+    # [UNICODE_57FA]
+    gacha = GachaSystem()
+    
+    # [UNICODE_5358]
+    result = gacha.perform_gacha("single", 1000)
+    if result.success:
+        item = result.items[0]
+        print(f"[UNICODE_5358]:")
+        print(f"  {item.name} ({item.rarity.value})")
+        print(f"  {item.description}")
+        print(f"  [UNICODE_30B9]: {item.stat_bonuses}")
+        print(f"  [UNICODE_52B9]: {item.special_effects}")
+        print(f"  {item.flavor_text}")
+    
+    # 10[UNICODE_9023]
+    result_10 = gacha.perform_gacha("ten_pull", 1000)
+    if result_10.success:
+        print(f"\n10[UNICODE_9023]:")
+        stats = gacha.get_item_statistics(result_10.items)
+        print(f"  [UNICODE_7DCF]: {stats['total']}")
+        print(f"  [UNICODE_30EC]: {stats['by_rarity']}")
+        print(f"  [UNICODE_4FDD]: {result_10.guaranteed_rare}")
+    
+    # [UNICODE_78BA]
+    rates = gacha.get_gacha_rates("premium")
+    print(f"\n[UNICODE_30D7]:")
+    for rarity, rate in rates["rates"].items():
+        print(f"  {rarity}: {rate}")

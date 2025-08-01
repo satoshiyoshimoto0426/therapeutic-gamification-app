@@ -1,0 +1,445 @@
+"""
+Self-Efficacy Gauge Service [UNICODE_30C6]
+
+[UNICODE_30D6]
+- 21[UNICODE_65E5]
+- [UNICODE_6CBB]
+- [UNICODE_9577]
+"""
+
+import pytest
+import asyncio
+from fastapi.testclient import TestClient
+from datetime import datetime, timedelta
+import json
+
+# [UNICODE_30C6]
+from main import app, efficacy_engine, EfficacyUpdateRequest, EfficacyLevel, PassiveSkillType
+
+client = TestClient(app)
+
+class TestSelfEfficacyEngine:
+    """Self-Efficacy [UNICODE_30A8]"""
+    
+    async def test_efficacy_gauge_creation(self):
+        """[UNICODE_52B9]"""
+        gauge = await efficacy_engine._get_or_create_gauge("test_user_001", "Self-Discipline")
+        
+        assert gauge.user_id == "test_user_001"
+        assert gauge.therapeutic_focus == "Self-Discipline"
+        assert gauge.current_level == EfficacyLevel.NOVICE
+        assert gauge.current_percentage == 0.0
+        assert gauge.consecutive_days == 0
+        
+        print("[UNICODE_2713] [UNICODE_52B9]")
+    
+    def test_efficacy_increase_calculation(self):
+        """[UNICODE_52B9]"""
+        request = EfficacyUpdateRequest(
+            user_id="test_user_002",
+            therapeutic_focus="Self-Discipline",
+            task_completed=True,
+            task_difficulty=3,
+            mood_rating=4,
+            reflection_quality=4
+        )
+        
+        # [UNICODE_30C7]
+        from main import EfficacyGauge
+        gauge = EfficacyGauge(
+            user_id="test_user_002",
+            therapeutic_focus="Self-Discipline",
+            current_level=EfficacyLevel.NOVICE,
+            current_percentage=10.0,
+            consecutive_days=5,
+            total_days_active=5,
+            last_activity_date=datetime.now() - timedelta(days=1),
+            milestone_reached=[],
+            passive_skills=[],
+            efficacy_history=[]
+        )
+        
+        increase = efficacy_engine._calculate_efficacy_increase(request, gauge)
+        
+        assert increase > 0
+        assert increase < 10  # [UNICODE_73FE]
+        
+        print(f"[UNICODE_2713] [UNICODE_52B9]: {increase:.2f}%")
+    
+    def test_efficacy_level_calculation(self):
+        """[UNICODE_52B9]"""
+        test_cases = [
+            (0, EfficacyLevel.NOVICE),
+            (25, EfficacyLevel.DEVELOPING),
+            (45, EfficacyLevel.COMPETENT),
+            (65, EfficacyLevel.PROFICIENT),
+            (85, EfficacyLevel.EXPERT)
+        ]
+        
+        for percentage, expected_level in test_cases:
+            level = efficacy_engine._calculate_efficacy_level(percentage)
+            assert level == expected_level
+        
+        print("[UNICODE_2713] [UNICODE_52B9]")
+    
+    async def test_milestone_achievement(self):
+        """[UNICODE_30DE]"""
+        from main import EfficacyGauge
+        
+        # 7[UNICODE_65E5]
+        gauge = EfficacyGauge(
+            user_id="milestone_user",
+            therapeutic_focus="Self-Discipline",
+            current_level=EfficacyLevel.DEVELOPING,
+            current_percentage=30.0,
+            consecutive_days=7,
+            total_days_active=7,
+            last_activity_date=datetime.now(),
+            milestone_reached=[3],  # 3[UNICODE_65E5]
+            passive_skills=[],
+            efficacy_history=[]
+        )
+        
+        milestone_rewards = await efficacy_engine._check_milestones(gauge)
+        
+        # 7[UNICODE_65E5]
+        assert len(milestone_rewards) == 1
+        assert milestone_rewards[0]["milestone"].day == 7
+        assert 7 in gauge.milestone_reached
+        
+        print("[UNICODE_2713] [UNICODE_30DE]")
+    
+    async def test_passive_skill_unlock(self):
+        """[UNICODE_30D1]"""
+        from main import EfficacyGauge
+        
+        # 21[UNICODE_65E5]
+        gauge = EfficacyGauge(
+            user_id="skill_user",
+            therapeutic_focus="Self-Discipline",
+            current_level=EfficacyLevel.PROFICIENT,
+            current_percentage=70.0,
+            consecutive_days=21,
+            total_days_active=21,
+            last_activity_date=datetime.now(),
+            milestone_reached=[3, 7, 14, 21],
+            passive_skills=[],
+            efficacy_history=[]
+        )
+        
+        unlocked_skills = await efficacy_engine._check_passive_skill_unlocks(gauge)
+        
+        # Self-Discipline[UNICODE_306B]
+        self_discipline_skills = [skill for skill in unlocked_skills 
+                                if skill.therapeutic_focus == "Self-Discipline"]
+        assert len(self_discipline_skills) > 0
+        
+        # 21[UNICODE_65E5]
+        twenty_one_day_skills = [skill for skill in unlocked_skills 
+                               if skill.unlock_requirement <= 21]
+        assert len(twenty_one_day_skills) > 0
+        
+        print(f"[UNICODE_2713] [UNICODE_30D1]: {len(unlocked_skills)}[UNICODE_500B]")
+    
+    async def test_efficacy_update_integration(self):
+        """[UNICODE_52B9]"""
+        request = EfficacyUpdateRequest(
+            user_id="integration_user",
+            therapeutic_focus="Self-Discipline",
+            task_completed=True,
+            task_difficulty=3,
+            mood_rating=4,
+            reflection_quality=4
+        )
+        
+        result = await efficacy_engine.update_efficacy_gauge(request)
+        
+        assert result["success"] is True
+        assert "gauge" in result
+        assert "efficacy_increase" in result
+        assert "celebration_message" in result
+        
+        # [UNICODE_30B2]
+        gauge = result["gauge"]
+        assert gauge.consecutive_days == 1
+        assert gauge.current_percentage > 0
+        
+        print("[UNICODE_2713] [UNICODE_52B9]")
+
+class TestLongTermEngagement:
+    """[UNICODE_9577]"""
+    
+    async def test_21_day_habit_formation(self):
+        """21[UNICODE_65E5]"""
+        user_id = "habit_formation_user"
+        therapeutic_focus = "Self-Discipline"
+        
+        # 21[UNICODE_65E5]
+        for day in range(1, 22):
+            request = EfficacyUpdateRequest(
+                user_id=user_id,
+                therapeutic_focus=therapeutic_focus,
+                task_completed=True,
+                task_difficulty=2 + (day % 3),  # [UNICODE_96E3]
+                mood_rating=3 + (day % 3),
+                reflection_quality=3 + (day % 2)
+            )
+            
+            result = await efficacy_engine.update_efficacy_gauge(request)
+            
+            # 21[UNICODE_65E5]
+            if day == 21:
+                assert len(result["milestone_rewards"]) > 0
+                assert any(reward["milestone"].day == 21 for reward in result["milestone_rewards"])
+                assert len(result["newly_unlocked_skills"]) > 0
+                assert "[UNICODE_7FD2]" in result["celebration_message"]
+        
+        print("[UNICODE_2713] 21[UNICODE_65E5]")
+    
+    async def test_efficacy_trend_analysis(self):
+        """[UNICODE_52B9]"""
+        from main import EfficacyGauge
+        
+        # [UNICODE_4E0A]
+        improving_gauge = EfficacyGauge(
+            user_id="trend_user",
+            therapeutic_focus="Self-Discipline",
+            current_level=EfficacyLevel.DEVELOPING,
+            current_percentage=35.0,
+            consecutive_days=10,
+            total_days_active=10,
+            last_activity_date=datetime.now(),
+            milestone_reached=[3, 7],
+            passive_skills=[],
+            efficacy_history=[
+                {"date": "2024-01-01", "percentage": 20.0, "consecutive_days": 8, "efficacy_increase": 2.5, "task_completed": True, "mood_rating": 3},
+                {"date": "2024-01-02", "percentage": 25.0, "consecutive_days": 9, "efficacy_increase": 3.0, "task_completed": True, "mood_rating": 4},
+                {"date": "2024-01-03", "percentage": 30.0, "consecutive_days": 10, "efficacy_increase": 2.8, "task_completed": True, "mood_rating": 4}
+            ]
+        )
+        
+        gauges = {"Self-Discipline": improving_gauge}
+        trend = efficacy_engine._calculate_efficacy_trend(gauges)
+        
+        assert trend == "improving"
+        
+        print("[UNICODE_2713] [UNICODE_52B9]")
+    
+    def test_motivational_message_generation(self):
+        """[UNICODE_30E2]"""
+        test_cases = [
+            (85.0, 25, "[UNICODE_7FD2]"),
+            (60.0, 15, "2[UNICODE_9031]"),
+            (40.0, 8, "1[UNICODE_9031]"),
+            (30.0, 4, "[UNICODE_7D99]"),
+            (55.0, 2, "[UNICODE_81EA]"),
+            (20.0, 1, "[UNICODE_65B0]")
+        ]
+        
+        for efficacy, days, expected_keyword in test_cases:
+            message = efficacy_engine._generate_motivational_message(efficacy, days)
+            assert expected_keyword in message
+        
+        print("[UNICODE_2713] [UNICODE_30E2]")
+
+class TestTherapeuticMetrics:
+    """[UNICODE_6CBB]"""
+    
+    async def test_therapeutic_balance_tracking(self):
+        """[UNICODE_6CBB]"""
+        user_id = "metrics_user"
+        
+        # [UNICODE_8907]
+        therapeutic_focuses = ["Self-Discipline", "Empathy", "Resilience"]
+        
+        for focus in therapeutic_focuses:
+            for day in range(1, 8):  # 1[UNICODE_9031]
+                request = EfficacyUpdateRequest(
+                    user_id=user_id,
+                    therapeutic_focus=focus,
+                    task_completed=True,
+                    task_difficulty=2,
+                    mood_rating=3,
+                    reflection_quality=3
+                )
+                
+                await efficacy_engine.update_efficacy_gauge(request)
+        
+        # [UNICODE_30C0]
+        dashboard = await efficacy_engine.get_efficacy_dashboard(user_id)
+        
+        assert len(dashboard["therapeutic_gauges"]) == 8  # [UNICODE_5168]8[UNICODE_3064]
+        assert dashboard["max_consecutive_days"] == 7
+        assert dashboard["average_efficacy_percentage"] > 0
+        
+        print("[UNICODE_2713] [UNICODE_6CBB]")
+    
+    def test_passive_skill_therapeutic_alignment(self):
+        """[UNICODE_30D1]"""
+        # [UNICODE_5404]
+        therapeutic_focuses = ["Self-Discipline", "Resilience", "Communication", "Creativity", "Wisdom"]
+        
+        for focus in therapeutic_focuses:
+            focus_skills = [skill for skill in efficacy_engine.passive_skills_pool 
+                          if skill.therapeutic_focus == focus]
+            assert len(focus_skills) > 0, f"{focus}[UNICODE_306B]"
+        
+        print("[UNICODE_2713] [UNICODE_30D1]")
+    
+    def test_efficacy_formula_balance(self):
+        """[UNICODE_52B9]"""
+        weights = efficacy_engine.efficacy_formula_weights
+        
+        # [UNICODE_91CD]1.0[UNICODE_3067]
+        total_weight = sum(weights.values())
+        assert abs(total_weight - 1.0) < 0.01
+        
+        # [UNICODE_7D99]
+        assert weights["consistency"] == max(weights.values())
+        
+        print("[UNICODE_2713] [UNICODE_52B9]")
+
+class TestAPIEndpoints:
+    """API[UNICODE_30A8]"""
+    
+    def test_update_efficacy_endpoint(self):
+        """[UNICODE_52B9]"""
+        request_data = {
+            "user_id": "api_test_user",
+            "therapeutic_focus": "Self-Discipline",
+            "task_completed": True,
+            "task_difficulty": 3,
+            "mood_rating": 4,
+            "reflection_quality": 4
+        }
+        
+        response = client.post("/efficacy/update", json=request_data)
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data["success"] is True
+        assert "gauge" in data
+        assert "efficacy_increase" in data
+        
+        print("[UNICODE_2713] [UNICODE_52B9]")
+    
+    def test_dashboard_endpoint(self):
+        """[UNICODE_30C0]"""
+        response = client.get("/efficacy/api_dashboard_user/dashboard")
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert "overall_efficacy_level" in data
+        assert "therapeutic_gauges" in data
+        assert "motivational_message" in data
+        
+        print("[UNICODE_2713] [UNICODE_30C0]")
+    
+    def test_specific_gauge_endpoint(self):
+        """[UNICODE_7279]"""
+        response = client.get("/efficacy/api_gauge_user/Self-Discipline")
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert "gauge" in data
+        assert "available_skills" in data
+        assert "next_milestone" in data
+        
+        print("[UNICODE_2713] [UNICODE_7279]")
+    
+    def test_milestones_endpoint(self):
+        """[UNICODE_30DE]"""
+        response = client.get("/efficacy/milestones")
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert "milestones" in data
+        assert len(data["milestones"]) > 0
+        
+        # 21[UNICODE_65E5]
+        twenty_one_day_milestone = next(
+            (m for m in data["milestones"] if m["day"] == 21), None
+        )
+        assert twenty_one_day_milestone is not None
+        assert "[UNICODE_7FD2]" in twenty_one_day_milestone["title"]
+        
+        print("[UNICODE_2713] [UNICODE_30DE]")
+    
+    def test_passive_skills_endpoint(self):
+        """[UNICODE_30D1]"""
+        response = client.get("/efficacy/passive-skills")
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert "passive_skills" in data
+        assert len(data["passive_skills"]) > 0
+        
+        # 21[UNICODE_65E5]
+        twenty_one_day_skills = [
+            skill for skill in data["passive_skills"] 
+            if skill["unlock_requirement"] == 21
+        ]
+        assert len(twenty_one_day_skills) > 0
+        
+        print("[UNICODE_2713] [UNICODE_30D1]")
+
+def run_all_tests():
+    """[UNICODE_5168]"""
+    print("Self-Efficacy Gauge Service [UNICODE_30C6]")
+    print("=" * 50)
+    
+    # [UNICODE_57FA]
+    engine_tests = TestSelfEfficacyEngine()
+    
+    async def run_async_engine_tests():
+        await engine_tests.test_efficacy_gauge_creation()
+        await engine_tests.test_milestone_achievement()
+        await engine_tests.test_passive_skill_unlock()
+        await engine_tests.test_efficacy_update_integration()
+    
+    asyncio.run(run_async_engine_tests())
+    
+    engine_tests.test_efficacy_increase_calculation()
+    engine_tests.test_efficacy_level_calculation()
+    
+    # [UNICODE_9577]
+    engagement_tests = TestLongTermEngagement()
+    
+    async def run_async_engagement_tests():
+        await engagement_tests.test_21_day_habit_formation()
+        await engagement_tests.test_efficacy_trend_analysis()
+    
+    asyncio.run(run_async_engagement_tests())
+    
+    engagement_tests.test_motivational_message_generation()
+    
+    # [UNICODE_6CBB]
+    metrics_tests = TestTherapeuticMetrics()
+    
+    async def run_async_metrics_tests():
+        await metrics_tests.test_therapeutic_balance_tracking()
+    
+    asyncio.run(run_async_metrics_tests())
+    
+    metrics_tests.test_passive_skill_therapeutic_alignment()
+    metrics_tests.test_efficacy_formula_balance()
+    
+    # API[UNICODE_30A8]
+    api_tests = TestAPIEndpoints()
+    api_tests.test_update_efficacy_endpoint()
+    api_tests.test_dashboard_endpoint()
+    api_tests.test_specific_gauge_endpoint()
+    api_tests.test_milestones_endpoint()
+    api_tests.test_passive_skills_endpoint()
+    
+    print("\n" + "=" * 50)
+    print("[UNICODE_2713] Self-Efficacy Gauge Service [UNICODE_5168]")
+    print("\n[UNICODE_30D6]:")
+    print("- 21[UNICODE_65E5] [UNICODE_2713]")
+    print("- [UNICODE_6CBB] [UNICODE_2713]")
+    print("- [UNICODE_9577] [UNICODE_2713]")
+    print("- 8[UNICODE_3064] [UNICODE_2713]")
+    print("- [UNICODE_30DE] [UNICODE_2713]")
+
+if __name__ == "__main__":
+    run_all_tests()

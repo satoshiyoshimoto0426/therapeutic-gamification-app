@@ -1,0 +1,206 @@
+"""
+GDPR[UNICODE_6E96]
+"""
+
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from datetime import datetime, timedelta
+import json
+
+def test_gdpr_system():
+    """GDPR[UNICODE_6E96]"""
+    try:
+        from main import GDPRComplianceSystem
+        from privacy_by_design import PrivacyLevel
+        
+        print("=== GDPR[UNICODE_6E96] [UNICODE_7C21] ===\n")
+        
+        # [UNICODE_30B7]
+        print("1. [UNICODE_30B7]...")
+        gdpr_system = GDPRComplianceSystem()
+        print("[UNICODE_2713] [UNICODE_30B7]")
+        
+        # [UNICODE_30E6]
+        print("\n2. [UNICODE_30E6]...")
+        test_user_id = "test_user_simple_001"
+        birth_date = datetime.now() - timedelta(days=25*365)  # 25[UNICODE_6B73]
+        
+        registration_result = gdpr_system.register_user(
+            test_user_id, birth_date, PrivacyLevel.ENHANCED
+        )
+        
+        if registration_result["success"]:
+            print("[UNICODE_2713] [UNICODE_30E6]")
+            print(f"  - [UNICODE_30E6]ID: {registration_result['user_id']}")
+            print(f"  - [UNICODE_5E74]: {registration_result['age_group']}")
+        else:
+            print("[UNICODE_2717] [UNICODE_30E6]")
+            return False
+        
+        # [UNICODE_540C]
+        print("\n3. [UNICODE_540C]...")
+        consent_result = gdpr_system.request_consent(
+            test_user_id, "therapeutic_data", "therapeutic_support"
+        )
+        
+        if consent_result["success"]:
+            print("[UNICODE_2713] [UNICODE_540C]")
+            print(f"  - [UNICODE_540C]ID: {consent_result['consent_id']}")
+        else:
+            print("[UNICODE_2717] [UNICODE_540C]")
+        
+        # [UNICODE_6A29]
+        print("\n4. [UNICODE_6A29]...")
+        rights_result = gdpr_system.exercise_data_subject_right(
+            test_user_id, "access", "[UNICODE_30C6]"
+        )
+        
+        if rights_result["success"]:
+            print("[UNICODE_2713] [UNICODE_6A29]")
+            print(f"  - [UNICODE_8981]ID: {rights_result['request_id']}")
+            print(f"  - [UNICODE_6A29]: {rights_result['right_type']}")
+        else:
+            print("[UNICODE_2717] [UNICODE_6A29]")
+        
+        # [UNICODE_30C7]
+        print("\n5. [UNICODE_30C7]...")
+        export_result = gdpr_system.export_personal_data(
+            test_user_id, "json", "all_data"
+        )
+        
+        if export_result["success"]:
+            print("[UNICODE_2713] [UNICODE_30C7]")
+            print(f"  - [UNICODE_30D5]: {export_result.get('file_size', 'N/A')} bytes")
+            print(f"  - [UNICODE_30C1]: {export_result.get('checksum', 'N/A')[:16]}...")
+        else:
+            print("[UNICODE_2717] [UNICODE_30C7]")
+        
+        # [UNICODE_30D7]
+        print("\n6. [UNICODE_30D7]...")
+        dashboard_result = gdpr_system.get_privacy_dashboard(test_user_id)
+        
+        if dashboard_result["success"]:
+            print("[UNICODE_2713] [UNICODE_30D7]")
+            print(f"  - [UNICODE_30D7]: {dashboard_result['privacy_settings']['privacy_level']}")
+            print(f"  - [UNICODE_540C]: {dashboard_result['consent_management']['total_consents']}")
+        else:
+            print("[UNICODE_2717] [UNICODE_30D7]")
+        
+        # [UNICODE_30B3]
+        print("\n7. [UNICODE_30B3]...")
+        compliance_result = gdpr_system.run_compliance_check()
+        
+        if compliance_result["success"]:
+            print("[UNICODE_2713] [UNICODE_30B3]")
+            result = compliance_result["compliance_result"]
+            print(f"  - [UNICODE_30C1]: {result['rules_checked']}")
+            print(f"  - [UNICODE_691C]: {result['violations_found']}")
+            print(f"  - [UNICODE_5168]: {result['overall_status']}")
+        else:
+            print("[UNICODE_2717] [UNICODE_30B3]")
+        
+        # [UNICODE_30B7]
+        print("\n8. [UNICODE_30B7]...")
+        health_result = gdpr_system.get_system_health()
+        
+        if health_result["success"]:
+            print("[UNICODE_2713] [UNICODE_30B7]")
+            health = health_result["health_status"]
+            print(f"  - [UNICODE_5168]: {health['overall_health']}")
+            print(f"  - [UNICODE_76E3]: {health['metrics']['total_audit_logs']}")
+            print(f"  - [UNICODE_30A2]: {health['metrics']['active_violations']}")
+        else:
+            print("[UNICODE_2717] [UNICODE_30B7]")
+        
+        print("\n=== [UNICODE_30C6] ===")
+        print("[UNICODE_2713] [UNICODE_5168]")
+        return True
+        
+    except ImportError as e:
+        print(f"[UNICODE_2717] [UNICODE_30A4]: {e}")
+        print("[UNICODE_5FC5]")
+        return False
+    
+    except Exception as e:
+        print(f"[UNICODE_2717] [UNICODE_30C6]: {e}")
+        return False
+
+
+def test_individual_components():
+    """[UNICODE_500B]"""
+    print("\n=== [UNICODE_500B] ===\n")
+    
+    try:
+        # [UNICODE_30D7]
+        print("1. [UNICODE_30D7]...")
+        from privacy_protection_system import PrivacyProtectionSystem
+        privacy_system = PrivacyProtectionSystem()
+        
+        classification = privacy_system.classify_data("therapeutic_data")
+        if classification:
+            print(f"[UNICODE_2713] [UNICODE_30C7]: {classification.category.value}")
+        else:
+            print("[UNICODE_2717] [UNICODE_30C7]")
+        
+        # [UNICODE_76E3]
+        print("\n2. [UNICODE_76E3]...")
+        from audit_logging import AuditLoggingSystem, AuditEventType
+        audit_system = AuditLoggingSystem()
+        
+        log_id = audit_system.log_data_access(
+            user_id="test_user",
+            actor_id="system",
+            data_categories=["test_data"],
+            action_description="[UNICODE_30C6]"
+        )
+        
+        if log_id:
+            print(f"[UNICODE_2713] [UNICODE_76E3]: {log_id[:16]}...")
+        else:
+            print("[UNICODE_2717] [UNICODE_76E3]")
+        
+        # [UNICODE_30C7]
+        print("\n3. [UNICODE_30C7]...")
+        from data_portability import DataPortabilityEngine, ExportFormat, DataPortabilityScope
+        portability_engine = DataPortabilityEngine()
+        
+        request_id = portability_engine.create_portability_request(
+            "test_user", DataPortabilityScope.ALL_DATA, ExportFormat.JSON
+        )
+        
+        if request_id:
+            print(f"[UNICODE_2713] [UNICODE_30DD]: {request_id[:16]}...")
+        else:
+            print("[UNICODE_2717] [UNICODE_30DD]")
+        
+        print("\n[UNICODE_2713] [UNICODE_500B]")
+        return True
+        
+    except Exception as e:
+        print(f"[UNICODE_2717] [UNICODE_500B]: {e}")
+        return False
+
+
+if __name__ == "__main__":
+    print("GDPR[UNICODE_6E96] - [UNICODE_7C21]\n")
+    
+    # [UNICODE_30E1]
+    main_test_success = test_gdpr_system()
+    
+    # [UNICODE_500B]
+    component_test_success = test_individual_components()
+    
+    # [UNICODE_7D50]
+    print(f"\n{'='*50}")
+    print("[UNICODE_30C6]:")
+    print(f"[UNICODE_30E1]: {'[UNICODE_2713] [UNICODE_6210]' if main_test_success else '[UNICODE_2717] [UNICODE_5931]'}")
+    print(f"[UNICODE_500B]: {'[UNICODE_2713] [UNICODE_6210]' if component_test_success else '[UNICODE_2717] [UNICODE_5931]'}")
+    
+    if main_test_success and component_test_success:
+        print("\n[UNICODE_1F389] [UNICODE_5168]")
+        print("GDPR[UNICODE_6E96]")
+    else:
+        print("\n[UNICODE_26A0]  [UNICODE_4E00]")
+        print("[UNICODE_30B7]")

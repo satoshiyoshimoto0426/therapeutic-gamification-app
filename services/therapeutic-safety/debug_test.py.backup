@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+"""
+CBT[UNICODE_4ECB]
+"""
+
+import sys
+import os
+
+# [UNICODE_30D1]
+current_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(current_dir)
+
+from main import CBTInterventionEngine
+
+def debug_pattern_detection():
+    """[UNICODE_30D1]"""
+    cbt_engine = CBTInterventionEngine()
+    
+    test_cases = [
+        ("[UNICODE_5168]", "[UNICODE_3044]"),
+        ("[UNICODE_7834]", "[UNICODE_3053]"),
+        ("[UNICODE_500B]", "[UNICODE_30C1]"),
+        ("[UNICODE_5FC3]", "[UNICODE_307F]"),
+        ("[UNICODE_611F]", "[UNICODE_4E0D]")
+    ]
+    
+    for pattern_name, content in test_cases:
+        print(f"\n=== {pattern_name} ===")
+        print(f"[UNICODE_30C6]: {content}")
+        
+        try:
+            patterns = cbt_engine.detect_negative_thought_patterns(content)
+            print(f"[UNICODE_691C]: {len(patterns)}")
+            
+            for pattern in patterns:
+                print(f"  - [UNICODE_30BF]: {pattern['type']}")
+                print(f"    [UNICODE_540D]: {pattern['name']}")
+                print(f"    [UNICODE_4FE1]: {pattern['confidence']}")
+                print(f"    [UNICODE_91CD]: {pattern['severity']}")
+                print(f"    [UNICODE_30DE]: {pattern['matches']}")
+                
+        except Exception as e:
+            import traceback
+            print(f"[UNICODE_30A8]: {str(e)}")
+            print(f"[UNICODE_8A73]: {traceback.format_exc()}")
+
+if __name__ == "__main__":
+    debug_pattern_detection()

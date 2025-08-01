@@ -1,0 +1,135 @@
+# Cloud Armor WAF設定
+apiVersion: compute.googleapis.com/v1
+kind: SecurityPolicy
+metadata:
+  name: therapeutic-app-security-policy
+spec:
+  description: "WAF security policy for Therapeutic Gamification App"
+  
+  # デフォルトルール
+  rules:
+  - priority: 2147483647
+    match:
+      versionedExpr: SRC_IPS_V1
+      config:
+        srcIpRanges:
+        - "*"
+    action: "allow"
+    description: "Default allow rule"
+  
+  # DDoS保護
+  - priority: 1000
+    match:
+      expr:
+        expression: "origin.region_code != 'JP' && origin.region_code != 'US' && origin.region_code != 'KR'"
+    action: "deny-403"
+    description: "Block traffic from non-allowed regions"
+  
+  # レート制限（120 req/min/IP）
+  - priority: 1100
+    match:
+      expr:
+        expression: "true"
+    action: "rate_based_ban"
+    rateLimitOptions:
+      conformAction: "allow"
+      exceedAction: "deny-429"
+      enforceOnKey: "IP"
+      rateLimitThreshold:
+        count: 120
+        intervalSec: 60
+      banDurationSec: 300
+    description: "Rate limiting: 120 requests per minute per IP"
+  
+  # SQLインジェクション保護
+  - priority: 1200
+    match:
+      expr:
+        expression: "has(request.headers['content-type']) && request.headers['content-type'].contains('application/json')"
+      preconfiguredExpressionSets:
+      - expressionSetId: "sqli-stable"
+        fieldParams:
+        - fieldName: "request.body"
+    action: "deny-403"
+    description: "Block SQL injection attempts"
+  
+  # XSS保護
+  - priority: 1300
+    match:
+      preconfiguredExpressionSets:
+      - expressionSetId: "xss-stable"
+        fieldParams:
+        - fieldName: "request.query"
+        - fieldName: "request.body"
+        - fieldName: "request.headers"
+    action: "deny-403"
+    description: "Block XSS attempts"
+  
+  # 治療アプリ特有の保護
+  - priority: 1400
+    match:
+      expr:
+        expression: |
+          request.path.matches('/api/story/.*') && 
+          !has(request.headers['authorization'])
+    action: "deny-401"
+    description: "Require authentication for story API"
+  
+  - priority: 1500
+    match:
+      expr:
+        expression: |
+          request.path.matches('/api/guardian/.*') && 
+          !has(request.headers['x-guardian-token'])
+    action: "deny-403"
+    description: "Require guardian token for guardian API"
+  
+  # 異常なペイロードサイズ制限
+  - priority: 1600
+    match:
+      expr:
+        expression: "int(request.headers['content-length']) > 1048576"  # 1MB
+    action: "deny-413"
+    description: "Block requests with payload larger than 1MB"
+  
+  # ボット保護
+  - priority: 1700
+    match:
+      expr:
+        expression: |
+          !has(request.headers['user-agent']) || 
+          request.headers['user-agent'].matches('.*bot.*|.*crawler.*|.*spider.*')
+    action: "deny-403"
+    description: "Block bots and crawlers"
+  
+  # 治療安全性保護
+  - priority: 1800
+    match:
+      expr:
+        expression: |
+          request.path.matches('/api/safety/.*') && 
+          !request.headers['x-service-account'].matches('therapeutic-app-service-account@.*')
+    action: "deny-403"
+    description: "Restrict safety API to service account only"
+
+  # アダプティブ保護設定
+  adaptiveProtectionConfig:
+    layer7DdosDefenseConfig:
+      enable: true
+      ruleVisibility: "STANDARD"
+    autoDeployConfig:
+      loadThreshold: 0.1
+      confidenceThreshold: 0.8
+      impactedBaselineThreshold: 0.01
+      expirationSec: 7200
+
+  # ログ設定
+  logLevel: "VERBOSE"
+  
+  # 高度な設定
+  advancedOptionsConfig:
+    jsonParsing: "STANDARD"
+    logLevel: "VERBOSE"
+    userIpRequestHeaders:
+    - "X-Forwarded-For"
+    - "X-Real-IP"

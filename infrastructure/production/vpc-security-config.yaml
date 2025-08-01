@@ -1,0 +1,102 @@
+# VPC Service Controls設定
+apiVersion: accesscontextmanager.googleapis.com/v1
+kind: AccessPolicy
+metadata:
+  name: therapeutic-app-access-policy
+spec:
+  title: "Therapeutic Gamification App Access Policy"
+  parent: "organizations/ORG_ID"
+  
+---
+# サービスペリメーター設定
+apiVersion: accesscontextmanager.googleapis.com/v1
+kind: ServicePerimeter
+metadata:
+  name: therapeutic-app-perimeter
+spec:
+  title: "Therapeutic App Production Perimeter"
+  parent: "accessPolicies/ACCESS_POLICY_ID"
+  perimeterType: PERIMETER_TYPE_REGULAR
+  status:
+    resources:
+    - "projects/PROJECT_ID"
+    restrictedServices:
+    - "firestore.googleapis.com"
+    - "storage.googleapis.com"
+    - "run.googleapis.com"
+    - "secretmanager.googleapis.com"
+    - "cloudkms.googleapis.com"
+    - "monitoring.googleapis.com"
+    - "logging.googleapis.com"
+    
+    # アクセスレベル設定
+    accessLevels:
+    - "accessPolicies/ACCESS_POLICY_ID/accessLevels/therapeutic_app_access"
+    
+    # VPC許可設定
+    vpcAccessibleServices:
+      enableRestriction: true
+      allowedServices:
+      - "firestore.googleapis.com"
+      - "storage.googleapis.com"
+      - "secretmanager.googleapis.com"
+      - "cloudkms.googleapis.com"
+      
+    # イングレス・エグレスポリシー
+    ingressPolicies:
+    - ingressFrom:
+        sources:
+        - accessLevel: "accessPolicies/ACCESS_POLICY_ID/accessLevels/therapeutic_app_access"
+        identities:
+        - "serviceAccount:therapeutic-app-service-account@PROJECT_ID.iam.gserviceaccount.com"
+      ingressTo:
+        resources:
+        - "*"
+        operations:
+        - serviceName: "firestore.googleapis.com"
+          methodSelectors:
+          - method: "*"
+        - serviceName: "storage.googleapis.com"
+          methodSelectors:
+          - method: "*"
+    
+    egressPolicies:
+    - egressFrom:
+        identities:
+        - "serviceAccount:therapeutic-app-service-account@PROJECT_ID.iam.gserviceaccount.com"
+      egressTo:
+        resources:
+        - "*"
+        operations:
+        - serviceName: "firestore.googleapis.com"
+        - serviceName: "storage.googleapis.com"
+        - serviceName: "secretmanager.googleapis.com"
+
+---
+# アクセスレベル定義
+apiVersion: accesscontextmanager.googleapis.com/v1
+kind: AccessLevel
+metadata:
+  name: therapeutic-app-access
+spec:
+  title: "Therapeutic App Access Level"
+  parent: "accessPolicies/ACCESS_POLICY_ID"
+  basic:
+    conditions:
+    # IP制限（本番環境のみ）
+    - ipSubnetworks:
+      - "10.0.0.0/8"  # VPC内部
+      - "172.16.0.0/12"  # プライベートIP
+    
+    # デバイス制限
+    - devicePolicy:
+        requireScreenlock: true
+        requireAdminApproval: false
+        requireCorpOwned: false
+    
+    # 地域制限（日本のみ）
+    - regions:
+      - "JP"
+    
+    # 時間制限なし（24時間サービス）
+    combiningFunction: AND

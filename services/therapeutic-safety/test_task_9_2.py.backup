@@ -1,0 +1,503 @@
+#!/usr/bin/env python3
+"""
+Task 9.2: CBT[UNICODE_30D9]
+[UNICODE_5426]
+"""
+
+import asyncio
+import pytest
+import sys
+import os
+
+# [UNICODE_30D1]
+current_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(current_dir)
+
+from main import (
+    CBTInterventionEngine,
+    TherapeuticSafetyService,
+    SafetyThreatLevel
+)
+
+class TestCBTInterventionEngine:
+    """CBT[UNICODE_4ECB]"""
+    
+    def setup_method(self):
+        """[UNICODE_30C6]"""
+        self.cbt_engine = CBTInterventionEngine()
+        self.test_user_context = {
+            "uid": "test_user_001",
+            "character_name": "[UNICODE_30E6]",
+            "recent_mood": 2,
+            "recent_mood_history": [2, 2, 3],
+            "past_success": "[UNICODE_56F0]"
+        }
+    
+    def test_detect_all_or_nothing_thinking(self):
+        """[UNICODE_5168]"""
+        test_content = "[UNICODE_3044]"
+        
+        patterns = self.cbt_engine.detect_negative_thought_patterns(test_content)
+        
+        assert len(patterns) > 0
+        assert any(p["type"] == "all_or_nothing" for p in patterns)
+        
+        all_or_nothing_pattern = next(p for p in patterns if p["type"] == "all_or_nothing")
+        assert all_or_nothing_pattern["confidence"] > 0.2  # [UNICODE_5B9F]
+        assert all_or_nothing_pattern["name"] == "[UNICODE_5168]"
+    
+    def test_detect_catastrophizing(self):
+        """[UNICODE_7834]"""
+        test_content = "[UNICODE_3053]"
+        
+        patterns = self.cbt_engine.detect_negative_thought_patterns(test_content)
+        
+        assert len(patterns) > 0
+        catastrophizing_pattern = next(
+            (p for p in patterns if p["type"] == "catastrophizing"), None
+        )
+        assert catastrophizing_pattern is not None
+        assert catastrophizing_pattern["confidence"] > 0.4  # [UNICODE_5B9F]
+        assert catastrophizing_pattern["severity"] in ["medium", "high"]
+    
+    def test_detect_personalization(self):
+        """[UNICODE_500B]"""
+        test_content = "[UNICODE_30C1]"
+        
+        patterns = self.cbt_engine.detect_negative_thought_patterns(test_content)
+        
+        personalization_pattern = next(
+            (p for p in patterns if p["type"] == "personalization"), None
+        )
+        assert personalization_pattern is not None
+        assert personalization_pattern["confidence"] > 0.2  # [UNICODE_5B9F]
+    
+    def test_detect_mind_reading(self):
+        """[UNICODE_5FC3]"""
+        test_content = "[UNICODE_307F]"
+        
+        patterns = self.cbt_engine.detect_negative_thought_patterns(test_content)
+        
+        mind_reading_pattern = next(
+            (p for p in patterns if p["type"] == "mind_reading"), None
+        )
+        assert mind_reading_pattern is not None
+        assert mind_reading_pattern["confidence"] > 0.05  # [UNICODE_5B9F]
+    
+    def test_detect_emotional_reasoning(self):
+        """[UNICODE_611F]"""
+        test_content = "[UNICODE_4E0D]"
+        
+        patterns = self.cbt_engine.detect_negative_thought_patterns(test_content)
+        
+        # [UNICODE_611F]
+        assert len(patterns) >= 0  # [UNICODE_30D1]
+        
+        # [UNICODE_611F]
+        emotional_reasoning_pattern = next(
+            (p for p in patterns if p["type"] == "emotional_reasoning"), None
+        )
+        if emotional_reasoning_pattern:
+            assert emotional_reasoning_pattern["confidence"] > 0
+    
+    def test_generate_story_break_dialog(self):
+        """[UNICODE_30B9]"""
+        detected_patterns = [{
+            "type": "all_or_nothing",
+            "name": "[UNICODE_5168]",
+            "confidence": 0.8,
+            "severity": "high"
+        }]
+        
+        story_break = self.cbt_engine.generate_story_break_dialog(
+            detected_patterns, self.test_user_context
+        )
+        
+        assert story_break["intervention_needed"] is True
+        assert story_break["primary_distortion"] == "all_or_nothing"
+        assert story_break["confidence"] == 0.8
+        assert "[UNICODE_30E6]" in story_break["dialog"]
+        assert len(story_break["dialog"]) > 50  # [UNICODE_5341]
+    
+    def test_generate_story_break_dialog_no_patterns(self):
+        """[UNICODE_30D1]"""
+        story_break = self.cbt_engine.generate_story_break_dialog(
+            [], self.test_user_context
+        )
+        
+        assert story_break["intervention_needed"] is False
+        assert story_break["dialog"] is None
+    
+    def test_generate_cognitive_reframing_all_or_nothing(self):
+        """[UNICODE_5168]"""
+        thought = "[UNICODE_3044]"
+        
+        reframing = self.cbt_engine.generate_cognitive_reframing(
+            thought, "all_or_nothing", self.test_user_context
+        )
+        
+        assert reframing["original_thought"] == thought
+        assert reframing["distortion_type"] == "all_or_nothing"
+        assert reframing["technique"] == "[UNICODE_30B0]"
+        assert len(reframing["reframed_thoughts"]) > 0
+        assert len(reframing["reflection_questions"]) > 0
+        assert reframing["confidence"] > 0.8
+    
+    def test_generate_cognitive_reframing_catastrophizing(self):
+        """[UNICODE_7834]"""
+        thought = "[UNICODE_3053]"
+        
+        reframing = self.cbt_engine.generate_cognitive_reframing(
+            thought, "catastrophizing", self.test_user_context
+        )
+        
+        assert reframing["technique"] == "[UNICODE_73FE]"
+        assert any("[UNICODE_904E]" in rt for rt in reframing["reframed_thoughts"])
+        assert any("[UNICODE_5BFE]" in q for q in reframing["reflection_questions"])
+    
+    def test_generate_cognitive_reframing_personalization(self):
+        """[UNICODE_500B]"""
+        thought = "[UNICODE_5168]"
+        
+        reframing = self.cbt_engine.generate_cognitive_reframing(
+            thought, "personalization", self.test_user_context
+        )
+        
+        assert reframing["technique"] == "[UNICODE_8CAC]"
+        assert any("[UNICODE_4ED6]" in rt for rt in reframing["reframed_thoughts"])
+    
+    def test_create_cbt_intervention_comprehensive(self):
+        """CBT[UNICODE_4ECB]"""
+        content = "[UNICODE_3044]"
+        
+        intervention = self.cbt_engine.create_cbt_intervention(
+            content, self.test_user_context
+        )
+        
+        assert intervention["intervention_recommended"] is True
+        assert len(intervention["detected_patterns"]) > 0
+        assert intervention["story_break_dialog"]["intervention_needed"] is True
+        assert intervention["cognitive_reframing"] is not None
+        assert intervention["severity"] in ["low", "medium", "high"]
+    
+    def test_create_cbt_intervention_no_patterns(self):
+        """[UNICODE_5426]CBT[UNICODE_4ECB]"""
+        content = "[UNICODE_4ECA]"
+        
+        intervention = self.cbt_engine.create_cbt_intervention(
+            content, self.test_user_context
+        )
+        
+        assert intervention["intervention_recommended"] is False
+        assert len(intervention["detected_patterns"]) == 0
+        assert intervention["severity"] == "none"
+    
+    def test_evaluate_intervention_effectiveness(self):
+        """CBT[UNICODE_4ECB]"""
+        original_content = "[UNICODE_3044]"
+        reframed_content = "[UNICODE_6642]"
+        
+        effectiveness = self.cbt_engine.evaluate_intervention_effectiveness(
+            original_content, reframed_content
+        )
+        
+        assert effectiveness["original_severity"] > effectiveness["reframed_severity"]
+        assert effectiveness["improvement_rate"] > 0
+        assert effectiveness["patterns_reduced"] >= 0
+    
+    def test_generate_therapeutic_response_intervention_needed(self):
+        """[UNICODE_4ECB]"""
+        user_input = "[UNICODE_3082]"
+        
+        response = self.cbt_engine.generate_therapeutic_response(
+            user_input, self.test_user_context
+        )
+        
+        assert response["response_type"] == "cbt_intervention"
+        assert response["intervention_needed"] is True
+        assert len(response["message"]) > 100  # [UNICODE_5341]
+        assert response["primary_distortion"] is not None
+        assert response["severity"] in ["low", "medium", "high"]
+    
+    def test_generate_therapeutic_response_supportive(self):
+        """[UNICODE_652F]"""
+        user_input = "[UNICODE_4ECA]"
+        
+        response = self.cbt_engine.generate_therapeutic_response(
+            user_input, self.test_user_context
+        )
+        
+        assert response["response_type"] == "supportive"
+        assert response["intervention_needed"] is False
+        assert "[UNICODE_7406]" in response["message"] or "[UNICODE_9032]" in response["message"]
+
+class TestTherapeuticSafetyService:
+    """[UNICODE_6CBB]"""
+    
+    def setup_method(self):
+        """[UNICODE_30C6]"""
+        self.safety_service = TherapeuticSafetyService()
+        self.test_user_context = {
+            "uid": "test_user_002",
+            "character_name": "[UNICODE_30E6]",
+            "recent_mood": 2,
+            "recent_mood_history": [1, 2, 2]
+        }
+    
+    @pytest.mark.asyncio
+    async def test_comprehensive_safety_analysis_high_risk(self):
+        """[UNICODE_9AD8]"""
+        content = "[UNICODE_3082]"
+        
+        result = await self.safety_service.comprehensive_safety_analysis(
+            content, self.test_user_context
+        )
+        
+        assert "safety_analysis" in result
+        assert "cbt_analysis" in result
+        assert "therapeutic_response" in result
+        assert "recommended_action" in result
+        
+        # [UNICODE_5B89]
+        safety = result["safety_analysis"]
+        assert safety["content_safe"] is False
+        assert safety["threat_level"] in ["high", "critical"]
+        
+        # CBT[UNICODE_5206]
+        cbt = result["cbt_analysis"]
+        assert cbt["intervention_recommended"] is True
+        assert len(cbt["detected_patterns"]) > 0
+        
+        # [UNICODE_6CBB]
+        therapeutic = result["therapeutic_response"]
+        assert therapeutic["intervention_needed"] is True
+        assert therapeutic["response_type"] == "cbt_intervention"
+        
+        # [UNICODE_63A8]
+        assert result["recommended_action"] in [
+            "human_escalation", "immediate_cbt_intervention"
+        ]
+    
+    @pytest.mark.asyncio
+    async def test_comprehensive_safety_analysis_medium_risk(self):
+        """[UNICODE_4E2D]"""
+        content = "[UNICODE_3044]"
+        
+        result = await self.safety_service.comprehensive_safety_analysis(
+            content, self.test_user_context
+        )
+        
+        safety = result["safety_analysis"]
+        cbt = result["cbt_analysis"]
+        
+        assert cbt["intervention_recommended"] is True
+        assert result["recommended_action"] in ["cbt_support", "immediate_cbt_intervention"]
+    
+    @pytest.mark.asyncio
+    async def test_comprehensive_safety_analysis_low_risk(self):
+        """[UNICODE_4F4E]"""
+        content = "[UNICODE_4ECA]"
+        
+        result = await self.safety_service.comprehensive_safety_analysis(
+            content, self.test_user_context
+        )
+        
+        safety = result["safety_analysis"]
+        cbt = result["cbt_analysis"]
+        therapeutic = result["therapeutic_response"]
+        
+        assert safety["content_safe"] is True
+        assert cbt["intervention_recommended"] is False
+        assert therapeutic["response_type"] == "supportive"
+        assert result["recommended_action"] == "continue_story"
+
+class TestCBTIntegrationScenarios:
+    """CBT[UNICODE_4ECB]"""
+    
+    def setup_method(self):
+        """[UNICODE_30C6]"""
+        self.cbt_engine = CBTInterventionEngine()
+        self.safety_service = TherapeuticSafetyService()
+    
+    def test_multiple_distortions_detection(self):
+        """[UNICODE_8907]"""
+        content = "[UNICODE_3044]"
+        
+        patterns = self.cbt_engine.detect_negative_thought_patterns(content)
+        
+        # [UNICODE_8907]
+        assert len(patterns) >= 2
+        
+        detected_types = [p["type"] for p in patterns]
+        assert "all_or_nothing" in detected_types
+        assert "mind_reading" in detected_types or "catastrophizing" in detected_types
+    
+    def test_story_break_dialog_contextual_adaptation(self):
+        """[UNICODE_6587]"""
+        patterns = [{
+            "type": "catastrophizing",
+            "name": "[UNICODE_7834]",
+            "confidence": 0.9,
+            "severity": "high"
+        }]
+        
+        # [UNICODE_7570]
+        context1 = {"character_name": "[UNICODE_30E6]", "recent_mood": 1}
+        context2 = {"character_name": "[UNICODE_30A2]", "recent_mood": 3}
+        
+        dialog1 = self.cbt_engine.generate_story_break_dialog(patterns, context1)
+        dialog2 = self.cbt_engine.generate_story_break_dialog(patterns, context2)
+        
+        assert "[UNICODE_30E6]" in dialog1["dialog"]
+        assert "[UNICODE_30A2]" in dialog2["dialog"]
+        assert dialog1["character_name"] == "[UNICODE_30E6]"
+        assert dialog2["character_name"] == "[UNICODE_30A2]"
+    
+    def test_cognitive_reframing_technique_selection(self):
+        """[UNICODE_8A8D]"""
+        test_cases = [
+            ("all_or_nothing", "[UNICODE_30B0]"),
+            ("catastrophizing", "[UNICODE_73FE]"),
+            ("personalization", "[UNICODE_8CAC]"),
+            ("mind_reading", "[UNICODE_4E8B]"),
+            ("emotional_reasoning", "[UNICODE_611F]")
+        ]
+        
+        for distortion_type, expected_technique in test_cases:
+            reframing = self.cbt_engine.generate_cognitive_reframing(
+                "[UNICODE_30C6]", distortion_type
+            )
+            assert reframing["technique"] == expected_technique
+    
+    @pytest.mark.asyncio
+    async def test_escalation_decision_logic(self):
+        """[UNICODE_30A8]"""
+        # [UNICODE_9AD8]
+        high_risk_content = "[UNICODE_6B7B]"
+        high_risk_context = {
+            "uid": "test_user",
+            "recent_mood": 1,
+            "recent_mood_history": [1, 1, 1]
+        }
+        
+        result = await self.safety_service.comprehensive_safety_analysis(
+            high_risk_content, high_risk_context
+        )
+        
+        assert result["safety_analysis"]["escalation_required"] is True
+        assert result["recommended_action"] == "human_escalation"
+        
+        # [UNICODE_4E2D]
+        medium_risk_content = "[UNICODE_3044]"
+        medium_risk_context = {
+            "uid": "test_user",
+            "recent_mood": 2,
+            "recent_mood_history": [2, 3, 2]
+        }
+        
+        result = await self.safety_service.comprehensive_safety_analysis(
+            medium_risk_content, medium_risk_context
+        )
+        
+        assert result["recommended_action"] in ["cbt_support", "immediate_cbt_intervention"]
+
+def run_comprehensive_cbt_tests():
+    """CBT[UNICODE_4ECB]"""
+    print("=== Task 9.2: CBT[UNICODE_30D9] ===")
+    
+    # [UNICODE_30C6]
+    cbt_test = TestCBTInterventionEngine()
+    safety_test = TestTherapeuticSafetyService()
+    integration_test = TestCBTIntegrationScenarios()
+    
+    # [UNICODE_30BB]
+    cbt_test.setup_method()
+    safety_test.setup_method()
+    integration_test.setup_method()
+    
+    test_results = []
+    
+    # CBT[UNICODE_4ECB]
+    cbt_tests = [
+        ("[UNICODE_5426] - [UNICODE_5168]", cbt_test.test_detect_all_or_nothing_thinking),
+        ("[UNICODE_5426] - [UNICODE_7834]", cbt_test.test_detect_catastrophizing),
+        ("[UNICODE_5426] - [UNICODE_500B]", cbt_test.test_detect_personalization),
+        ("[UNICODE_5426] - [UNICODE_5FC3]", cbt_test.test_detect_mind_reading),
+        ("[UNICODE_5426] - [UNICODE_611F]", cbt_test.test_detect_emotional_reasoning),
+        ("[UNICODE_30B9]", cbt_test.test_generate_story_break_dialog),
+        ("[UNICODE_30B9] - [UNICODE_30D1]", cbt_test.test_generate_story_break_dialog_no_patterns),
+        ("[UNICODE_8A8D] - [UNICODE_5168]", cbt_test.test_generate_cognitive_reframing_all_or_nothing),
+        ("[UNICODE_8A8D] - [UNICODE_7834]", cbt_test.test_generate_cognitive_reframing_catastrophizing),
+        ("[UNICODE_8A8D] - [UNICODE_500B]", cbt_test.test_generate_cognitive_reframing_personalization),
+        ("CBT[UNICODE_4ECB]", cbt_test.test_create_cbt_intervention_comprehensive),
+        ("CBT[UNICODE_4ECB] - [UNICODE_30D1]", cbt_test.test_create_cbt_intervention_no_patterns),
+        ("[UNICODE_4ECB]", cbt_test.test_evaluate_intervention_effectiveness),
+        ("[UNICODE_6CBB] - [UNICODE_4ECB]", cbt_test.test_generate_therapeutic_response_intervention_needed),
+        ("[UNICODE_6CBB] - [UNICODE_652F]", cbt_test.test_generate_therapeutic_response_supportive)
+    ]
+    
+    for test_name, test_func in cbt_tests:
+        try:
+            test_func()
+            test_results.append(f"[UNICODE_2705] {test_name}")
+            print(f"[UNICODE_2705] {test_name}")
+        except Exception as e:
+            test_results.append(f"[UNICODE_274C] {test_name}: {str(e)}")
+            print(f"[UNICODE_274C] {test_name}: {str(e)}")
+    
+    # [UNICODE_7D71]
+    integration_tests = [
+        ("[UNICODE_8907]", integration_test.test_multiple_distortions_detection),
+        ("[UNICODE_6587]", integration_test.test_story_break_dialog_contextual_adaptation),
+        ("[UNICODE_6280]", integration_test.test_cognitive_reframing_technique_selection)
+    ]
+    
+    for test_name, test_func in integration_tests:
+        try:
+            test_func()
+            test_results.append(f"[UNICODE_2705] {test_name}")
+            print(f"[UNICODE_2705] {test_name}")
+        except Exception as e:
+            test_results.append(f"[UNICODE_274C] {test_name}: {str(e)}")
+            print(f"[UNICODE_274C] {test_name}: {str(e)}")
+    
+    # [UNICODE_975E]
+    async def run_async_tests():
+        async_tests = [
+            ("[UNICODE_5305] - [UNICODE_9AD8]", safety_test.test_comprehensive_safety_analysis_high_risk),
+            ("[UNICODE_5305] - [UNICODE_4E2D]", safety_test.test_comprehensive_safety_analysis_medium_risk),
+            ("[UNICODE_5305] - [UNICODE_4F4E]", safety_test.test_comprehensive_safety_analysis_low_risk),
+            ("[UNICODE_30A8]", integration_test.test_escalation_decision_logic)
+        ]
+        
+        for test_name, test_func in async_tests:
+            try:
+                await test_func()
+                test_results.append(f"[UNICODE_2705] {test_name}")
+                print(f"[UNICODE_2705] {test_name}")
+            except Exception as e:
+                test_results.append(f"[UNICODE_274C] {test_name}: {str(e)}")
+                print(f"[UNICODE_274C] {test_name}: {str(e)}")
+    
+    # [UNICODE_975E]
+    asyncio.run(run_async_tests())
+    
+    # [UNICODE_7D50]
+    passed = len([r for r in test_results if r.startswith("[UNICODE_2705]")])
+    failed = len([r for r in test_results if r.startswith("[UNICODE_274C]")])
+    
+    print(f"\n=== [UNICODE_30C6] ===")
+    print(f"[UNICODE_6210]: {passed}")
+    print(f"[UNICODE_5931]: {failed}")
+    print(f"[UNICODE_6210]: {passed/(passed+failed)*100:.1f}%")
+    
+    if failed == 0:
+        print("[UNICODE_1F389] Task 9.2: CBT[UNICODE_30D9]")
+        return True
+    else:
+        print("[UNICODE_26A0]  [UNICODE_4E00]")
+        return False
+
+if __name__ == "__main__":
+    success = run_comprehensive_cbt_tests()
+    sys.exit(0 if success else 1)

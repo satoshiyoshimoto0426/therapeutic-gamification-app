@@ -1,0 +1,37 @@
+{
+  "timestamp": "20250730_103245",
+  "test_type": "simple_integration_test",
+  "test_results": {
+    "service_health": {
+      "auth": true,
+      "core_game": true,
+      "task_mgmt": true,
+      "mandala": true
+    },
+    "authentication": {
+      "success": false,
+      "error": "Authentication failed: 422",
+      "response": "{\"detail\":[{\"type\":\"enum\",\"loc\":[\"body\",\"permission_level\"],\"msg\":\"Input should be 'view_only', 'task_edit' or 'chat_send'\",\"input\":\"task-edit\",\"ctx\":{\"expected\":\"'view_only', 'task_edit' or 'chat_send'\"}}]}"
+    },
+    "core_game": {
+      "success": false,
+      "error": "No auth token available"
+    },
+    "task_management": {
+      "success": false,
+      "error": "No auth token available"
+    },
+    "mandala": {
+      "success": false,
+      "error": "No auth token available"
+    },
+    "data_flow": {
+      "success": false,
+      "error": "No auth token available"
+    }
+  },
+  "summary": {
+    "total_tests": 6,
+    "passed_tests": 1
+  }
+}

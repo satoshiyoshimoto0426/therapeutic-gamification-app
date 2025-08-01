@@ -1,0 +1,502 @@
+"""
+[UNICODE_30D1]
+API[UNICODE_5FDC]
+"""
+
+import time
+import asyncio
+from typing import Dict, Any, Optional, List
+from dataclasses import dataclass, asdict
+from datetime import datetime, timedelta
+import json
+from functools import wraps
+import logging
+from collections import defaultdict, deque
+import threading
+
+# [UNICODE_30ED]
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+@dataclass
+class PerformanceMetrics:
+    """[UNICODE_30D1]"""
+    endpoint: str
+    response_time: float
+    timestamp: datetime
+    status_code: int
+    cache_hit: bool = False
+    user_id: Optional[str] = None
+
+@dataclass
+class RateLimitInfo:
+    """[UNICODE_30EC]"""
+    ip_address: str
+    request_count: int
+    window_start: datetime
+    blocked_until: Optional[datetime] = None
+
+class PerformanceMonitor:
+    """[UNICODE_30D1]"""
+    
+    def __init__(self):
+        self.metrics: List[PerformanceMetrics] = []
+        self.p95_target = 1.2  # 1.2[UNICODE_79D2]P95[UNICODE_30EC]
+        self.metrics_lock = threading.Lock()
+        
+    def record_metric(self, metric: PerformanceMetrics):
+        """[UNICODE_30E1]"""
+        with self.metrics_lock:
+            self.metrics.append(metric)
+            # [UNICODE_53E4]24[UNICODE_6642]
+            cutoff = datetime.now() - timedelta(hours=24)
+            self.metrics = [m for m in self.metrics if m.timestamp > cutoff]
+    
+    def get_p95_latency(self, endpoint: Optional[str] = None, 
+                       hours: int = 1) -> float:
+        """P95[UNICODE_30EC]"""
+        cutoff = datetime.now() - timedelta(hours=hours)
+        
+        with self.metrics_lock:
+            filtered_metrics = [
+                m for m in self.metrics 
+                if m.timestamp > cutoff and (endpoint is None or m.endpoint == endpoint)
+            ]
+        
+        if not filtered_metrics:
+            return 0.0
+        
+        response_times = sorted([m.response_time for m in filtered_metrics])
+        p95_index = int(len(response_times) * 0.95)
+        return response_times[p95_index] if p95_index < len(response_times) else response_times[-1]
+    
+    def get_performance_summary(self) -> Dict[str, Any]:
+        """[UNICODE_30D1]"""
+        with self.metrics_lock:
+            if not self.metrics:
+                return {"error": "[UNICODE_30E1]"}
+            
+            recent_metrics = [
+                m for m in self.metrics 
+                if m.timestamp > datetime.now() - timedelta(hours=1)
+            ]
+            
+            if not recent_metrics:
+                return {"error": "[UNICODE_6700]"}
+            
+            response_times = [m.response_time for m in recent_metrics]
+            cache_hits = sum(1 for m in recent_metrics if m.cache_hit)
+            
+            return {
+                "total_requests": len(recent_metrics),
+                "avg_response_time": sum(response_times) / len(response_times),
+                "p95_latency": self.get_p95_latency(),
+                "p95_target": self.p95_target,
+                "p95_compliance": self.get_p95_latency() <= self.p95_target,
+                "cache_hit_rate": cache_hits / len(recent_metrics) if recent_metrics else 0,
+                "endpoints": self._get_endpoint_stats(recent_metrics)
+            }
+    
+    def _get_endpoint_stats(self, metrics: List[PerformanceMetrics]) -> Dict[str, Dict]:
+        """[UNICODE_30A8]"""
+        endpoint_stats = defaultdict(list)
+        
+        for metric in metrics:
+            endpoint_stats[metric.endpoint].append(metric.response_time)
+        
+        result = {}
+        for endpoint, times in endpoint_stats.items():
+            result[endpoint] = {
+                "count": len(times),
+                "avg_time": sum(times) / len(times),
+                "max_time": max(times),
+                "min_time": min(times)
+            }
+        
+        return result
+
+class CacheManager:
+    """[UNICODE_30AD]"""
+    
+    def __init__(self):
+        # [UNICODE_30E1]Redis[UNICODE_306B]
+        self.memory_cache: Dict[str, Dict] = {}
+        self.cache_ttl = {
+            "user_profile": 300,      # 5[UNICODE_5206]
+            "mandala_grid": 600,      # 10[UNICODE_5206]
+            "story_content": 1800,    # 30[UNICODE_5206]
+            "task_list": 180,         # 3[UNICODE_5206]
+            "leaderboard": 900        # 15[UNICODE_5206]
+        }
+        self.cache_lock = threading.Lock()
+    
+    def get(self, key: str, cache_type: str = "default") -> Optional[Any]:
+        """[UNICODE_30AD]"""
+        with self.cache_lock:
+            cache_entry = self.memory_cache.get(key)
+            
+            if cache_entry is None:
+                return None
+            
+            # TTL[UNICODE_30C1]
+            ttl = self.cache_ttl.get(cache_type, 300)
+            if datetime.now() - cache_entry["timestamp"] > timedelta(seconds=ttl):
+                del self.memory_cache[key]
+                return None
+            
+            return cache_entry["data"]
+    
+    def set(self, key: str, value: Any, cache_type: str = "default"):
+        """[UNICODE_30AD]"""
+        with self.cache_lock:
+            self.memory_cache[key] = {
+                "data": value,
+                "timestamp": datetime.now(),
+                "type": cache_type
+            }
+    
+    def invalidate(self, pattern: str = None):
+        """[UNICODE_30AD]"""
+        with self.cache_lock:
+            if pattern is None:
+                self.memory_cache.clear()
+            else:
+                keys_to_remove = [k for k in self.memory_cache.keys() if pattern in k]
+                for key in keys_to_remove:
+                    del self.memory_cache[key]
+    
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """[UNICODE_30AD]"""
+        with self.cache_lock:
+            total_entries = len(self.memory_cache)
+            type_counts = defaultdict(int)
+            
+            for entry in self.memory_cache.values():
+                type_counts[entry.get("type", "default")] += 1
+            
+            return {
+                "total_entries": total_entries,
+                "type_distribution": dict(type_counts),
+                "memory_usage_estimate": total_entries * 1024  # [UNICODE_6982]
+            }
+
+class RateLimiter:
+    """[UNICODE_30EC]120req/min/IP[UNICODE_FF09]"""
+    
+    def __init__(self, max_requests: int = 120, window_minutes: int = 1):
+        self.max_requests = max_requests
+        self.window_seconds = window_minutes * 60
+        self.request_history: Dict[str, deque] = defaultdict(deque)
+        self.blocked_ips: Dict[str, datetime] = {}
+        self.lock = threading.Lock()
+    
+    def is_allowed(self, ip_address: str) -> bool:
+        """[UNICODE_30EA]"""
+        current_time = datetime.now()
+        
+        with self.lock:
+            # [UNICODE_30D6]
+            if ip_address in self.blocked_ips:
+                if current_time < self.blocked_ips[ip_address]:
+                    return False
+                else:
+                    del self.blocked_ips[ip_address]
+            
+            # [UNICODE_30EA]
+            history = self.request_history[ip_address]
+            
+            # [UNICODE_53E4]
+            cutoff_time = current_time - timedelta(seconds=self.window_seconds)
+            while history and history[0] < cutoff_time:
+                history.popleft()
+            
+            # [UNICODE_30EC]
+            if len(history) >= self.max_requests:
+                # 1[UNICODE_5206]
+                self.blocked_ips[ip_address] = current_time + timedelta(minutes=1)
+                logger.warning(f"IP {ip_address} [UNICODE_304C]")
+                return False
+            
+            # [UNICODE_30EA]
+            history.append(current_time)
+            return True
+    
+    def get_rate_limit_info(self, ip_address: str) -> RateLimitInfo:
+        """[UNICODE_30EC]"""
+        current_time = datetime.now()
+        
+        with self.lock:
+            history = self.request_history[ip_address]
+            cutoff_time = current_time - timedelta(seconds=self.window_seconds)
+            
+            # [UNICODE_6709]
+            valid_requests = sum(1 for req_time in history if req_time > cutoff_time)
+            
+            return RateLimitInfo(
+                ip_address=ip_address,
+                request_count=valid_requests,
+                window_start=cutoff_time,
+                blocked_until=self.blocked_ips.get(ip_address)
+            )
+    
+    def get_rate_limit_stats(self) -> Dict[str, Any]:
+        """[UNICODE_30EC]"""
+        with self.lock:
+            active_ips = len(self.request_history)
+            blocked_ips = len(self.blocked_ips)
+            
+            # [UNICODE_6700]IP[UNICODE_3092]
+            top_ips = []
+            for ip, history in self.request_history.items():
+                if history:
+                    top_ips.append((ip, len(history)))
+            
+            top_ips.sort(key=lambda x: x[1], reverse=True)
+            
+            return {
+                "active_ips": active_ips,
+                "blocked_ips": blocked_ips,
+                "top_active_ips": top_ips[:10],
+                "max_requests_per_window": self.max_requests,
+                "window_seconds": self.window_seconds
+            }
+
+class QueryOptimizer:
+    """[UNICODE_30C7]"""
+    
+    def __init__(self):
+        self.query_cache = CacheManager()
+        self.slow_query_threshold = 0.5  # 500ms
+        self.slow_queries: List[Dict] = []
+        self.query_lock = threading.Lock()
+    
+    def optimize_user_query(self, user_id: str) -> Dict[str, Any]:
+        """[UNICODE_30E6]"""
+        cache_key = f"user_optimized_{user_id}"
+        cached_result = self.query_cache.get(cache_key, "user_profile")
+        
+        if cached_result:
+            return cached_result
+        
+        # [UNICODE_8907]
+        start_time = time.time()
+        
+        # [UNICODE_30B7]
+        result = {
+            "user_profile": {"uid": user_id, "level": 5, "xp": 1250},
+            "active_tasks": [{"id": "task1", "type": "routine", "difficulty": 2}],
+            "crystal_progress": {"Self-Discipline": 75, "Empathy": 60},
+            "recent_achievements": ["level_up", "task_streak_7"]
+        }
+        
+        query_time = time.time() - start_time
+        
+        # [UNICODE_30B9]
+        if query_time > self.slow_query_threshold:
+            with self.query_lock:
+                self.slow_queries.append({
+                    "query_type": "user_optimized",
+                    "user_id": user_id,
+                    "execution_time": query_time,
+                    "timestamp": datetime.now()
+                })
+        
+        self.query_cache.set(cache_key, result, "user_profile")
+        return result
+    
+    def optimize_mandala_query(self, user_id: str) -> Dict[str, Any]:
+        """Mandala[UNICODE_30AF]"""
+        cache_key = f"mandala_optimized_{user_id}"
+        cached_result = self.query_cache.get(cache_key, "mandala_grid")
+        
+        if cached_result:
+            return cached_result
+        
+        start_time = time.time()
+        
+        # [UNICODE_6700]Mandala[UNICODE_30C7]
+        result = {
+            "grid": [[None for _ in range(9)] for _ in range(9)],
+            "unlocked_cells": 15,
+            "current_chapter": "Self-Discipline",
+            "next_unlock_requirements": {"xp": 100, "tasks": 3}
+        }
+        
+        query_time = time.time() - start_time
+        
+        if query_time > self.slow_query_threshold:
+            with self.query_lock:
+                self.slow_queries.append({
+                    "query_type": "mandala_optimized",
+                    "user_id": user_id,
+                    "execution_time": query_time,
+                    "timestamp": datetime.now()
+                })
+        
+        self.query_cache.set(cache_key, result, "mandala_grid")
+        return result
+    
+    def get_slow_query_report(self) -> Dict[str, Any]:
+        """[UNICODE_30B9]"""
+        with self.query_lock:
+            if not self.slow_queries:
+                return {"message": "[UNICODE_30B9]"}
+            
+            # [UNICODE_6700]1[UNICODE_6642]
+            recent_cutoff = datetime.now() - timedelta(hours=1)
+            recent_slow = [q for q in self.slow_queries if q["timestamp"] > recent_cutoff]
+            
+            if not recent_slow:
+                return {"message": "[UNICODE_6700]"}
+            
+            # [UNICODE_7D71]
+            avg_time = sum(q["execution_time"] for q in recent_slow) / len(recent_slow)
+            max_time = max(q["execution_time"] for q in recent_slow)
+            
+            query_types = defaultdict(int)
+            for query in recent_slow:
+                query_types[query["query_type"]] += 1
+            
+            return {
+                "total_slow_queries": len(recent_slow),
+                "average_execution_time": avg_time,
+                "max_execution_time": max_time,
+                "slow_query_threshold": self.slow_query_threshold,
+                "query_type_distribution": dict(query_types),
+                "recent_slow_queries": recent_slow[-10:]  # [UNICODE_6700]10[UNICODE_4EF6]
+            }
+
+# [UNICODE_30C7]
+def monitor_performance(endpoint_name: str):
+    """[UNICODE_30D1]"""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            start_time = time.time()
+            cache_hit = False
+            status_code = 200
+            
+            try:
+                result = func(*args, **kwargs)
+                
+                # [UNICODE_30AD]cache_hit[UNICODE_30D5]
+                if isinstance(result, dict) and result.get("_cache_hit"):
+                    cache_hit = True
+                    result.pop("_cache_hit", None)
+                
+                return result
+                
+            except Exception as e:
+                status_code = 500
+                logger.error(f"[UNICODE_30A8] {endpoint_name} [UNICODE_3067]: {e}")
+                raise
+            
+            finally:
+                execution_time = time.time() - start_time
+                
+                metric = PerformanceMetrics(
+                    endpoint=endpoint_name,
+                    response_time=execution_time,
+                    timestamp=datetime.now(),
+                    status_code=status_code,
+                    cache_hit=cache_hit
+                )
+                
+                # [UNICODE_30B0]
+                if hasattr(wrapper, '_monitor'):
+                    wrapper._monitor.record_metric(metric)
+        
+        return wrapper
+    return decorator
+
+def rate_limit(max_requests: int = 120):
+    """[UNICODE_30EC]"""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            # IP[UNICODE_30A2] request.remote_addr [UNICODE_3092]
+            ip_address = kwargs.get("ip_address", "127.0.0.1")
+            
+            if hasattr(wrapper, '_rate_limiter'):
+                if not wrapper._rate_limiter.is_allowed(ip_address):
+                    return {
+                        "error": "[UNICODE_30EC]",
+                        "retry_after": 60,
+                        "status_code": 429
+                    }
+            
+            return func(*args, **kwargs)
+        
+        return wrapper
+    return decorator
+
+# [UNICODE_30B0]
+performance_monitor = PerformanceMonitor()
+cache_manager = CacheManager()
+rate_limiter = RateLimiter()
+query_optimizer = QueryOptimizer()
+
+# API [UNICODE_30A8]
+@monitor_performance("get_user_dashboard")
+@rate_limit(120)
+def get_user_dashboard(user_id: str, ip_address: str = "127.0.0.1") -> Dict[str, Any]:
+    """[UNICODE_30E6]"""
+    
+    # [UNICODE_30AD]
+    cache_key = f"dashboard_{user_id}"
+    cached_data = cache_manager.get(cache_key, "user_profile")
+    
+    if cached_data:
+        cached_data["_cache_hit"] = True
+        return cached_data
+    
+    # [UNICODE_6700]
+    user_data = query_optimizer.optimize_user_query(user_id)
+    mandala_data = query_optimizer.optimize_mandala_query(user_id)
+    
+    dashboard_data = {
+        "user": user_data["user_profile"],
+        "tasks": user_data["active_tasks"],
+        "crystals": user_data["crystal_progress"],
+        "mandala": mandala_data,
+        "achievements": user_data["recent_achievements"],
+        "timestamp": datetime.now().isoformat()
+    }
+    
+    # [UNICODE_30AD]
+    cache_manager.set(cache_key, dashboard_data, "user_profile")
+    
+    return dashboard_data
+
+@monitor_performance("get_performance_metrics")
+def get_performance_metrics() -> Dict[str, Any]:
+    """[UNICODE_30D1]"""
+    return {
+        "performance": performance_monitor.get_performance_summary(),
+        "cache": cache_manager.get_cache_stats(),
+        "rate_limiting": rate_limiter.get_rate_limit_stats(),
+        "slow_queries": query_optimizer.get_slow_query_report(),
+        "timestamp": datetime.now().isoformat()
+    }
+
+# [UNICODE_30C7]
+get_user_dashboard._monitor = performance_monitor
+get_user_dashboard._rate_limiter = rate_limiter
+get_performance_metrics._monitor = performance_monitor
+
+if __name__ == "__main__":
+    print("[UNICODE_30D1]")
+    
+    # [UNICODE_30C6]
+    print("\n=== [UNICODE_30D1] ===")
+    
+    # [UNICODE_8907]
+    for i in range(10):
+        result = get_user_dashboard(f"user_{i % 3}")
+        print(f"[UNICODE_30EA] {i+1}: [UNICODE_30AD] = {result.get('_cache_hit', False)}")
+        time.sleep(0.1)
+    
+    # [UNICODE_30E1]
+    print("\n=== [UNICODE_30D1] ===")
+    metrics = get_performance_metrics()
+    print(json.dumps(metrics, indent=2, ensure_ascii=False, default=str))

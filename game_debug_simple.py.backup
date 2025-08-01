@@ -1,0 +1,232 @@
+#!/usr/bin/env python3
+"""
+[UNICODE_6CBB] - [UNICODE_30B7]
+
+[UNICODE_5404]
+"""
+
+import os
+import sys
+import subprocess
+from datetime import datetime
+
+class SimpleGameDebugger:
+    """[UNICODE_30B7]"""
+    
+    def __init__(self):
+        self.services = [
+            ("[UNICODE_30B3]", "services/core-game", "simple_test.py"),
+            ("[UNICODE_30BF]", "services/task-mgmt", "simple_validation.py"),
+            ("Mandala", "services/mandala", "simple_test.py"),
+            ("[UNICODE_8A8D]", "services/auth", "simple_test.py"),
+            ("AI[UNICODE_30B9]", "services/ai-story", "simple_test.py"),
+            ("[UNICODE_6C17]", "services/mood-tracking", "simple_test.py"),
+            ("LINE Bot", "services/line-bot", "test_mobile_simple.py"),
+            ("ADHD[UNICODE_652F]", "services/adhd-support", "validate_implementation.py"),
+            ("[UNICODE_6CBB]", "services/therapeutic-safety", "test_direct.py"),
+            ("Guardian Portal", "services/guardian-portal", "simple_test.py"),
+            ("RPG[UNICODE_7D4C]", "services/rpg-economy", "simple_test.py"),
+            ("[UNICODE_8077]", "services/job-system", "simple_test.py"),
+            ("[UNICODE_5185]", "services/inner-demon-battle", "simple_test.py"),
+            ("[UNICODE_5B63]", "services/seasonal-events", "simple_test.py"),
+            ("[UNICODE_30B0]", "services/growth-note", "simple_test.py"),
+            ("Edge AI [UNICODE_30AD]", "services/edge-ai-cache", "simple_test.py"),
+            ("[UNICODE_03B1]", "services/alpha-playtest", "simple_test.py"),
+            ("GDPR[UNICODE_6E96]", "services/gdpr-compliance", "simple_test.py"),
+        ]
+        
+        self.results = []
+        self.errors = []
+        
+    def test_service(self, name: str, path: str, test_file: str):
+        """[UNICODE_500B]"""
+        print(f"\n[UNICODE_1F50D] {name}[UNICODE_30B5]...")
+        
+        full_path = os.path.join(path, test_file)
+        
+        if not os.path.exists(full_path):
+            print(f"[UNICODE_274C] [UNICODE_30C6]: {full_path}")
+            self.results.append((name, "MISSING", f"[UNICODE_30C6]: {test_file}"))
+            return
+        
+        try:
+            # [UNICODE_30C6]
+            result = subprocess.run(
+                [sys.executable, test_file],
+                cwd=path,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            if result.returncode == 0:
+                print(f"[UNICODE_2705] {name}: [UNICODE_30C6]")
+                self.results.append((name, "SUCCESS", "[UNICODE_6B63]"))
+            else:
+                print(f"[UNICODE_274C] {name}: [UNICODE_30C6] ([UNICODE_7D42]: {result.returncode})")
+                error_msg = result.stderr.strip() if result.stderr else "[UNICODE_4E0D]"
+                self.results.append((name, "FAILED", error_msg))
+                self.errors.append(f"{name}: {error_msg}")
+                
+        except subprocess.TimeoutExpired:
+            print(f"[UNICODE_23F0] {name}: [UNICODE_30C6]")
+            self.results.append((name, "TIMEOUT", "30[UNICODE_79D2]"))
+            self.errors.append(f"{name}: [UNICODE_30C6]")
+            
+        except Exception as e:
+            print(f"[UNICODE_274C] {name}: [UNICODE_4F8B] - {str(e)}")
+            self.results.append((name, "ERROR", str(e)))
+            self.errors.append(f"{name}: {str(e)}")
+    
+    def test_integration_flow(self):
+        """[UNICODE_7D71]"""
+        print(f"\n[UNICODE_1F504] [UNICODE_7D71]...")
+        
+        integration_tests = [
+            ("[UNICODE_30E6]", "services/integration", "simple_user_journey_test.py"),
+            ("RPG[UNICODE_7D71]", "services/integration", "simple_rpg_integration_test.py"),
+        ]
+        
+        for name, path, test_file in integration_tests:
+            self.test_service(f"[UNICODE_7D71]-{name}", path, test_file)
+    
+    def check_critical_files(self):
+        """[UNICODE_91CD]"""
+        print(f"\n[UNICODE_1F4C1] [UNICODE_91CD]...")
+        
+        critical_files = [
+            "shared/interfaces/core_types.py",
+            "shared/interfaces/level_system.py",
+            "shared/interfaces/resonance_system.py",
+            "shared/interfaces/task_system.py",
+            "shared/interfaces/mandala_system.py",
+            "shared/interfaces/rbac_system.py",
+            "shared/config/firestore_schema.py",
+            "frontend/src/App.tsx",
+            "frontend/package.json",
+        ]
+        
+        missing_files = []
+        for file_path in critical_files:
+            if os.path.exists(file_path):
+                print(f"[UNICODE_2705] {file_path}")
+            else:
+                print(f"[UNICODE_274C] {file_path} - [UNICODE_898B]")
+                missing_files.append(file_path)
+        
+        if missing_files:
+            self.errors.append(f"[UNICODE_91CD]: {', '.join(missing_files)}")
+    
+    def check_dependencies(self):
+        """[UNICODE_4F9D]"""
+        print(f"\n[UNICODE_1F4E6] [UNICODE_4F9D]...")
+        
+        required_packages = [
+            "fastapi",
+            "uvicorn",
+            "pydantic",
+            "python-multipart",
+            "python-jose",
+            "passlib",
+            "httpx",
+        ]
+        
+        missing_packages = []
+        for package in required_packages:
+            try:
+                __import__(package.replace("-", "_"))
+                print(f"[UNICODE_2705] {package}")
+            except ImportError:
+                print(f"[UNICODE_274C] {package} - [UNICODE_30A4]")
+                missing_packages.append(package)
+        
+        if missing_packages:
+            self.errors.append(f"[UNICODE_5FC5]: {', '.join(missing_packages)}")
+    
+    def generate_report(self):
+        """[UNICODE_30C7]"""
+        print("\n" + "="*80)
+        print("[UNICODE_1F3AE] [UNICODE_6CBB] - [UNICODE_30B7]")
+        print("="*80)
+        
+        # [UNICODE_7D50]
+        success_count = sum(1 for _, status, _ in self.results if status == "SUCCESS")
+        total_count = len(self.results)
+        
+        print(f"\n[UNICODE_1F4CA] [UNICODE_30C6]:")
+        print(f"  [UNICODE_7DCF]: {total_count}")
+        print(f"  [UNICODE_6210]: {success_count}")
+        print(f"  [UNICODE_5931]: {total_count - success_count}")
+        print(f"  [UNICODE_6210]: {(success_count / total_count * 100):.1f}%" if total_count > 0 else "  [UNICODE_6210]: 0%")
+        
+        # [UNICODE_8A73]
+        print(f"\n[UNICODE_1F4CB] [UNICODE_8A73]:")
+        for name, status, message in self.results:
+            status_icon = "[UNICODE_2705]" if status == "SUCCESS" else "[UNICODE_274C]"
+            print(f"  {status_icon} {name}: {status}")
+            if status != "SUCCESS" and message:
+                print(f"    [UNICODE_2514] {message}")
+        
+        # [UNICODE_30A8]
+        if self.errors:
+            print(f"\n[UNICODE_274C] [UNICODE_767A] ({len(self.errors)}[UNICODE_4EF6]):")
+            for i, error in enumerate(self.errors, 1):
+                print(f"  {i}. {error}")
+        
+        # [UNICODE_63A8]
+        print(f"\n[UNICODE_1F527] [UNICODE_63A8]:")
+        if self.errors:
+            print("  1. [UNICODE_5931]")
+            print("  2. [UNICODE_4E0D]")
+            print("  3. [UNICODE_30A4]")
+            print("  4. [UNICODE_5404]")
+        else:
+            print("  [UNICODE_1F389] [UNICODE_5168]")
+        
+        print("  5. [UNICODE_5B9A]")
+        print("  6. [UNICODE_30D1]")
+        print("  7. [UNICODE_672C]")
+        
+        print(f"\n[UNICODE_23F0] [UNICODE_30C7]: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print("="*80)
+        
+        # [UNICODE_6210]
+        if total_count > 0:
+            success_rate = (success_count / total_count) * 100
+            if success_rate >= 90:
+                print("[UNICODE_1F389] [UNICODE_7DCF]: [UNICODE_512A] - [UNICODE_30B2]")
+            elif success_rate >= 70:
+                print("[UNICODE_1F44D] [UNICODE_7DCF]: [UNICODE_826F] - [UNICODE_4E00]")
+            elif success_rate >= 50:
+                print("[UNICODE_26A0]  [UNICODE_7DCF]: [UNICODE_6CE8] - [UNICODE_8907]")
+            else:
+                print("[UNICODE_1F6A8] [UNICODE_7DCF]: [UNICODE_5371] - [UNICODE_591A]")
+    
+    def run_all_tests(self):
+        """[UNICODE_5168]"""
+        print("[UNICODE_1F3AE] [UNICODE_6CBB] - [UNICODE_30B7]")
+        print(f"[UNICODE_5B9F]: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        
+        # [UNICODE_91CD]
+        self.check_critical_files()
+        
+        # [UNICODE_4F9D]
+        self.check_dependencies()
+        
+        # [UNICODE_5404]
+        for name, path, test_file in self.services:
+            self.test_service(name, path, test_file)
+        
+        # [UNICODE_7D71]
+        self.test_integration_flow()
+        
+        # [UNICODE_30EC]
+        self.generate_report()
+
+def main():
+    """[UNICODE_30E1]"""
+    debugger = SimpleGameDebugger()
+    debugger.run_all_tests()
+
+if __name__ == "__main__":
+    main()

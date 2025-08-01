@@ -1,0 +1,663 @@
+"""
+[UNICODE_7D4C] - [UNICODE_30BF]20.1
+
+RPG[UNICODE_7D4C]
+[UNICODE_30B2]
+
+[UNICODE_8981]: 11.1-11.5, 12.1-12.5, 13.1-13.5
+"""
+
+from typing import Dict, List, Any, Optional, Tuple
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from enum import Enum
+import math
+import statistics
+import sys
+import os
+
+# [UNICODE_30D7]
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+
+from services.rpg_economy.main import CoinEconomy, ActionType, DemonRarity
+from services.job_system.main import JobManager, JobType
+from services.inner_demon_battle.main import InnerDemonBattle, DemonType
+from shared.interfaces.core_types import TaskType
+
+
+class EconomicTier(Enum):
+    """[UNICODE_7D4C]"""
+    STARTING = "starting"      # 0-999[UNICODE_30B3]
+    STABLE = "stable"          # 1,000-4,999[UNICODE_30B3]
+    COMFORTABLE = "comfortable" # 5,000-9,999[UNICODE_30B3]
+    WEALTHY = "wealthy"        # 10,000+[UNICODE_30B3]
+
+
+class BalanceMetric(Enum):
+    """[UNICODE_30D0]"""
+    COIN_INFLATION = "coin_inflation"
+    XP_PROGRESSION = "xp_progression"
+    TASK_DIFFICULTY = "task_difficulty"
+    BATTLE_REWARDS = "battle_rewards"
+    JOB_PROGRESSION = "job_progression"
+
+
+@dataclass
+class EconomicSnapshot:
+    """[UNICODE_7D4C]"""
+    timestamp: datetime
+    user_id: str
+    total_coins: int
+    economic_tier: EconomicTier
+    inflation_adjustment: float
+    daily_coin_income: int
+    weekly_coin_income: int
+    coin_spending_rate: float
+    balance_score: float  # 0.0-1.0
+
+
+@dataclass
+class ProgressionMetrics:
+    """[UNICODE_9032]"""
+    player_level: int
+    yu_level: int
+    job_level: int
+    job_type: JobType
+    total_xp: int
+    daily_xp_rate: float
+    weekly_xp_rate: float
+    task_completion_rate: float
+    battle_win_rate: float
+    progression_velocity: float  # [UNICODE_9032]
+
+
+@dataclass
+class BalanceAdjustment:
+    """[UNICODE_30D0]"""
+    metric: BalanceMetric
+    current_value: float
+    target_value: float
+    adjustment_factor: float
+    reason: str
+    applied_at: datetime
+
+
+class EconomicBalanceSystem:
+    """[UNICODE_7D4C]"""
+    
+    def __init__(self):
+        self.coin_economy = CoinEconomy()
+        self.user_snapshots: Dict[str, List[EconomicSnapshot]] = {}
+        self.user_progressions: Dict[str, List[ProgressionMetrics]] = {}
+        self.balance_adjustments: Dict[str, List[BalanceAdjustment]] = {}
+        
+        # [UNICODE_30D0]
+        self.target_metrics = {
+            "daily_coin_income": {"min": 200, "max": 800, "optimal": 400},
+            "weekly_coin_income": {"min": 1400, "max": 5600, "optimal": 2800},
+            "coin_spending_rate": {"min": 0.6, "max": 0.9, "optimal": 0.75},
+            "daily_xp_rate": {"min": 100, "max": 500, "optimal": 250},
+            "task_completion_rate": {"min": 0.6, "max": 0.9, "optimal": 0.75},
+            "battle_win_rate": {"min": 0.5, "max": 0.8, "optimal": 0.65}
+        }
+    
+    def capture_economic_snapshot(
+        self, 
+        user_id: str, 
+        total_coins: int,
+        daily_activities: Dict[str, Any]
+    ) -> EconomicSnapshot:
+        """[UNICODE_7D4C]"""
+        
+        # [UNICODE_7D4C]
+        economic_tier = self._determine_economic_tier(total_coins)
+        
+        # [UNICODE_30A4]
+        inflation_adjustment = self.coin_economy.apply_inflation_control(total_coins)
+        
+        # [UNICODE_65E5]
+        daily_coin_income = daily_activities.get("coins_earned", 0)
+        
+        # [UNICODE_904E]
+        weekly_coin_income = self._calculate_weekly_income(user_id, daily_coin_income)
+        
+        # [UNICODE_652F]
+        coin_spending_rate = self._calculate_spending_rate(user_id, daily_activities)
+        
+        # [UNICODE_30D0]
+        balance_score = self._calculate_balance_score(
+            total_coins, daily_coin_income, weekly_coin_income, coin_spending_rate
+        )
+        
+        snapshot = EconomicSnapshot(
+            timestamp=datetime.now(),
+            user_id=user_id,
+            total_coins=total_coins,
+            economic_tier=economic_tier,
+            inflation_adjustment=inflation_adjustment,
+            daily_coin_income=daily_coin_income,
+            weekly_coin_income=weekly_coin_income,
+            coin_spending_rate=coin_spending_rate,
+            balance_score=balance_score
+        )
+        
+        # [UNICODE_30B9]
+        if user_id not in self.user_snapshots:
+            self.user_snapshots[user_id] = []
+        self.user_snapshots[user_id].append(snapshot)
+        
+        # [UNICODE_53E4]30[UNICODE_65E5]
+        cutoff_date = datetime.now() - timedelta(days=30)
+        self.user_snapshots[user_id] = [
+            s for s in self.user_snapshots[user_id] 
+            if s.timestamp >= cutoff_date
+        ]
+        
+        return snapshot
+    
+    def capture_progression_metrics(
+        self,
+        user_id: str,
+        player_level: int,
+        yu_level: int,
+        job_level: int,
+        job_type: JobType,
+        total_xp: int,
+        daily_activities: Dict[str, Any]
+    ) -> ProgressionMetrics:
+        """[UNICODE_9032]"""
+        
+        # XP[UNICODE_7387]
+        daily_xp_rate = daily_activities.get("xp_earned", 0)
+        weekly_xp_rate = self._calculate_weekly_xp_rate(user_id, daily_xp_rate)
+        
+        # [UNICODE_5B8C]
+        task_completion_rate = self._calculate_task_completion_rate(user_id, daily_activities)
+        battle_win_rate = self._calculate_battle_win_rate(user_id, daily_activities)
+        
+        # [UNICODE_9032]
+        progression_velocity = self._calculate_progression_velocity(
+            user_id, player_level, job_level, total_xp
+        )
+        
+        metrics = ProgressionMetrics(
+            player_level=player_level,
+            yu_level=yu_level,
+            job_level=job_level,
+            job_type=job_type,
+            total_xp=total_xp,
+            daily_xp_rate=daily_xp_rate,
+            weekly_xp_rate=weekly_xp_rate,
+            task_completion_rate=task_completion_rate,
+            battle_win_rate=battle_win_rate,
+            progression_velocity=progression_velocity
+        )
+        
+        # [UNICODE_9032]
+        if user_id not in self.user_progressions:
+            self.user_progressions[user_id] = []
+        self.user_progressions[user_id].append(metrics)
+        
+        # [UNICODE_53E4]30[UNICODE_65E5]
+        cutoff_date = datetime.now() - timedelta(days=30)
+        self.user_progressions[user_id] = [
+            m for m in self.user_progressions[user_id] 
+            if hasattr(m, 'timestamp') or True  # [UNICODE_7C21]
+        ]
+        
+        return metrics
+    
+    def analyze_balance_needs(self, user_id: str) -> List[BalanceAdjustment]:
+        """[UNICODE_30D0]"""
+        
+        if user_id not in self.user_snapshots or user_id not in self.user_progressions:
+            return []
+        
+        recent_snapshots = self.user_snapshots[user_id][-7:]  # [UNICODE_904E]7[UNICODE_65E5]
+        recent_progressions = self.user_progressions[user_id][-7:]  # [UNICODE_904E]7[UNICODE_65E5]
+        
+        if not recent_snapshots or not recent_progressions:
+            return []
+        
+        adjustments = []
+        
+        # 1. [UNICODE_30B3]
+        avg_daily_income = statistics.mean([s.daily_coin_income for s in recent_snapshots])
+        target_income = self.target_metrics["daily_coin_income"]
+        
+        if avg_daily_income < target_income["min"]:
+            adjustments.append(BalanceAdjustment(
+                metric=BalanceMetric.COIN_INFLATION,
+                current_value=avg_daily_income,
+                target_value=target_income["optimal"],
+                adjustment_factor=1.2,  # 20%[UNICODE_5897]
+                reason="[UNICODE_65E5]",
+                applied_at=datetime.now()
+            ))
+        elif avg_daily_income > target_income["max"]:
+            adjustments.append(BalanceAdjustment(
+                metric=BalanceMetric.COIN_INFLATION,
+                current_value=avg_daily_income,
+                target_value=target_income["optimal"],
+                adjustment_factor=0.8,  # 20%[UNICODE_6E1B]
+                reason="[UNICODE_65E5]",
+                applied_at=datetime.now()
+            ))
+        
+        # 2. XP[UNICODE_9032]
+        avg_daily_xp = statistics.mean([p.daily_xp_rate for p in recent_progressions])
+        target_xp = self.target_metrics["daily_xp_rate"]
+        
+        if avg_daily_xp < target_xp["min"]:
+            adjustments.append(BalanceAdjustment(
+                metric=BalanceMetric.XP_PROGRESSION,
+                current_value=avg_daily_xp,
+                target_value=target_xp["optimal"],
+                adjustment_factor=1.15,  # 15%[UNICODE_5897]
+                reason="[UNICODE_65E5]XP[UNICODE_7372]",
+                applied_at=datetime.now()
+            ))
+        elif avg_daily_xp > target_xp["max"]:
+            adjustments.append(BalanceAdjustment(
+                metric=BalanceMetric.XP_PROGRESSION,
+                current_value=avg_daily_xp,
+                target_value=target_xp["optimal"],
+                adjustment_factor=0.85,  # 15%[UNICODE_6E1B]
+                reason="[UNICODE_65E5]XP[UNICODE_7372]",
+                applied_at=datetime.now()
+            ))
+        
+        # 3. [UNICODE_30BF]
+        avg_completion_rate = statistics.mean([p.task_completion_rate for p in recent_progressions])
+        target_completion = self.target_metrics["task_completion_rate"]
+        
+        if avg_completion_rate < target_completion["min"]:
+            adjustments.append(BalanceAdjustment(
+                metric=BalanceMetric.TASK_DIFFICULTY,
+                current_value=avg_completion_rate,
+                target_value=target_completion["optimal"],
+                adjustment_factor=0.9,  # [UNICODE_96E3]10%[UNICODE_6E1B]
+                reason="[UNICODE_30BF]",
+                applied_at=datetime.now()
+            ))
+        elif avg_completion_rate > target_completion["max"]:
+            adjustments.append(BalanceAdjustment(
+                metric=BalanceMetric.TASK_DIFFICULTY,
+                current_value=avg_completion_rate,
+                target_value=target_completion["optimal"],
+                adjustment_factor=1.1,  # [UNICODE_96E3]10%[UNICODE_5897]
+                reason="[UNICODE_30BF]",
+                applied_at=datetime.now()
+            ))
+        
+        # 4. [UNICODE_30D0]
+        avg_battle_win_rate = statistics.mean([p.battle_win_rate for p in recent_progressions])
+        target_battle = self.target_metrics["battle_win_rate"]
+        
+        if avg_battle_win_rate < target_battle["min"]:
+            adjustments.append(BalanceAdjustment(
+                metric=BalanceMetric.BATTLE_REWARDS,
+                current_value=avg_battle_win_rate,
+                target_value=target_battle["optimal"],
+                adjustment_factor=0.9,  # [UNICODE_30D0]10%[UNICODE_6E1B]
+                reason="[UNICODE_30D0]",
+                applied_at=datetime.now()
+            ))
+        elif avg_battle_win_rate > target_battle["max"]:
+            adjustments.append(BalanceAdjustment(
+                metric=BalanceMetric.BATTLE_REWARDS,
+                current_value=avg_battle_win_rate,
+                target_value=target_battle["optimal"],
+                adjustment_factor=1.1,  # [UNICODE_30D0]10%[UNICODE_5897]
+                reason="[UNICODE_30D0]",
+                applied_at=datetime.now()
+            ))
+        
+        # [UNICODE_8ABF]
+        if user_id not in self.balance_adjustments:
+            self.balance_adjustments[user_id] = []
+        self.balance_adjustments[user_id].extend(adjustments)
+        
+        return adjustments
+    
+    def apply_dynamic_adjustments(
+        self, 
+        user_id: str, 
+        adjustments: List[BalanceAdjustment]
+    ) -> Dict[str, Any]:
+        """[UNICODE_52D5]"""
+        
+        applied_adjustments = {
+            "coin_multipliers": {},
+            "xp_multipliers": {},
+            "difficulty_adjustments": {},
+            "battle_adjustments": {}
+        }
+        
+        for adjustment in adjustments:
+            if adjustment.metric == BalanceMetric.COIN_INFLATION:
+                applied_adjustments["coin_multipliers"]["global"] = adjustment.adjustment_factor
+                
+            elif adjustment.metric == BalanceMetric.XP_PROGRESSION:
+                applied_adjustments["xp_multipliers"]["global"] = adjustment.adjustment_factor
+                
+            elif adjustment.metric == BalanceMetric.TASK_DIFFICULTY:
+                applied_adjustments["difficulty_adjustments"]["task_difficulty"] = adjustment.adjustment_factor
+                
+            elif adjustment.metric == BalanceMetric.BATTLE_REWARDS:
+                applied_adjustments["battle_adjustments"]["demon_hp"] = adjustment.adjustment_factor
+                applied_adjustments["battle_adjustments"]["reward_multiplier"] = 2.0 - adjustment.adjustment_factor
+        
+        return applied_adjustments
+    
+    def get_balance_report(self, user_id: str) -> Dict[str, Any]:
+        """[UNICODE_30D0]"""
+        
+        if user_id not in self.user_snapshots or user_id not in self.user_progressions:
+            return {"error": "[UNICODE_30E6]"}
+        
+        recent_snapshots = self.user_snapshots[user_id][-7:]
+        recent_progressions = self.user_progressions[user_id][-7:]
+        recent_adjustments = self.balance_adjustments.get(user_id, [])[-10:]
+        
+        # [UNICODE_73FE]
+        current_snapshot = recent_snapshots[-1] if recent_snapshots else None
+        current_progression = recent_progressions[-1] if recent_progressions else None
+        
+        # [UNICODE_5E73]
+        avg_metrics = {}
+        if recent_snapshots:
+            avg_metrics.update({
+                "avg_daily_coins": statistics.mean([s.daily_coin_income for s in recent_snapshots]),
+                "avg_balance_score": statistics.mean([s.balance_score for s in recent_snapshots]),
+                "avg_inflation_adjustment": statistics.mean([s.inflation_adjustment for s in recent_snapshots])
+            })
+        
+        if recent_progressions:
+            avg_metrics.update({
+                "avg_daily_xp": statistics.mean([p.daily_xp_rate for p in recent_progressions]),
+                "avg_task_completion": statistics.mean([p.task_completion_rate for p in recent_progressions]),
+                "avg_battle_win_rate": statistics.mean([p.battle_win_rate for p in recent_progressions]),
+                "avg_progression_velocity": statistics.mean([p.progression_velocity for p in recent_progressions])
+            })
+        
+        # [UNICODE_30D0]
+        balance_evaluation = self._evaluate_overall_balance(avg_metrics)
+        
+        return {
+            "user_id": user_id,
+            "report_timestamp": datetime.now().isoformat(),
+            "current_state": {
+                "economic_snapshot": current_snapshot.__dict__ if current_snapshot else None,
+                "progression_metrics": current_progression.__dict__ if current_progression else None
+            },
+            "average_metrics": avg_metrics,
+            "balance_evaluation": balance_evaluation,
+            "recent_adjustments": [adj.__dict__ for adj in recent_adjustments],
+            "recommendations": self._generate_balance_recommendations(user_id, avg_metrics)
+        }
+    
+    def _determine_economic_tier(self, total_coins: int) -> EconomicTier:
+        """[UNICODE_7D4C]"""
+        if total_coins >= 10000:
+            return EconomicTier.WEALTHY
+        elif total_coins >= 5000:
+            return EconomicTier.COMFORTABLE
+        elif total_coins >= 1000:
+            return EconomicTier.STABLE
+        else:
+            return EconomicTier.STARTING
+    
+    def _calculate_weekly_income(self, user_id: str, daily_income: int) -> int:
+        """[UNICODE_9031]"""
+        if user_id not in self.user_snapshots:
+            return daily_income * 7
+        
+        recent_snapshots = self.user_snapshots[user_id][-7:]
+        if len(recent_snapshots) < 7:
+            return daily_income * 7
+        
+        return sum(s.daily_coin_income for s in recent_snapshots)
+    
+    def _calculate_spending_rate(self, user_id: str, daily_activities: Dict[str, Any]) -> float:
+        """[UNICODE_652F]"""
+        coins_spent = daily_activities.get("coins_spent", 0)
+        coins_earned = daily_activities.get("coins_earned", 1)
+        
+        if coins_earned == 0:
+            return 0.0
+        
+        return min(1.0, coins_spent / coins_earned)
+    
+    def _calculate_balance_score(
+        self, 
+        total_coins: int, 
+        daily_income: int, 
+        weekly_income: int, 
+        spending_rate: float
+    ) -> float:
+        """[UNICODE_30D0]0.0-1.0[UNICODE_FF09]"""
+        
+        # [UNICODE_5404]
+        coin_score = min(1.0, total_coins / 10000)  # 10,000[UNICODE_30B3]
+        income_score = min(1.0, daily_income / 400)  # 400[UNICODE_30B3]/[UNICODE_65E5]
+        weekly_score = min(1.0, weekly_income / 2800)  # 2,800[UNICODE_30B3]/[UNICODE_9031]
+        spending_score = 1.0 - abs(spending_rate - 0.75)  # 75%[UNICODE_652F]
+        
+        # [UNICODE_91CD]
+        weights = [0.3, 0.3, 0.2, 0.2]
+        scores = [coin_score, income_score, weekly_score, spending_score]
+        
+        return sum(w * s for w, s in zip(weights, scores))
+    
+    def _calculate_weekly_xp_rate(self, user_id: str, daily_xp: float) -> float:
+        """[UNICODE_9031]XP[UNICODE_7387]"""
+        if user_id not in self.user_progressions:
+            return daily_xp * 7
+        
+        recent_progressions = self.user_progressions[user_id][-7:]
+        if len(recent_progressions) < 7:
+            return daily_xp * 7
+        
+        return sum(p.daily_xp_rate for p in recent_progressions)
+    
+    def _calculate_task_completion_rate(self, user_id: str, daily_activities: Dict[str, Any]) -> float:
+        """[UNICODE_30BF]"""
+        tasks_completed = daily_activities.get("tasks_completed", 0)
+        tasks_created = daily_activities.get("tasks_created", 1)
+        
+        return min(1.0, tasks_completed / tasks_created)
+    
+    def _calculate_battle_win_rate(self, user_id: str, daily_activities: Dict[str, Any]) -> float:
+        """[UNICODE_30D0]"""
+        battles_won = daily_activities.get("battles_won", 0)
+        battles_fought = daily_activities.get("battles_fought", 1)
+        
+        return battles_won / battles_fought if battles_fought > 0 else 0.0
+    
+    def _calculate_progression_velocity(
+        self, 
+        user_id: str, 
+        player_level: int, 
+        job_level: int, 
+        total_xp: int
+    ) -> float:
+        """[UNICODE_9032]"""
+        
+        if user_id not in self.user_progressions or len(self.user_progressions[user_id]) < 2:
+            return 1.0  # [UNICODE_30C7]
+        
+        previous_progression = self.user_progressions[user_id][-2]
+        
+        # [UNICODE_30EC]
+        level_change = (player_level - previous_progression.player_level) + \
+                      (job_level - previous_progression.job_level)
+        
+        # XP[UNICODE_5909]
+        xp_change_rate = (total_xp - previous_progression.total_xp) / max(1, previous_progression.total_xp)
+        
+        # [UNICODE_7DCF]
+        return (level_change * 0.6) + (xp_change_rate * 0.4)
+    
+    def _evaluate_overall_balance(self, avg_metrics: Dict[str, float]) -> Dict[str, Any]:
+        """[UNICODE_7DCF]"""
+        
+        evaluation = {
+            "overall_score": 0.0,
+            "category_scores": {},
+            "balance_status": "unknown",
+            "critical_issues": [],
+            "strengths": []
+        }
+        
+        if not avg_metrics:
+            return evaluation
+        
+        # [UNICODE_30AB]
+        categories = {
+            "economy": ["avg_daily_coins", "avg_balance_score"],
+            "progression": ["avg_daily_xp", "avg_progression_velocity"],
+            "engagement": ["avg_task_completion", "avg_battle_win_rate"]
+        }
+        
+        category_scores = {}
+        for category, metrics in categories.items():
+            scores = []
+            for metric in metrics:
+                if metric in avg_metrics:
+                    target = self.target_metrics.get(metric.replace("avg_", ""), {})
+                    if target:
+                        optimal = target.get("optimal", 1.0)
+                        score = min(1.0, avg_metrics[metric] / optimal)
+                        scores.append(score)
+            
+            if scores:
+                category_scores[category] = statistics.mean(scores)
+        
+        evaluation["category_scores"] = category_scores
+        
+        # [UNICODE_7DCF]
+        if category_scores:
+            evaluation["overall_score"] = statistics.mean(category_scores.values())
+        
+        # [UNICODE_30D0]
+        overall_score = evaluation["overall_score"]
+        if overall_score >= 0.8:
+            evaluation["balance_status"] = "excellent"
+        elif overall_score >= 0.6:
+            evaluation["balance_status"] = "good"
+        elif overall_score >= 0.4:
+            evaluation["balance_status"] = "needs_improvement"
+        else:
+            evaluation["balance_status"] = "critical"
+        
+        # [UNICODE_554F]
+        for category, score in category_scores.items():
+            if score < 0.4:
+                evaluation["critical_issues"].append(f"{category}[UNICODE_30AB]")
+            elif score > 0.8:
+                evaluation["strengths"].append(f"{category}[UNICODE_30AB]")
+        
+        return evaluation
+    
+    def _generate_balance_recommendations(
+        self, 
+        user_id: str, 
+        avg_metrics: Dict[str, float]
+    ) -> List[str]:
+        """[UNICODE_30D0]"""
+        
+        recommendations = []
+        
+        # [UNICODE_30B3]
+        daily_coins = avg_metrics.get("avg_daily_coins", 0)
+        if daily_coins < 200:
+            recommendations.append("[UNICODE_30BF]")
+        elif daily_coins > 800:
+            recommendations.append("[UNICODE_30B3]")
+        
+        # XP[UNICODE_9032]
+        daily_xp = avg_metrics.get("avg_daily_xp", 0)
+        if daily_xp < 100:
+            recommendations.append("[UNICODE_3088]XP[UNICODE_7372]")
+        elif daily_xp > 500:
+            recommendations.append("[UNICODE_5B89]")
+        
+        # [UNICODE_30BF]
+        completion_rate = avg_metrics.get("avg_task_completion", 0)
+        if completion_rate < 0.6:
+            recommendations.append("[UNICODE_30BF]ADHD[UNICODE_652F]")
+        elif completion_rate > 0.9:
+            recommendations.append("[UNICODE_3088]")
+        
+        # [UNICODE_30D0]
+        battle_win_rate = avg_metrics.get("avg_battle_win_rate", 0)
+        if battle_win_rate < 0.5:
+            recommendations.append("[UNICODE_9B54]")
+        elif battle_win_rate > 0.8:
+            recommendations.append("[UNICODE_3088]")
+        
+        if not recommendations:
+            recommendations.append("[UNICODE_73FE]")
+        
+        return recommendations
+
+
+def main():
+    """[UNICODE_30C6]"""
+    balance_system = EconomicBalanceSystem()
+    
+    # [UNICODE_30C6]
+    test_user = "balance_test_user"
+    
+    # 7[UNICODE_65E5]
+    for day in range(1, 8):
+        # [UNICODE_65E5]
+        daily_activities = {
+            "coins_earned": 300 + (day * 50),
+            "coins_spent": 200 + (day * 30),
+            "xp_earned": 200 + (day * 25),
+            "tasks_completed": 4 + (day // 2),
+            "tasks_created": 5 + (day // 2),
+            "battles_won": 1 if day % 2 == 0 else 0,
+            "battles_fought": 1 if day % 2 == 0 else 0
+        }
+        
+        # [UNICODE_30B9]
+        total_coins = 1000 + (day * 100)
+        snapshot = balance_system.capture_economic_snapshot(
+            test_user, total_coins, daily_activities
+        )
+        
+        # [UNICODE_9032]
+        progression = balance_system.capture_progression_metrics(
+            user_id=test_user,
+            player_level=5 + (day // 2),
+            yu_level=4 + (day // 3),
+            job_level=2 + (day // 4),
+            job_type=JobType.WARRIOR,
+            total_xp=500 + (day * 200),
+            daily_activities=daily_activities
+        )
+        
+        print(f"Day {day}: Coins={total_coins}, XP={daily_activities['xp_earned']}, Balance={snapshot.balance_score:.2f}")
+    
+    # [UNICODE_30D0]
+    adjustments = balance_system.analyze_balance_needs(test_user)
+    print(f"\n[UNICODE_8ABF]: {len(adjustments)}")
+    
+    for adj in adjustments:
+        print(f"- {adj.metric.value}: {adj.current_value:.2f} [UNICODE_2192] {adj.target_value:.2f} ([UNICODE_00D7]{adj.adjustment_factor:.2f})")
+    
+    # [UNICODE_30EC]
+    report = balance_system.get_balance_report(test_user)
+    print(f"\n[UNICODE_7DCF]: {report['balance_evaluation']['overall_score']:.2f}")
+    print(f"[UNICODE_30D0]: {report['balance_evaluation']['balance_status']}")
+    
+    print("\n[UNICODE_63A8]:")
+    for rec in report['recommendations']:
+        print(f"- {rec}")
+
+
+if __name__ == "__main__":
+    main()

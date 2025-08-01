@@ -1,0 +1,413 @@
+"""
+RBAC System Unit Tests
+
+RBAC[UNICODE_6A29]
+
+Requirements: 6.1
+"""
+
+import pytest
+import sys
+import os
+from datetime import datetime, timedelta
+
+# Add project root to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+from shared.interfaces.rbac_system import (
+    RBACSystem, PermissionLevel, ResourceType, Action,
+    Permission, Role, UserRole
+)
+
+
+class TestRBACSystem:
+    """RBAC[UNICODE_30B7]"""
+    
+    def setup_method(self):
+        """[UNICODE_30C6]"""
+        self.rbac_system = RBACSystem()
+        self.test_user_id = "test_user_001"
+        self.test_guardian_id = "test_guardian_001"
+        self.test_granted_by = "system_admin"
+    
+    def test_default_roles_initialization(self):
+        """[UNICODE_30C7]"""
+        # 3[UNICODE_3064]
+        assert len(self.rbac_system.roles) == 3
+        
+        # [UNICODE_5404]
+        assert PermissionLevel.VIEW_ONLY.value in self.rbac_system.roles
+        assert PermissionLevel.TASK_EDIT.value in self.rbac_system.roles
+        assert PermissionLevel.CHAT_SEND.value in self.rbac_system.roles
+        
+        # View-Only[UNICODE_30ED]
+        view_only_role = self.rbac_system.roles[PermissionLevel.VIEW_ONLY.value]
+        assert view_only_role.permission_level == PermissionLevel.VIEW_ONLY
+        assert view_only_role.has_permission(ResourceType.USER_PROFILE, Action.READ)
+        assert not view_only_role.has_permission(ResourceType.TASK_DATA, Action.WRITE)
+        assert not view_only_role.has_permission(ResourceType.CHAT_MESSAGES, Action.WRITE)
+        
+        # Task-Edit[UNICODE_30ED]
+        task_edit_role = self.rbac_system.roles[PermissionLevel.TASK_EDIT.value]
+        assert task_edit_role.permission_level == PermissionLevel.TASK_EDIT
+        assert task_edit_role.has_permission(ResourceType.USER_PROFILE, Action.READ)
+        assert task_edit_role.has_permission(ResourceType.TASK_DATA, Action.WRITE)
+        assert not task_edit_role.has_permission(ResourceType.CHAT_MESSAGES, Action.WRITE)
+        
+        # Chat-Send[UNICODE_30ED]
+        chat_send_role = self.rbac_system.roles[PermissionLevel.CHAT_SEND.value]
+        assert chat_send_role.permission_level == PermissionLevel.CHAT_SEND
+        assert chat_send_role.has_permission(ResourceType.USER_PROFILE, Action.READ)
+        assert chat_send_role.has_permission(ResourceType.TASK_DATA, Action.WRITE)
+        assert chat_send_role.has_permission(ResourceType.CHAT_MESSAGES, Action.WRITE)
+    
+    def test_grant_role_success(self):
+        """[UNICODE_30ED]"""
+        # View-Only[UNICODE_30ED]
+        success = self.rbac_system.grant_role(
+            self.test_user_id,
+            self.test_guardian_id,
+            PermissionLevel.VIEW_ONLY,
+            self.test_granted_by
+        )
+        
+        assert success is True
+        
+        # [UNICODE_30E6]
+        assert self.test_user_id in self.rbac_system.user_roles
+        assert len(self.rbac_system.user_roles[self.test_user_id]) == 1
+        
+        # [UNICODE_4FDD]
+        assert self.test_guardian_id in self.rbac_system.guardian_roles
+        assert len(self.rbac_system.guardian_roles[self.test_guardian_id]) == 1
+        
+        # [UNICODE_30ED]
+        user_role = self.rbac_system.user_roles[self.test_user_id][0]
+        assert user_role.user_id == self.test_user_id
+        assert user_role.guardian_id == self.test_guardian_id
+        assert user_role.role.permission_level == PermissionLevel.VIEW_ONLY
+        assert user_role.granted_by == self.test_granted_by
+        assert user_role.is_active is True
+    
+    def test_grant_multiple_roles(self):
+        """[UNICODE_8907]"""
+        # [UNICODE_8907]
+        guardian_2 = "test_guardian_002"
+        guardian_3 = "test_guardian_003"
+        
+        # View-Only[UNICODE_30ED]
+        self.rbac_system.grant_role(
+            self.test_user_id, self.test_guardian_id,
+            PermissionLevel.VIEW_ONLY, self.test_granted_by
+        )
+        
+        # Task-Edit[UNICODE_30ED]
+        self.rbac_system.grant_role(
+            self.test_user_id, guardian_2,
+            PermissionLevel.TASK_EDIT, self.test_granted_by
+        )
+        
+        # Chat-Send[UNICODE_30ED]
+        self.rbac_system.grant_role(
+            self.test_user_id, guardian_3,
+            PermissionLevel.CHAT_SEND, self.test_granted_by
+        )
+        
+        # [UNICODE_30E6]3[UNICODE_3064]
+        assert len(self.rbac_system.user_roles[self.test_user_id]) == 3
+        
+        # [UNICODE_5404]1[UNICODE_3064]
+        assert len(self.rbac_system.guardian_roles[self.test_guardian_id]) == 1
+        assert len(self.rbac_system.guardian_roles[guardian_2]) == 1
+        assert len(self.rbac_system.guardian_roles[guardian_3]) == 1
+    
+    def test_revoke_role_success(self):
+        """[UNICODE_30ED]"""
+        # [UNICODE_307E]
+        self.rbac_system.grant_role(
+            self.test_user_id,
+            self.test_guardian_id,
+            PermissionLevel.VIEW_ONLY,
+            self.test_granted_by
+        )
+        
+        # [UNICODE_30ED]
+        assert self.test_user_id in self.rbac_system.user_roles
+        assert self.test_guardian_id in self.rbac_system.guardian_roles
+        
+        # [UNICODE_30ED]
+        success = self.rbac_system.revoke_role(self.test_user_id, self.test_guardian_id)
+        assert success is True
+        
+        # [UNICODE_30ED]
+        assert len(self.rbac_system.user_roles.get(self.test_user_id, [])) == 0
+        assert len(self.rbac_system.guardian_roles.get(self.test_guardian_id, [])) == 0
+    
+    def test_check_permission_success(self):
+        """[UNICODE_6A29]"""
+        # Task-Edit[UNICODE_30ED]
+        self.rbac_system.grant_role(
+            self.test_user_id,
+            self.test_guardian_id,
+            PermissionLevel.TASK_EDIT,
+            self.test_granted_by
+        )
+        
+        # [UNICODE_8AAD]
+        has_read_permission = self.rbac_system.check_permission(
+            self.test_guardian_id,
+            self.test_user_id,
+            ResourceType.TASK_DATA,
+            Action.READ
+        )
+        assert has_read_permission is True
+        
+        # [UNICODE_66F8]
+        has_write_permission = self.rbac_system.check_permission(
+            self.test_guardian_id,
+            self.test_user_id,
+            ResourceType.TASK_DATA,
+            Action.WRITE
+        )
+        assert has_write_permission is True
+        
+        # [UNICODE_30C1]
+        has_chat_permission = self.rbac_system.check_permission(
+            self.test_guardian_id,
+            self.test_user_id,
+            ResourceType.CHAT_MESSAGES,
+            Action.WRITE
+        )
+        assert has_chat_permission is False
+    
+    def test_check_permission_no_access(self):
+        """[UNICODE_6A29]"""
+        # [UNICODE_30ED]
+        has_permission = self.rbac_system.check_permission(
+            self.test_guardian_id,
+            self.test_user_id,
+            ResourceType.USER_PROFILE,
+            Action.READ
+        )
+        assert has_permission is False
+    
+    def test_get_user_guardians(self):
+        """[UNICODE_30E6]"""
+        # [UNICODE_8907]
+        guardian_2 = "test_guardian_002"
+        
+        self.rbac_system.grant_role(
+            self.test_user_id, self.test_guardian_id,
+            PermissionLevel.VIEW_ONLY, self.test_granted_by
+        )
+        
+        self.rbac_system.grant_role(
+            self.test_user_id, guardian_2,
+            PermissionLevel.TASK_EDIT, self.test_granted_by
+        )
+        
+        # [UNICODE_4FDD]
+        guardians = self.rbac_system.get_user_guardians(self.test_user_id)
+        
+        assert len(guardians) == 2
+        
+        # [UNICODE_4FDD]
+        guardian_ids = [g["guardian_id"] for g in guardians]
+        assert self.test_guardian_id in guardian_ids
+        assert guardian_2 in guardian_ids
+        
+        # [UNICODE_6A29]
+        permission_levels = [g["permission_level"] for g in guardians]
+        assert PermissionLevel.VIEW_ONLY.value in permission_levels
+        assert PermissionLevel.TASK_EDIT.value in permission_levels
+    
+    def test_get_guardian_users(self):
+        """[UNICODE_4FDD]"""
+        # [UNICODE_8907]
+        user_2 = "test_user_002"
+        
+        self.rbac_system.grant_role(
+            self.test_user_id, self.test_guardian_id,
+            PermissionLevel.VIEW_ONLY, self.test_granted_by
+        )
+        
+        self.rbac_system.grant_role(
+            user_2, self.test_guardian_id,
+            PermissionLevel.CHAT_SEND, self.test_granted_by
+        )
+        
+        # [UNICODE_30E6]
+        users = self.rbac_system.get_guardian_users(self.test_guardian_id)
+        
+        assert len(users) == 2
+        
+        # [UNICODE_30E6]
+        user_ids = [u["user_id"] for u in users]
+        assert self.test_user_id in user_ids
+        assert user_2 in user_ids
+        
+        # [UNICODE_6A29]
+        permission_levels = [u["permission_level"] for u in users]
+        assert PermissionLevel.VIEW_ONLY.value in permission_levels
+        assert PermissionLevel.CHAT_SEND.value in permission_levels
+    
+    def test_get_permission_summary(self):
+        """[UNICODE_6A29]"""
+        # Chat-Send[UNICODE_30ED]
+        self.rbac_system.grant_role(
+            self.test_user_id,
+            self.test_guardian_id,
+            PermissionLevel.CHAT_SEND,
+            self.test_granted_by
+        )
+        
+        # [UNICODE_6A29]
+        summary = self.rbac_system.get_permission_summary(
+            self.test_guardian_id,
+            self.test_user_id
+        )
+        
+        assert summary["has_access"] is True
+        assert summary["permission_level"] == PermissionLevel.CHAT_SEND.value
+        assert summary["role_name"] == "Guardian Full Access"
+        assert "permissions" in summary
+        
+        # [UNICODE_5404]
+        permissions = summary["permissions"]
+        assert permissions[ResourceType.USER_PROFILE.value]["can_read"] is True
+        assert permissions[ResourceType.TASK_DATA.value]["can_write"] is True
+        assert permissions[ResourceType.CHAT_MESSAGES.value]["can_write"] is True
+    
+    def test_expired_role_handling(self):
+        """[UNICODE_671F]"""
+        # [UNICODE_904E]
+        expired_time = datetime.now() - timedelta(hours=1)
+        
+        self.rbac_system.grant_role(
+            self.test_user_id,
+            self.test_guardian_id,
+            PermissionLevel.VIEW_ONLY,
+            self.test_granted_by,
+            expired_time
+        )
+        
+        # [UNICODE_6A29]
+        has_permission = self.rbac_system.check_permission(
+            self.test_guardian_id,
+            self.test_user_id,
+            ResourceType.USER_PROFILE,
+            Action.READ
+        )
+        assert has_permission is False
+        
+        # [UNICODE_671F]
+        cleaned_count = self.rbac_system.cleanup_expired_roles()
+        assert cleaned_count == 1
+        
+        # [UNICODE_30AF]
+        assert len(self.rbac_system.user_roles.get(self.test_user_id, [])) == 0
+        assert len(self.rbac_system.guardian_roles.get(self.test_guardian_id, [])) == 0
+    
+    def test_export_roles_data(self):
+        """[UNICODE_30ED]"""
+        # [UNICODE_3044]
+        self.rbac_system.grant_role(
+            self.test_user_id, self.test_guardian_id,
+            PermissionLevel.VIEW_ONLY, self.test_granted_by
+        )
+        
+        # [UNICODE_30C7]
+        export_data = self.rbac_system.export_roles_data()
+        
+        assert "roles" in export_data
+        assert "user_roles_count" in export_data
+        assert "guardian_roles_count" in export_data
+        assert "total_active_assignments" in export_data
+        
+        # [UNICODE_30ED]
+        roles = export_data["roles"]
+        assert len(roles) == 3  # 3[UNICODE_3064]
+        
+        # [UNICODE_7D71]
+        assert export_data["user_roles_count"] == 1
+        assert export_data["guardian_roles_count"] == 1
+        assert export_data["total_active_assignments"] == 1
+
+
+class TestPermission:
+    """[UNICODE_6A29]"""
+    
+    def test_permission_allows_action(self):
+        """[UNICODE_6A29]"""
+        permission = Permission(
+            ResourceType.TASK_DATA,
+            {Action.READ, Action.WRITE}
+        )
+        
+        assert permission.allows_action(Action.READ) is True
+        assert permission.allows_action(Action.WRITE) is True
+        assert permission.allows_action(Action.DELETE) is False
+    
+    def test_permission_with_conditions(self):
+        """[UNICODE_6761]"""
+        permission = Permission(
+            ResourceType.TASK_DATA,
+            {Action.READ, Action.WRITE},
+            conditions={"owner": "self"}
+        )
+        
+        # [UNICODE_6761]
+        context = {"owner": "self"}
+        assert permission.allows_action(Action.READ, context) is True
+        
+        # [UNICODE_6761]
+        context = {"owner": "other"}
+        assert permission.allows_action(Action.READ, context) is False
+        
+        # [UNICODE_30B3]
+        assert permission.allows_action(Action.READ) is False
+
+
+class TestRole:
+    """[UNICODE_30ED]"""
+    
+    def test_role_has_permission(self):
+        """[UNICODE_30ED]"""
+        permissions = [
+            Permission(ResourceType.USER_PROFILE, {Action.READ}),
+            Permission(ResourceType.TASK_DATA, {Action.READ, Action.WRITE})
+        ]
+        
+        role = Role(
+            name="Test Role",
+            permission_level=PermissionLevel.TASK_EDIT,
+            permissions=permissions,
+            description="[UNICODE_30C6]"
+        )
+        
+        assert role.has_permission(ResourceType.USER_PROFILE, Action.READ) is True
+        assert role.has_permission(ResourceType.USER_PROFILE, Action.WRITE) is False
+        assert role.has_permission(ResourceType.TASK_DATA, Action.READ) is True
+        assert role.has_permission(ResourceType.TASK_DATA, Action.WRITE) is True
+        assert role.has_permission(ResourceType.CHAT_MESSAGES, Action.READ) is False
+    
+    def test_role_inactive(self):
+        """[UNICODE_975E]"""
+        permissions = [
+            Permission(ResourceType.USER_PROFILE, {Action.READ})
+        ]
+        
+        role = Role(
+            name="Inactive Role",
+            permission_level=PermissionLevel.VIEW_ONLY,
+            permissions=permissions,
+            description="[UNICODE_975E]",
+            is_active=False
+        )
+        
+        # [UNICODE_975E]False
+        assert role.has_permission(ResourceType.USER_PROFILE, Action.READ) is False
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

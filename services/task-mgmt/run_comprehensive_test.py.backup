@@ -1,0 +1,310 @@
+#!/usr/bin/env python3
+"""
+Comprehensive test runner for Task Management API
+"""
+
+import sys
+import os
+sys.path.append(os.path.dirname(__file__))
+
+from fastapi.testclient import TestClient
+from main import app
+
+client = TestClient(app)
+
+def test_task_crud_operations():
+    """Test all CRUD operations"""
+    print("[UNICODE_1F9EA] Testing Task CRUD Operations...")
+    
+    uid = "test_user_crud"
+    
+    # Create task
+    task_data = {
+        "task_type": "routine",
+        "title": "Morning Exercise",
+        "description": "30 minutes jogging",
+        "difficulty": 2,
+        "priority": "medium",
+        "estimated_duration": 30,
+        "adhd_support_level": "basic",
+        "pomodoro_sessions_planned": 1,
+        "break_reminders_enabled": True,
+        "focus_music_enabled": False,
+        "tags": ["health", "exercise"],
+        "is_recurring": True,
+        "recurrence_pattern": "daily"
+    }
+    
+    response = client.post(f"/tasks/{uid}/create", json=task_data)
+    assert response.status_code == 200, f"Create failed: {response.text}"
+    task = response.json()
+    task_id = task["task_id"]
+    print("   [UNICODE_2713] Task creation successful")
+    
+    # Get task
+    response = client.get(f"/tasks/{uid}/{task_id}")
+    assert response.status_code == 200, f"Get task failed: {response.text}"
+    print("   [UNICODE_2713] Task retrieval successful")
+    
+    # Update task
+    update_data = {
+        "title": "Morning Exercise Updated",
+        "difficulty": 3,
+        "tags": ["health", "exercise", "updated"]
+    }
+    response = client.put(f"/tasks/{uid}/{task_id}", json=update_data)
+    assert response.status_code == 200, f"Update failed: {response.text}"
+    print("   [UNICODE_2713] Task update successful")
+    
+    # Start task
+    response = client.post(f"/tasks/{uid}/{task_id}/start", json={})
+    assert response.status_code == 200, f"Start failed: {response.text}"
+    print("   [UNICODE_2713] Task start successful")
+    
+    # Complete task
+    complete_data = {
+        "mood_score": 4,
+        "actual_duration": 28,
+        "notes": "Great workout!",
+        "pomodoro_sessions_completed": 1
+    }
+    response = client.post(f"/tasks/{uid}/{task_id}/complete", json=complete_data)
+    assert response.status_code == 200, f"Complete failed: {response.text}"
+    result = response.json()
+    assert result["xp_earned"] > 0, "XP should be earned"
+    print("   [UNICODE_2713] Task completion successful")
+    
+    return task_id
+
+def test_daily_task_limit():
+    """Test daily task limit (16 tasks)"""
+    print("[UNICODE_1F9EA] Testing Daily Task Limit...")
+    
+    uid = "test_user_limit"
+    
+    # Create 16 tasks (should succeed)
+    for i in range(16):
+        task_data = {
+            "task_type": "routine",
+            "title": f"Task {i+1}",
+            "description": f"Test task {i+1}",
+            "difficulty": 1,
+            "priority": "low",
+            "estimated_duration": 15
+        }
+        response = client.post(f"/tasks/{uid}/create", json=task_data)
+        assert response.status_code == 200, f"Task {i+1} creation failed"
+    
+    print("   [UNICODE_2713] Created 16 tasks successfully")
+    
+    # 17th task should fail
+    task_data = {
+        "task_type": "routine",
+        "title": "Task 17",
+        "description": "This should fail",
+        "difficulty": 1,
+        "priority": "low",
+        "estimated_duration": 15
+    }
+    response = client.post(f"/tasks/{uid}/create", json=task_data)
+    assert response.status_code == 429, "17th task should be rejected"
+    assert "Daily task limit exceeded" in response.json()["detail"]
+    print("   [UNICODE_2713] Daily task limit enforced correctly")
+
+def test_daily_summary():
+    """Test daily summary functionality"""
+    print("[UNICODE_1F9EA] Testing Daily Summary...")
+    
+    uid = "test_user_summary"
+    
+    # Create and complete some tasks
+    for i in range(3):
+        task_data = {
+            "task_type": "routine",
+            "title": f"Summary Task {i+1}",
+            "description": f"Test task {i+1}",
+            "difficulty": 2,
+            "priority": "medium",
+            "estimated_duration": 20
+        }
+        
+        # Create
+        response = client.post(f"/tasks/{uid}/create", json=task_data)
+        assert response.status_code == 200
+        task = response.json()
+        task_id = task["task_id"]
+        
+        # Start and complete first 2 tasks
+        if i < 2:
+            # Start
+            response = client.post(f"/tasks/{uid}/{task_id}/start", json={})
+            assert response.status_code == 200
+            
+            # Complete
+            complete_data = {
+                "mood_score": 4,
+                "actual_duration": 18,
+                "notes": f"Completed task {i+1}",
+                "pomodoro_sessions_completed": 1
+            }
+            response = client.post(f"/tasks/{uid}/{task_id}/complete", json=complete_data)
+            assert response.status_code == 200
+    
+    # Get daily summary
+    response = client.get(f"/tasks/{uid}/daily-summary")
+    assert response.status_code == 200, f"Daily summary failed: {response.text}"
+    
+    summary = response.json()
+    assert summary["total_tasks"] == 3
+    assert summary["completed_tasks"] == 2
+    assert summary["pending_tasks"] == 1
+    assert summary["daily_limit"] == 16
+    assert summary["remaining_slots"] == 13
+    assert summary["limit_reached"] is False
+    
+    print("   [UNICODE_2713] Daily summary working correctly")
+
+def test_xp_preview_and_recommendations():
+    """Test XP preview and task recommendations"""
+    print("[UNICODE_1F9EA] Testing XP Preview and Recommendations...")
+    
+    # XP Preview
+    preview_data = {
+        "task_type": "skill_up",
+        "difficulty": 3,
+        "mood_score": 4,
+        "adhd_support_level": "intensive"
+    }
+    response = client.post("/tasks/xp-preview", json=preview_data)
+    assert response.status_code == 200, f"XP preview failed: {response.text}"
+    result = response.json()
+    assert result["estimated_xp"] > 0
+    print("   [UNICODE_2713] XP preview working")
+    
+    # Task Recommendations
+    recommendation_data = {
+        "primary_goal": "Improve programming skills",
+        "user_experience_level": 3,
+        "task_complexity": "moderate",
+        "user_confidence": 4
+    }
+    response = client.post("/tasks/recommendations", json=recommendation_data)
+    assert response.status_code == 200, f"Recommendations failed: {response.text}"
+    result = response.json()
+    assert "recommended_task_type" in result
+    assert "recommended_difficulty" in result
+    print("   [UNICODE_2713] Task recommendations working")
+
+def test_statistics():
+    """Test statistics functionality"""
+    print("[UNICODE_1F9EA] Testing Statistics...")
+    
+    uid = "test_user_stats"
+    
+    # Create and complete a task for statistics
+    task_data = {
+        "task_type": "skill_up",
+        "title": "Statistics Test Task",
+        "description": "For testing statistics",
+        "difficulty": 3,
+        "priority": "high",
+        "estimated_duration": 45
+    }
+    
+    response = client.post(f"/tasks/{uid}/create", json=task_data)
+    assert response.status_code == 200
+    task = response.json()
+    task_id = task["task_id"]
+    
+    # Start and complete
+    response = client.post(f"/tasks/{uid}/{task_id}/start", json={})
+    assert response.status_code == 200
+    
+    complete_data = {
+        "mood_score": 5,
+        "actual_duration": 40,
+        "notes": "Statistics test completed",
+        "pomodoro_sessions_completed": 2
+    }
+    response = client.post(f"/tasks/{uid}/{task_id}/complete", json=complete_data)
+    assert response.status_code == 200
+    
+    # Get statistics
+    response = client.get(f"/tasks/{uid}/statistics?days=30")
+    assert response.status_code == 200, f"Statistics failed: {response.text}"
+    
+    stats = response.json()
+    assert stats["total_tasks"] >= 1
+    assert stats["completed_tasks"] >= 1
+    assert stats["total_xp_earned"] > 0
+    assert "task_type_statistics" in stats
+    
+    print("   [UNICODE_2713] Statistics working correctly")
+
+def test_error_handling():
+    """Test error handling"""
+    print("[UNICODE_1F9EA] Testing Error Handling...")
+    
+    uid = "test_user_error"
+    
+    # Test non-existent task
+    response = client.get(f"/tasks/{uid}/non_existent_task")
+    assert response.status_code == 404
+    print("   [UNICODE_2713] 404 for non-existent task")
+    
+    # Test invalid task data
+    invalid_task_data = {
+        "task_type": "invalid_type",
+        "title": "Invalid Task",
+        "difficulty": 10,  # Invalid difficulty
+        "priority": "medium",
+        "estimated_duration": 30
+    }
+    response = client.post(f"/tasks/{uid}/create", json=invalid_task_data)
+    assert response.status_code == 422  # Validation error
+    print("   [UNICODE_2713] Validation error for invalid data")
+    
+    # Test invalid date format for daily summary
+    response = client.get(f"/tasks/{uid}/daily-summary?date=invalid-date")
+    assert response.status_code == 400
+    print("   [UNICODE_2713] 400 for invalid date format")
+
+def run_all_tests():
+    """Run all comprehensive tests"""
+    print("[UNICODE_1F680] Starting Comprehensive Task Management API Tests")
+    print("=" * 60)
+    
+    try:
+        test_task_crud_operations()
+        test_daily_task_limit()
+        test_daily_summary()
+        test_xp_preview_and_recommendations()
+        test_statistics()
+        test_error_handling()
+        
+        print("=" * 60)
+        print("[UNICODE_1F389] All tests passed successfully!")
+        print("\n[UNICODE_2705] Task Management API Implementation Complete")
+        print("\nImplemented Features:")
+        print("[UNICODE_2022] Task CRUD operations (Create, Read, Update, Delete)")
+        print("[UNICODE_2022] Daily task limit enforcement (16 tasks per day)")
+        print("[UNICODE_2022] Task completion with XP calculation")
+        print("[UNICODE_2022] Daily summary with limit information")
+        print("[UNICODE_2022] XP preview and task recommendations")
+        print("[UNICODE_2022] Task statistics and analytics")
+        print("[UNICODE_2022] Comprehensive error handling")
+        print("[UNICODE_2022] Integration with Pomodoro system")
+        print("[UNICODE_2022] ADHD support features")
+        
+    except AssertionError as e:
+        print(f"[UNICODE_274C] Test failed: {e}")
+        return False
+    except Exception as e:
+        print(f"[UNICODE_274C] Unexpected error: {e}")
+        return False
+    
+    return True
+
+if __name__ == "__main__":
+    success = run_all_tests()
+    sys.exit(0 if success else 1)

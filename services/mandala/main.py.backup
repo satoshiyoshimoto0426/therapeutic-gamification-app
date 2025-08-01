@@ -1,0 +1,554 @@
+"""
+Mandala Service API
+
+[UNICODE_30BB]API[UNICODE_5B9F]Mandala[UNICODE_30B5]
+/mandala/{uid}/grid API[UNICODE_30A8]
+
+Requirements: 4.1, 4.3
+"""
+
+from fastapi import FastAPI, HTTPException, Path, Body
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
+from typing import Dict, List, Optional, Any
+import sys
+import os
+
+# Add project root to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+from shared.interfaces.mandala_system import MandalaSystemInterface, MandalaGrid
+from shared.interfaces.mandala_validation import MandalaValidator, MandalaBusinessRules, ValidationResult
+from shared.interfaces.mobile_types import (
+    MobileViewport, TouchEvent, SwipeEvent, PinchEvent, 
+    ADHDMobileSettings, MobileOptimizedResponse, TouchInteractionResponse
+)
+from services.mandala.mobile_mandala_system import MobileMandalaSystem
+
+app = FastAPI(
+    title="Mandala Service",
+    description="9x9 Mandala[UNICODE_30B0]API",
+    version="1.0.0"
+)
+
+# [UNICODE_30B0]
+mandala_interface = MandalaSystemInterface()
+validator = MandalaValidator()
+business_rules = MandalaBusinessRules()
+mobile_mandala = MobileMandalaSystem(mandala_interface)
+
+
+class UnlockCellRequest(BaseModel):
+    """[UNICODE_30BB]"""
+    x: int = Field(..., ge=0, le=8, description="X[UNICODE_5EA7] (0-8)")
+    y: int = Field(..., ge=0, le=8, description="Y[UNICODE_5EA7] (0-8)")
+    quest_title: str = Field(..., min_length=1, max_length=100, description="[UNICODE_30AF]")
+    quest_description: str = Field(..., min_length=1, max_length=500, description="[UNICODE_30AF]")
+    xp_reward: int = Field(..., ge=1, le=1000, description="XP[UNICODE_5831]")
+    difficulty: int = Field(..., ge=1, le=5, description="[UNICODE_96E3] (1-5)")
+    therapeutic_focus: Optional[str] = Field(None, description="[UNICODE_6CBB]")
+    linked_story_node: Optional[str] = Field(None, description="[UNICODE_95A2]")
+
+
+class CompleteCellRequest(BaseModel):
+    """[UNICODE_30BB]"""
+    x: int = Field(..., ge=0, le=8, description="X[UNICODE_5EA7] (0-8)")
+    y: int = Field(..., ge=0, le=8, description="Y[UNICODE_5EA7] (0-8)")
+
+
+class MandalaGridResponse(BaseModel):
+    """Mandala[UNICODE_30B0]"""
+    uid: str
+    grid: List[List[Dict[str, Any]]]
+    unlocked_count: int
+    total_cells: int
+    completion_rate: float
+    last_updated: str
+    core_values: Dict[str, Dict[str, str]]
+
+
+class UnlockResponse(BaseModel):
+    """[UNICODE_30A2]"""
+    success: bool
+    message: str
+    unlocked_count: Optional[int] = None
+    cell_info: Optional[Dict[str, Any]] = None
+
+
+class CompletionResponse(BaseModel):
+    """[UNICODE_5B8C]"""
+    success: bool
+    message: str
+    completion_time: Optional[str] = None
+    xp_earned: Optional[int] = None
+
+
+@app.get("/mandala/{uid}/grid", response_model=MandalaGridResponse)
+async def get_mandala_grid(
+    uid: str = Path(..., description="[UNICODE_30E6]ID", min_length=1, max_length=50)
+) -> MandalaGridResponse:
+    """
+    [UNICODE_30E6]Mandala[UNICODE_30B0]
+    
+    Args:
+        uid: [UNICODE_30E6]ID
+        
+    Returns:
+        MandalaGridResponse: [UNICODE_30B0]
+        
+    Raises:
+        HTTPException: [UNICODE_30D0]
+    """
+    try:
+        # [UNICODE_30B0]
+        grid_data = mandala_interface.get_grid_api_response(uid)
+        
+        # API[UNICODE_5FDC]
+        validation_result = validator.validate_api_response_data(grid_data)
+        if not validation_result.is_valid:
+            raise HTTPException(
+                status_code=500,
+                detail=f"[UNICODE_30B0]: {validation_result.error_message}"
+            )
+        
+        return MandalaGridResponse(**grid_data)
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"[UNICODE_30B0]: {str(e)}"
+        )
+
+
+@app.post("/mandala/{uid}/unlock", response_model=UnlockResponse)
+async def unlock_cell(
+    uid: str = Path(..., description="[UNICODE_30E6]ID", min_length=1, max_length=50),
+    request: UnlockCellRequest = Body(..., description="[UNICODE_30A2]")
+) -> UnlockResponse:
+    """
+    [UNICODE_30BB]
+    
+    Args:
+        uid: [UNICODE_30E6]ID
+        request: [UNICODE_30A2]
+        
+    Returns:
+        UnlockResponse: [UNICODE_30A2]
+        
+    Raises:
+        HTTPException: [UNICODE_30D0]
+    """
+    try:
+        # [UNICODE_30B0]
+        grid = mandala_interface.get_or_create_grid(uid)
+        
+        # [UNICODE_30AF]
+        quest_data = {
+            "cell_id": f"cell_{request.x}_{request.y}",
+            "quest_title": request.quest_title,
+            "quest_description": request.quest_description,
+            "xp_reward": request.xp_reward,
+            "difficulty": request.difficulty,
+            "therapeutic_focus": request.therapeutic_focus,
+            "linked_story_node": request.linked_story_node
+        }
+        
+        # [UNICODE_30A2]
+        validation_result = validator.validate_unlock_request(grid, request.x, request.y, quest_data)
+        if not validation_result.is_valid:
+            raise HTTPException(
+                status_code=400,
+                detail=f"[UNICODE_30A2]: {validation_result.error_message}"
+            )
+        
+        # [UNICODE_6CBB]
+        if request.therapeutic_focus:
+            focus_validation = validator.validate_therapeutic_focus(request.therapeutic_focus)
+            if not focus_validation.is_valid:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"[UNICODE_6CBB]: {focus_validation.error_message}"
+                )
+        
+        # [UNICODE_30D3]
+        # [UNICODE_5B9F]
+        today_unlocks = 0  # TODO: [UNICODE_5B9F]
+        business_validation = business_rules.can_unlock_today(grid, today_unlocks)
+        if not business_validation.is_valid:
+            raise HTTPException(
+                status_code=429,
+                detail=f"[UNICODE_30D3]: {business_validation.error_message}"
+            )
+        
+        # [UNICODE_30BB]
+        success = mandala_interface.unlock_cell_for_user(uid, request.x, request.y, quest_data)
+        
+        if success:
+            # [UNICODE_30A2]
+            updated_grid = mandala_interface.get_or_create_grid(uid)
+            cell = updated_grid.get_cell(request.x, request.y)
+            
+            cell_info = {
+                "cell_id": cell.cell_id,
+                "position": cell.position,
+                "quest_title": cell.quest_title,
+                "xp_reward": cell.xp_reward,
+                "difficulty": cell.difficulty
+            } if cell else None
+            
+            return UnlockResponse(
+                success=True,
+                message="[UNICODE_30BB]",
+                unlocked_count=updated_grid.unlocked_count,
+                cell_info=cell_info
+            )
+        else:
+            return UnlockResponse(
+                success=False,
+                message="[UNICODE_30BB]"
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"[UNICODE_30A2]: {str(e)}"
+        )
+
+
+@app.post("/mandala/{uid}/complete", response_model=CompletionResponse)
+async def complete_cell(
+    uid: str = Path(..., description="[UNICODE_30E6]ID", min_length=1, max_length=50),
+    request: CompleteCellRequest = Body(..., description="[UNICODE_5B8C]")
+) -> CompletionResponse:
+    """
+    [UNICODE_30BB]
+    
+    Args:
+        uid: [UNICODE_30E6]ID
+        request: [UNICODE_5B8C]
+        
+    Returns:
+        CompletionResponse: [UNICODE_5B8C]
+        
+    Raises:
+        HTTPException: [UNICODE_30D0]
+    """
+    try:
+        # [UNICODE_30B0]
+        grid = mandala_interface.get_or_create_grid(uid)
+        
+        # [UNICODE_5B8C]
+        validation_result = validator.validate_completion_request(grid, request.x, request.y)
+        if not validation_result.is_valid:
+            raise HTTPException(
+                status_code=400,
+                detail=f"[UNICODE_5B8C]: {validation_result.error_message}"
+            )
+        
+        # [UNICODE_30D3]
+        # [UNICODE_5B9F]
+        last_completion_time = None  # TODO: [UNICODE_5B9F]
+        business_validation = business_rules.can_complete_now(grid, request.x, request.y, last_completion_time)
+        if not business_validation.is_valid:
+            raise HTTPException(
+                status_code=429,
+                detail=f"[UNICODE_30D3]: {business_validation.error_message}"
+            )
+        
+        # [UNICODE_30BB]
+        success = mandala_interface.complete_cell_for_user(uid, request.x, request.y)
+        
+        if success:
+            # [UNICODE_5B8C]
+            updated_grid = mandala_interface.get_or_create_grid(uid)
+            cell = updated_grid.get_cell(request.x, request.y)
+            
+            return CompletionResponse(
+                success=True,
+                message="[UNICODE_30BB]",
+                completion_time=cell.completion_time.isoformat() if cell and cell.completion_time else None,
+                xp_earned=cell.xp_reward if cell else None
+            )
+        else:
+            return CompletionResponse(
+                success=False,
+                message="[UNICODE_30BB]"
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"[UNICODE_5B8C]: {str(e)}"
+        )
+
+
+@app.get("/mandala/{uid}/reminder")
+async def get_daily_reminder(
+    uid: str = Path(..., description="[UNICODE_30E6]ID", min_length=1, max_length=50)
+) -> Dict[str, str]:
+    """
+    [UNICODE_4ECA]
+    
+    Args:
+        uid: [UNICODE_30E6]ID
+        
+    Returns:
+        Dict[str, str]: [UNICODE_30EA]
+    """
+    try:
+        reminder = mandala_interface.get_daily_reminder_for_user(uid)
+        return {"reminder": reminder}
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"[UNICODE_30EA]: {str(e)}"
+        )
+
+
+@app.get("/mandala/{uid}/status")
+async def get_mandala_status(
+    uid: str = Path(..., description="[UNICODE_30E6]ID", min_length=1, max_length=50)
+) -> Dict[str, Any]:
+    """
+    Mandala[UNICODE_30B7]
+    
+    Args:
+        uid: [UNICODE_30E6]ID
+        
+    Returns:
+        Dict[str, Any]: [UNICODE_30B7]
+    """
+    try:
+        grid = mandala_interface.get_or_create_grid(uid)
+        
+        # [UNICODE_9032]
+        progression_validation = business_rules.validate_progression_path(grid)
+        
+        unlocked_cells = grid.get_unlocked_cells()
+        completed_cells = grid.get_completed_cells()
+        
+        return {
+            "uid": uid,
+            "total_cells": grid.total_cells,
+            "unlocked_count": grid.unlocked_count,
+            "completed_count": len(completed_cells),
+            "completion_rate": len(completed_cells) / grid.total_cells if grid.total_cells > 0 else 0,
+            "core_values_count": len(grid.core_values),
+            "last_updated": grid.last_updated.isoformat(),
+            "progression_warnings": progression_validation.warnings if progression_validation.warnings else [],
+            "available_unlocks": len([
+                (x, y) for x in range(9) for y in range(9)
+                if grid.can_unlock(x, y)
+            ])
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"[UNICODE_72B6]: {str(e)}"
+        )
+
+
+# [UNICODE_30E2]
+
+@app.post("/mandala/{uid}/mobile/grid", response_model=MobileOptimizedResponse)
+async def get_mobile_optimized_grid(
+    uid: str = Path(..., description="[UNICODE_30E6]ID", min_length=1, max_length=50),
+    viewport: MobileViewport = Body(..., description="[UNICODE_30E2]")
+) -> MobileOptimizedResponse:
+    """
+    [UNICODE_30E2]Mandala[UNICODE_30B0]
+    
+    Args:
+        uid: [UNICODE_30E6]ID
+        viewport: [UNICODE_30E2]
+        
+    Returns:
+        MobileOptimizedResponse: [UNICODE_30E2]
+    """
+    try:
+        return mobile_mandala.get_mobile_optimized_grid_data(uid, viewport)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"[UNICODE_30E2]: {str(e)}"
+        )
+
+
+@app.post("/mandala/{uid}/mobile/touch", response_model=TouchInteractionResponse)
+async def handle_touch_interaction(
+    uid: str = Path(..., description="[UNICODE_30E6]ID", min_length=1, max_length=50),
+    touch_event: TouchEvent = Body(..., description="[UNICODE_30BF]")
+) -> TouchInteractionResponse:
+    """
+    [UNICODE_30BF]
+    
+    Args:
+        uid: [UNICODE_30E6]ID
+        touch_event: [UNICODE_30BF]
+        
+    Returns:
+        TouchInteractionResponse: [UNICODE_30BF]
+    """
+    try:
+        return mobile_mandala.handle_touch_event(uid, touch_event)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"[UNICODE_30BF]: {str(e)}"
+        )
+
+
+@app.post("/mandala/{uid}/mobile/swipe", response_model=TouchInteractionResponse)
+async def handle_swipe_interaction(
+    uid: str = Path(..., description="[UNICODE_30E6]ID", min_length=1, max_length=50),
+    swipe_event: SwipeEvent = Body(..., description="[UNICODE_30B9]")
+) -> TouchInteractionResponse:
+    """
+    [UNICODE_30B9]
+    
+    Args:
+        uid: [UNICODE_30E6]ID
+        swipe_event: [UNICODE_30B9]
+        
+    Returns:
+        TouchInteractionResponse: [UNICODE_30B9]
+    """
+    try:
+        return mobile_mandala.handle_swipe_event(uid, swipe_event)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"[UNICODE_30B9]: {str(e)}"
+        )
+
+
+@app.post("/mandala/{uid}/mobile/pinch", response_model=TouchInteractionResponse)
+async def handle_pinch_interaction(
+    uid: str = Path(..., description="[UNICODE_30E6]ID", min_length=1, max_length=50),
+    pinch_event: PinchEvent = Body(..., description="[UNICODE_30D4]")
+) -> TouchInteractionResponse:
+    """
+    [UNICODE_30D4]
+    
+    Args:
+        uid: [UNICODE_30E6]ID
+        pinch_event: [UNICODE_30D4]
+        
+    Returns:
+        TouchInteractionResponse: [UNICODE_30D4]
+    """
+    try:
+        return mobile_mandala.handle_pinch_event(uid, pinch_event)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"[UNICODE_30D4]: {str(e)}"
+        )
+
+
+@app.put("/mandala/{uid}/mobile/adhd-settings")
+async def update_adhd_settings(
+    uid: str = Path(..., description="[UNICODE_30E6]ID", min_length=1, max_length=50),
+    settings: ADHDMobileSettings = Body(..., description="ADHD[UNICODE_914D]")
+) -> Dict[str, Any]:
+    """
+    ADHD[UNICODE_914D]
+    
+    Args:
+        uid: [UNICODE_30E6]ID
+        settings: ADHD[UNICODE_914D]
+        
+    Returns:
+        Dict[str, Any]: [UNICODE_66F4]
+    """
+    try:
+        success = mobile_mandala.update_adhd_settings(uid, settings)
+        return {
+            "success": success,
+            "message": "ADHD[UNICODE_8A2D]" if success else "ADHD[UNICODE_8A2D]",
+            "settings": settings.dict()
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"ADHD[UNICODE_8A2D]: {str(e)}"
+        )
+
+
+@app.get("/mandala/{uid}/mobile/focus-mode")
+async def get_focus_mode_layout(
+    uid: str = Path(..., description="[UNICODE_30E6]ID", min_length=1, max_length=50)
+) -> Dict[str, Any]:
+    """
+    [UNICODE_96C6]
+    
+    Args:
+        uid: [UNICODE_30E6]ID
+        
+    Returns:
+        Dict[str, Any]: [UNICODE_96C6]
+    """
+    try:
+        focus_layout = mobile_mandala.get_focus_mode_layout(uid)
+        
+        if focus_layout:
+            return {
+                "available": True,
+                "layout": {
+                    "cell_size": focus_layout.cell_size,
+                    "gap": focus_layout.gap,
+                    "total_width": focus_layout.total_width,
+                    "total_height": focus_layout.total_height,
+                    "zoom_level": focus_layout.zoom_level,
+                    "visible_cells": focus_layout.visible_cells
+                }
+            }
+        else:
+            return {
+                "available": False,
+                "message": "[UNICODE_96C6]"
+            }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"[UNICODE_96C6]: {str(e)}"
+        )
+
+
+@app.post("/mandala/{uid}/mobile/reset-view", response_model=TouchInteractionResponse)
+async def reset_grid_view(
+    uid: str = Path(..., description="[UNICODE_30E6]ID", min_length=1, max_length=50)
+) -> TouchInteractionResponse:
+    """
+    [UNICODE_30B0]
+    
+    Args:
+        uid: [UNICODE_30E6]ID
+        
+    Returns:
+        TouchInteractionResponse: [UNICODE_30EA]
+    """
+    try:
+        return mobile_mandala.reset_grid_view(uid)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"[UNICODE_30D3]: {str(e)}"
+        )
+
+
+@app.get("/health")
+async def health_check() -> Dict[str, str]:
+    """[UNICODE_30D8]"""
+    return {"status": "healthy", "service": "mandala"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -1,0 +1,17 @@
+{
+  "service_name": "test-service",
+  "environment": "production",
+  "latest_deployment": {
+    "deployment_id": "test-deploy-123",
+    "service_name": "test-service",
+    "revision": "test-revision",
+    "image_url": "gcr.io/test/image:latest",
+    "commit_sha": "abc123",
+    "status": "DEPLOY_SUCCESS",
+    "environment": "production",
+    "region": "asia-northeast1",
+    "timestamp": "2025-07-30T12:13:14.074069",
+    "metadata": {}
+  },
+  "last_updated": "2025-07-30T12:13:14.075064"
+}

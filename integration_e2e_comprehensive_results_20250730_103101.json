@@ -1,0 +1,210 @@
+{
+  "timestamp": "20250730_103101",
+  "test_type": "integration_e2e_comprehensive",
+  "task": "27.2 統合テストとエンドツーエンドテスト",
+  "execution_time": {
+    "start_time": 1753838993.6347907,
+    "end_time": 1753839061.9092603,
+    "duration_seconds": 68.27446961402893
+  },
+  "test_results": {
+    "comprehensive_integration": {
+      "service_health": {
+        "auth": true,
+        "core_game": true,
+        "task_mgmt": true,
+        "mandala": true,
+        "ai_story": false,
+        "mood_tracking": false,
+        "line_bot": false,
+        "adhd_support": false,
+        "therapeutic_safety": false
+      },
+      "user_journey": {
+        "authentication": {
+          "success": false,
+          "error": "Registration failed: 422"
+        }
+      },
+      "error_handling": {
+        "success": true,
+        "error_handling_results": {
+          "invalid_auth": {
+            "handled_correctly": false,
+            "status_code": 404
+          },
+          "nonexistent_resource": {
+            "handled_correctly": false,
+            "status_code": 200
+          },
+          "invalid_data": {
+            "handled_correctly": false,
+            "status_code": 404
+          },
+          "service_unavailable": {
+            "handled_correctly": true
+          }
+        },
+        "error_handling_rate": 0.25
+      },
+      "performance": {
+        "api_response_time": {
+          "p95_latency": 0.269547700881958,
+          "meets_target": true,
+          "average_response_time": 0.031605863571166994
+        },
+        "concurrent_requests": {
+          "total_requests": 20,
+          "successful_requests": 20,
+          "success_rate": 1.0,
+          "total_time": 0.3511946201324463
+        }
+      }
+    },
+    "data_persistence": {
+      "error": "Test user setup failed"
+    },
+    "error_handling": {
+      "authentication_errors": {
+        "success": false,
+        "auth_error_results": {
+          "invalid_token": {
+            "status_code": 404,
+            "handled_correctly": false,
+            "response_has_error_message": false
+          },
+          "no_token": {
+            "status_code": 404,
+            "handled_correctly": false,
+            "response_has_error_message": false
+          },
+          "expired_token": {
+            "status_code": 500,
+            "handled_correctly": false,
+            "response_has_error_message": false
+          }
+        },
+        "auth_error_handling_rate": 0.0
+      },
+      "data_validation_errors": {
+        "success": false,
+        "validation_error_results": {
+          "missing_required_fields": {
+            "status_code": 404,
+            "handled_correctly": false,
+            "response_has_validation_error": false
+          },
+          "invalid_data_types": {
+            "status_code": 404,
+            "handled_correctly": false,
+            "response_has_validation_error": false
+          },
+          "out_of_range_values": {
+            "handled_correctly": false,
+            "error": "All connection attempts failed"
+          },
+          "invalid_json": {
+            "status_code": 404,
+            "handled_correctly": false,
+            "response_has_validation_error": false
+          }
+        },
+        "validation_error_handling_rate": 0.0
+      },
+      "resource_not_found_errors": {
+        "success": true,
+        "not_found_error_results": {
+          "nonexistent_user": {
+            "status_code": 404,
+            "handled_correctly": true,
+            "response_has_error_message": true
+          },
+          "nonexistent_task": {
+            "status_code": 200,
+            "handled_correctly": false,
+            "response_has_error_message": false
+          },
+          "nonexistent_endpoint": {
+            "status_code": 404,
+            "handled_correctly": true,
+            "response_has_error_message": true
+          }
+        },
+        "not_found_error_handling_rate": 0.6666666666666666
+      },
+      "service_communication_errors": {
+        "success": true,
+        "communication_error_results": {
+          "nonexistent_service": {
+            "handled_correctly": true,
+            "error_type": "ConnectError",
+            "connection_refused": true
+          },
+          "timeout_handling": {
+            "handled_correctly": true,
+            "error_type": "ConnectTimeout",
+            "is_timeout_error": false
+          },
+          "invalid_response_format": {
+            "status_code": 404,
+            "handled_correctly": true,
+            "has_error_response": true
+          }
+        },
+        "communication_error_handling_rate": 1.0
+      },
+      "business_logic_errors": {
+        "success": false,
+        "business_error_results": {
+          "invalid_mood_range": {
+            "handled_correctly": false,
+            "error": "All connection attempts failed"
+          }
+        },
+        "business_error_handling_rate": 0.0
+      },
+      "graceful_degradation": {
+        "success": true,
+        "degradation_results": {
+          "ai_story_fallback": {
+            "handled_correctly": true,
+            "error_type": "ConnectError"
+          },
+          "partial_service_failure": {
+            "core_service_available": false,
+            "graceful_degradation": false
+          }
+        },
+        "graceful_degradation_rate": 0.5
+      }
+    }
+  },
+  "success_metrics": {
+    "total_test_categories": 3,
+    "successful_categories": 0,
+    "test_details": {
+      "user_journey_success_rate": 0.0,
+      "error_handling_rate": 0.25,
+      "error_handling_appropriateness_rate": 0.5
+    },
+    "overall_success_rate": 0.0,
+    "critical_failures": [
+      "ユーザージャーニーテストの成功率が低い",
+      "データ永続化テストが実行できない",
+      "エラー処理の適切性が不十分"
+    ],
+    "recommendations": [
+      "重大な問題の修正",
+      "システム設計の見直し",
+      "基本機能の再実装"
+    ]
+  },
+  "requirements_verification": {
+    "user_journey_tested": true,
+    "morning_to_evening_flow_tested": true,
+    "data_persistence_verified": true,
+    "error_handling_verified": true,
+    "system_operation_guaranteed": false
+  },
+  "task_completion_status": "needs_improvement"
+}

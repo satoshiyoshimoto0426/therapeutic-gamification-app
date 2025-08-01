@@ -1,0 +1,1679 @@
+"""
+LINE Bot Interface for Daily Interactions - Mobile Optimized
+Handles morning task presentation, evening story delivery, and notifications
+Optimized for mobile devices with touch-friendly UI and ADHD considerations
+"""
+
+from fastapi import FastAPI, Request, HTTPException, Depends, BackgroundTasks
+from fastapi.responses import JSONResponse
+from linebot import LineBotApi, WebhookHandler
+from linebot.exceptions import InvalidSignatureError, LineBotApiError
+from linebot.models import (
+    MessageEvent, TextMessage, TextSendMessage, QuickReply, QuickReplyButton,
+    MessageAction, FlexMessage, FlexContainer, BubbleContainer, BoxComponent,
+    TextComponent, ButtonComponent, URIAction, PostbackAction, PostbackEvent,
+    CarouselContainer, SeparatorComponent, SpacerComponent, ImageComponent
+)
+from pydantic import BaseModel
+from typing import List, Dict, Optional, Any
+import os
+import json
+import asyncio
+import logging
+from datetime import datetime, timedelta
+import hashlib
+import hmac
+import firebase_admin
+from firebase_admin import firestore, messaging
+from google.cloud import firestore as firestore_client
+import httpx
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+import pytz
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+app = FastAPI(title="LINE Bot Service", version="1.0.0")
+
+# LINE Bot configuration
+LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN", "")
+LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET", "")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL", "")
+
+# Initialize LINE Bot API
+line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
+handler = WebhookHandler(LINE_CHANNEL_SECRET)
+
+# Initialize Firestore
+if not firebase_admin._apps:
+    firebase_admin.initialize_app()
+db = firestore.client()
+
+# Service URLs
+TASK_MGMT_URL = os.getenv("TASK_MGMT_URL", "http://localhost:8003")
+AI_STORY_URL = os.getenv("AI_STORY_URL", "http://localhost:8005")
+ADHD_SUPPORT_URL = os.getenv("ADHD_SUPPORT_URL", "http://localhost:8006")
+
+# Initialize scheduler
+scheduler = AsyncIOScheduler()
+JST = pytz.timezone('Asia/Tokyo')
+
+class TaskCompletionRequest(BaseModel):
+    user_id: str
+    task_id: str
+    completion_status: str
+    timestamp: Optional[datetime] = None
+
+class NotificationRequest(BaseModel):
+    user_id: str
+    message: str
+    notification_type: str  # "pomodoro", "break", "hyperfocus", "story"
+
+class LineBotService:
+    def __init__(self):
+        self.client = httpx.AsyncClient()
+    
+    async def get_user_tasks(self, user_id: str) -> List[Dict]:
+        """Get user's daily tasks from task management service"""
+        try:
+            response = await self.client.get(f"{TASK_MGMT_URL}/mandala/{user_id}/daily-tasks")
+            if response.status_code == 200:
+                return response.json().get("tasks", [])
+            return []
+        except Exception as e:
+            logger.error(f"Error fetching user tasks: {e}")
+            return []
+    
+    async def complete_task(self, user_id: str, task_id: str) -> bool:
+        """Mark task as completed"""
+        try:
+            response = await self.client.post(
+                f"{TASK_MGMT_URL}/tasks/{task_id}/complete",
+                json={"user_id": user_id, "completed_at": datetime.now().isoformat()}
+            )
+            return response.status_code == 200
+        except Exception as e:
+            logger.error(f"Error completing task: {e}")
+            return False
+    
+    async def get_evening_story(self, user_id: str) -> Optional[Dict]:
+        """Get evening story content from AI story service"""
+        try:
+            response = await self.client.post(
+                f"{AI_STORY_URL}/ai/story/v2/generate",
+                json={"user_id": user_id, "context_type": "evening_delivery"}
+            )
+            if response.status_code == 200:
+                return response.json()
+            return None
+        except Exception as e:
+            logger.error(f"Error fetching evening story: {e}")
+            return None
+    
+    async def send_fcm_notification(self, user_id: str, title: str, body: str, data: Dict = None):
+        """Fallback to Firebase Cloud Messaging when LINE is unavailable"""
+        try:
+            # Get user's FCM token from Firestore
+            user_doc = db.collection("users").document(user_id).get()
+            if not user_doc.exists:
+                return False
+            
+            fcm_token = user_doc.to_dict().get("fcm_token")
+            if not fcm_token:
+                return False
+            
+            message = messaging.Message(
+                notification=messaging.Notification(title=title, body=body),
+                data=data or {},
+                token=fcm_token
+            )
+            
+            response = messaging.send(message)
+            logger.info(f"FCM notification sent: {response}")
+            return True
+        except Exception as e:
+            logger.error(f"Error sending FCM notification: {e}")
+            return False
+
+line_bot_service = LineBotService()
+
+def create_mobile_optimized_heart_crystal_tasks(tasks: List[Dict]) -> FlexMessage:
+    """Create mobile-optimized Heart Crystal tasks in 3x3 Mandala format"""
+    # Group tasks into 3x3 grid format (max 9 tasks for mobile optimization)
+    grid_tasks = tasks[:9]
+    
+    # Create 3x3 grid bubbles
+    bubbles = []
+    
+    for i in range(0, len(grid_tasks), 3):
+        row_tasks = grid_tasks[i:i+3]
+        
+        # Create row bubble
+        row_contents = []
+        
+        for task in row_tasks:
+            task_bubble = create_task_bubble_mobile(task)
+            row_contents.append(task_bubble)
+        
+        # Fill empty slots if needed
+        while len(row_contents) < 3:
+            row_contents.append(create_empty_task_bubble())
+        
+        # Create horizontal layout for the row
+        row_bubble = BubbleContainer(
+            size="kilo",  # Compact size for mobile
+            body=BoxComponent(
+                layout="horizontal",
+                spacing="xs",
+                contents=row_contents
+            )
+        )
+        bubbles.append(row_bubble)
+    
+    # Ensure we have 3 rows
+    while len(bubbles) < 3:
+        empty_row = BubbleContainer(
+            size="kilo",
+            body=BoxComponent(
+                layout="horizontal",
+                spacing="xs",
+                contents=[create_empty_task_bubble() for _ in range(3)]
+            )
+        )
+        bubbles.append(empty_row)
+    
+    # Create header bubble
+    header_bubble = BubbleContainer(
+        body=BoxComponent(
+            layout="vertical",
+            spacing="md",
+            contents=[
+                TextComponent(
+                    text="? ?",
+                    weight="bold",
+                    size="xl",
+                    color="#FF6B9D",
+                    align="center"
+                ),
+                TextComponent(
+                    text="タスク",
+                    size="sm",
+                    color="#666666",
+                    align="center"
+                ),
+                SeparatorComponent(margin="md")
+            ]
+        )
+    )
+    
+    # Combine header and grid
+    all_bubbles = [header_bubble] + bubbles
+    
+    carousel = CarouselContainer(contents=all_bubbles)
+    
+    return FlexMessage(
+        alt_text="? ?",
+        contents=carousel
+    )
+
+def create_task_bubble_mobile(task: Dict) -> BoxComponent:
+    """Create individual task bubble optimized for mobile touch"""
+    task_type_emoji = {
+        "routine": "?",
+        "one_shot": "?",
+        "skill_up": "?",
+        "social": "?"
+    }
+    
+    emoji = task_type_emoji.get(task.get("type", "routine"), "?")
+    difficulty_stars = "?" * task.get("difficulty", 1)
+    
+    return BoxComponent(
+        layout="vertical",
+        spacing="xs",
+        paddingAll="sm",
+        backgroundColor="#F8F9FA",
+        cornerRadius="md",
+        contents=[
+            TextComponent(
+                text=emoji,
+                size="lg",
+                align="center"
+            ),
+            TextComponent(
+                text=task.get("title", "タスク")[:8] + ("..." if len(task.get("title", "")) > 8 else ""),
+                size="xs",
+                weight="bold",
+                align="center",
+                wrap=True,
+                maxLines=2
+            ),
+            TextComponent(
+                text=difficulty_stars,
+                size="xxs",
+                align="center",
+                color="#FFC857"
+            ),
+            ButtonComponent(
+                style="primary",
+                height="sm",
+                color="#FF6B9D",
+                action=PostbackAction(
+                    label="?",
+                    data=f"complete_task_{task.get('id', '')}"
+                )
+            )
+        ],
+        action=PostbackAction(
+            data=f"view_task_{task.get('id', '')}"
+        )
+    )
+
+def create_empty_task_bubble() -> BoxComponent:
+    """Create empty task slot for grid layout"""
+    return BoxComponent(
+        layout="vertical",
+        spacing="xs",
+        paddingAll="sm",
+        backgroundColor="#F0F0F0",
+        cornerRadius="md",
+        contents=[
+            TextComponent(
+                text="?",
+                size="lg",
+                align="center",
+                color="#CCCCCC"
+            ),
+            TextComponent(
+                text="?",
+                size="xs",
+                align="center",
+                color="#999999"
+            )
+        ]
+    )
+
+def create_task_completion_success_message(task_title: str, xp_earned: int) -> FlexMessage:
+    """Create mobile-optimized task completion success message"""
+    bubble = BubbleContainer(
+        body=BoxComponent(
+            layout="vertical",
+            spacing="md",
+            paddingAll="lg",
+            backgroundColor="#E8F5E8",
+            contents=[
+                TextComponent(
+                    text="? タスク",
+                    weight="bold",
+                    size="xl",
+                    color="#2E7D32",
+                    align="center"
+                ),
+                SeparatorComponent(margin="md"),
+                BoxComponent(
+                    layout="horizontal",
+                    spacing="sm",
+                    contents=[
+                        TextComponent(
+                            text="?:",
+                            size="sm",
+                            color="#666666",
+                            flex=2
+                        ),
+                        TextComponent(
+                            text=task_title,
+                            size="sm",
+                            weight="bold",
+                            flex=3,
+                            wrap=True
+                        )
+                    ]
+                ),
+                BoxComponent(
+                    layout="horizontal",
+                    spacing="sm",
+                    contents=[
+                        TextComponent(
+                            text="?XP:",
+                            size="sm",
+                            color="#666666",
+                            flex=2
+                        ),
+                        TextComponent(
+                            text=f"+{xp_earned} XP",
+                            size="sm",
+                            weight="bold",
+                            color="#FFC857",
+                            flex=3
+                        )
+                    ]
+                ),
+                ButtonComponent(
+                    style="secondary",
+                    height="sm",
+                    action=PostbackAction(
+                        label="?",
+                        data="view_remaining_tasks"
+                    )
+                )
+            ]
+        )
+    )
+    
+    return FlexMessage(
+        alt_text=f"タスク{task_title}? +{xp_earned} XP",
+        contents=bubble
+    )
+
+# Scheduled task functions
+async def scheduled_morning_heart_crystal_tasks():
+    """Send morning Heart Crystal tasks at 7:00 AM - Mobile Optimized"""
+    try:
+        # Get all active users from Firestore
+        users_ref = db.collection("users").where("status", "==", "active")
+        users = users_ref.stream()
+        
+        for user_doc in users:
+            user_data = user_doc.to_dict()
+            user_id = user_doc.id
+            line_user_id = user_data.get("line_user_id")
+            
+            if line_user_id:
+                await send_mobile_optimized_morning_tasks(line_user_id, user_id)
+                await asyncio.sleep(0.1)  # Rate limiting
+                
+        logger.info("Mobile-optimized Heart Crystal tasks sent to all active users")
+    except Exception as e:
+        logger.error(f"Error in scheduled morning Heart Crystal tasks: {e}")
+
+async def send_mobile_optimized_morning_tasks(line_user_id: str, user_id: str):
+    """Send mobile-optimized morning Heart Crystal tasks"""
+    try:
+        # Get user's daily tasks
+        tasks = await line_bot_service.get_user_tasks(user_id)
+        
+        if not tasks:
+            # Send encouragement message if no tasks
+            message = TextSendMessage(
+                text="? お\n?"
+            )
+        else:
+            # Create enhanced mobile-optimized 3x3 Mandala format
+            from .mobile_ui_functions import create_enhanced_heart_crystal_tasks
+            message = create_enhanced_heart_crystal_tasks(tasks)
+        
+        line_bot_api.push_message(line_user_id, message)
+        
+        # Send additional motivational message
+        motivation_message = TextSendMessage(
+            text="? ?\nタスク"
+        )
+        await asyncio.sleep(1)  # Small delay
+        line_bot_api.push_message(line_user_id, motivation_message)
+        
+    except LineBotApiError as e:
+        logger.error(f"LINE API error in morning tasks: {e}")
+        # Fallback to FCM
+        await line_bot_service.send_fcm_notification(
+            user_id,
+            "? ?",
+            f"?{len(tasks)}?"
+        )
+
+async def scheduled_evening_stories():
+    """Send mobile-optimized evening stories at 21:30 to all active users"""
+    try:
+        # Get all active users from Firestore
+        users_ref = db.collection("users").where("status", "==", "active")
+        users = users_ref.stream()
+        
+        for user_doc in users:
+            user_data = user_doc.to_dict()
+            user_id = user_doc.id
+            line_user_id = user_data.get("line_user_id")
+            
+            if line_user_id:
+                await send_evening_story(line_user_id, user_id)
+                await asyncio.sleep(0.2)  # Rate limiting for story generation
+                
+        logger.info("Mobile-optimized evening stories sent to all active users at 21:30")
+    except Exception as e:
+        logger.error(f"Error in scheduled evening stories: {e}")
+
+async def send_evening_story(line_user_id: str, user_id: str = None):
+    """Send mobile-optimized evening story at 21:30"""
+    try:
+        if not user_id:
+            user_id = get_user_id_from_line_id(line_user_id)
+        
+        # Get evening story content from AI story service
+        story_data = await line_bot_service.get_evening_story(user_id)
+        
+        if story_data:
+            # Import enhanced mobile UI functions
+            from .mobile_ui_functions import create_enhanced_story_delivery
+            from .mobile_story_delivery import (
+                create_evening_motivation_message,
+                create_mandala_story_grid
+            )
+            
+            # Create enhanced mobile-optimized story message
+            story_message = create_enhanced_story_delivery(story_data)
+            line_bot_api.push_message(line_user_id, story_message)
+            
+            # Send additional motivation message after a short delay
+            await asyncio.sleep(2)
+            motivation_message = create_evening_motivation_message()
+            line_bot_api.push_message(line_user_id, motivation_message)
+            
+            # If story has Mandala elements, send Mandala grid
+            if story_data.get("mandala_elements"):
+                await asyncio.sleep(3)
+                mandala_message = create_mandala_story_grid(story_data["mandala_elements"])
+                line_bot_api.push_message(line_user_id, mandala_message)
+                
+        else:
+            # Fallback message with mobile-optimized format
+            from .mobile_story_delivery import create_evening_motivation_message
+            fallback_message = create_evening_motivation_message()
+            line_bot_api.push_message(line_user_id, fallback_message)
+            
+    except LineBotApiError as e:
+        logger.error(f"LINE API error in evening story: {e}")
+        # Fallback to FCM
+        await line_bot_service.send_fcm_notification(
+            user_id or line_user_id,
+            "? ?",
+            "?"
+        )
+
+async def get_active_users() -> List[Dict]:
+    """Get list of active users for notifications"""
+    try:
+        users_ref = db.collection("users").where("status", "==", "active")
+        users = users_ref.stream()
+        
+        active_users = []
+        for user_doc in users:
+            user_data = user_doc.to_dict()
+            if user_data.get("line_user_id"):
+                active_users.append({
+                    "user_id": user_doc.id,
+                    "line_user_id": user_data["line_user_id"],
+                    "preferences": user_data.get("notification_preferences", {})
+                })
+        
+        return active_users
+    except Exception as e:
+        logger.error(f"Error getting active users: {e}")
+        return []
+
+async def handle_story_choice_selection(line_user_id: str, user_id: str, choice_id: str, reply_token: str):
+    """Handle story choice selection with mobile optimization"""
+    try:
+        # Get choice details from story service
+        choice_data = await get_story_choice_details(user_id, choice_id)
+        
+        if not choice_data:
+            message = TextSendMessage(text="?")
+            line_bot_api.reply_message(reply_token, message)
+            return
+        
+        # Process the choice selection
+        await process_story_choice(user_id, choice_data)
+        
+        # Get task info if choice is linked to a task
+        task_info = None
+        if choice_data.get("real_task_id"):
+            task_info = await get_task_details(user_id, choice_data["real_task_id"])
+        
+        # Import mobile story delivery functions
+        from .mobile_story_delivery import create_story_choice_confirmation
+        
+        # Create confirmation message
+        confirmation_message = create_story_choice_confirmation(choice_data, task_info)
+        line_bot_api.reply_message(reply_token, confirmation_message)
+        
+        # Update tomorrow's Mandala if needed
+        if choice_data.get("real_task_id") or choice_data.get("habit_tag"):
+            await update_tomorrow_mandala(user_id, choice_data)
+        
+    except Exception as e:
+        logger.error(f"Error handling story choice selection: {e}")
+        error_message = TextSendMessage(text="?")
+        line_bot_api.reply_message(reply_token, error_message)
+
+async def handle_story_choice_detail(line_user_id: str, user_id: str, choice_id: str, reply_token: str):
+    """Handle story choice detail view"""
+    try:
+        choice_data = await get_story_choice_details(user_id, choice_id)
+        
+        if not choice_data:
+            message = TextSendMessage(text="?")
+            line_bot_api.reply_message(reply_token, message)
+            return
+        
+        # Create detailed choice view
+        detail_message = create_choice_detail_message(choice_data)
+        line_bot_api.reply_message(reply_token, detail_message)
+        
+    except Exception as e:
+        logger.error(f"Error handling story choice detail: {e}")
+        error_message = TextSendMessage(text="?")
+        line_bot_api.reply_message(reply_token, error_message)
+
+async def handle_mandala_element_interaction(line_user_id: str, user_id: str, element_id: str, reply_token: str):
+    """Handle Mandala element interaction"""
+    try:
+        element_data = await get_mandala_element_details(user_id, element_id)
+        
+        if not element_data:
+            message = TextSendMessage(text="Mandala?")
+            line_bot_api.reply_message(reply_token, message)
+            return
+        
+        # Create element detail message
+        detail_message = create_mandala_element_detail_message(element_data)
+        line_bot_api.reply_message(reply_token, detail_message)
+        
+    except Exception as e:
+        logger.error(f"Error handling Mandala element interaction: {e}")
+        error_message = TextSendMessage(text="Mandala?")
+        line_bot_api.reply_message(reply_token, error_message)
+
+async def send_daily_reflection_prompt(line_user_id: str, user_id: str):
+    """Send daily reflection prompt (?)"""
+    try:
+        # This will be implemented in task 21 (?)
+        message = TextSendMessage(
+            text="? ?\n?"
+        )
+        line_bot_api.push_message(line_user_id, message)
+        
+    except Exception as e:
+        logger.error(f"Error sending daily reflection prompt: {e}")
+
+# Helper functions for story and task integration
+async def get_story_choice_details(user_id: str, choice_id: str) -> Optional[Dict]:
+    """Get story choice details from AI story service"""
+    try:
+        response = await line_bot_service.client.get(
+            f"{AI_STORY_URL}/ai/story/choice/{choice_id}",
+            params={"user_id": user_id}
+        )
+        if response.status_code == 200:
+            return response.json()
+        return None
+    except Exception as e:
+        logger.error(f"Error fetching story choice details: {e}")
+        return None
+
+async def process_story_choice(user_id: str, choice_data: Dict) -> bool:
+    """Process story choice selection"""
+    try:
+        response = await line_bot_service.client.post(
+            f"{AI_STORY_URL}/ai/story/choice/select",
+            json={"user_id": user_id, "choice_data": choice_data}
+        )
+        return response.status_code == 200
+    except Exception as e:
+        logger.error(f"Error processing story choice: {e}")
+        return False
+
+async def update_tomorrow_mandala(user_id: str, choice_data: Dict) -> bool:
+    """Update tomorrow's Mandala based on story choice"""
+    try:
+        mandala_update = {
+            "user_id": user_id,
+            "choice_data": choice_data,
+            "update_type": "story_choice_reflection"
+        }
+        
+        response = await line_bot_service.client.post(
+            f"{TASK_MGMT_URL}/mandala/{user_id}/update-from-story",
+            json=mandala_update
+        )
+        return response.status_code == 200
+    except Exception as e:
+        logger.error(f"Error updating tomorrow's Mandala: {e}")
+        return False
+
+async def get_mandala_element_details(user_id: str, element_id: str) -> Optional[Dict]:
+    """Get Mandala element details"""
+    try:
+        response = await line_bot_service.client.get(
+            f"{TASK_MGMT_URL}/mandala/{user_id}/element/{element_id}"
+        )
+        if response.status_code == 200:
+            return response.json()
+        return None
+    except Exception as e:
+        logger.error(f"Error fetching Mandala element details: {e}")
+        return None
+
+def create_choice_detail_message(choice_data: Dict) -> FlexMessage:
+    """Create detailed choice view message"""
+    choice_text = choice_data.get("text", "?")
+    description = choice_data.get("description", "?")
+    
+    bubble = BubbleContainer(
+        body=BoxComponent(
+            layout="vertical",
+            spacing="md",
+            contents=[
+                TextComponent(
+                    text="? ?",
+                    weight="bold",
+                    size="lg",
+                    color="#805AD5"
+                ),
+                SeparatorComponent(margin="md"),
+                TextComponent(
+                    text=choice_text,
+                    size="md",
+                    weight="bold",
+                    wrap=True
+                ),
+                TextComponent(
+                    text=description,
+                    size="sm",
+                    wrap=True,
+                    color="#4A5568"
+                ),
+                ButtonComponent(
+                    style="primary",
+                    action=PostbackAction(
+                        label="こ",
+                        data=f"story_choice_{choice_data.get('id', '')}"
+                    )
+                )
+            ]
+        )
+    )
+    
+    return FlexMessage(
+        alt_text=f"?: {choice_text}",
+        contents=bubble
+    )
+
+def create_mandala_element_detail_message(element_data: Dict) -> FlexMessage:
+    """Create Mandala element detail message"""
+    element_type = element_data.get("type", "?")
+    description = element_data.get("description", "?")
+    
+    bubble = BubbleContainer(
+        body=BoxComponent(
+            layout="vertical",
+            spacing="md",
+            contents=[
+                TextComponent(
+                    text=f"? {element_type}",
+                    weight="bold",
+                    size="lg",
+                    color="#FF6B9D"
+                ),
+                SeparatorComponent(margin="md"),
+                TextComponent(
+                    text=description,
+                    size="sm",
+                    wrap=True,
+                    color="#4A5568"
+                )
+            ]
+        )
+    )
+    
+    return FlexMessage(
+        alt_text=f"Mandala?: {element_type}",
+        contents=bubble
+    )
+
+async def send_current_mandala_status(line_user_id: str, user_id: str):
+    """Send current Mandala status with mobile optimization"""
+    try:
+        # Get current Mandala status from Mandala service
+        response = await line_bot_service.client.get(f"{TASK_MGMT_URL}/mandala/{user_id}/status")
+        
+        if response.status_code == 200:
+            mandala_data = response.json()
+            
+            # Create enhanced mobile-optimized Mandala status message
+            from .mobile_ui_functions import create_mandala_status_display
+            status_message = create_mandala_status_display(mandala_data)
+            line_bot_api.push_message(line_user_id, status_message)
+        else:
+            # Fallback message
+            fallback_message = TextSendMessage(
+                text="? Mandalaの\n?"
+            )
+            line_bot_api.push_message(line_user_id, fallback_message)
+            
+    except Exception as e:
+        logger.error(f"Error sending Mandala status: {e}")
+        error_message = TextSendMessage(
+            text="? Mandalaの"
+        )
+        line_bot_api.push_message(line_user_id, error_message)
+
+def create_mandala_status_message(mandala_data: Dict) -> FlexMessage:
+    """Create mobile-optimized Mandala status message"""
+    unlocked_count = mandala_data.get("unlocked_count", 0)
+    total_cells = mandala_data.get("total_cells", 81)
+    progress_percentage = int((unlocked_count / total_cells) * 100)
+    
+    # Crystal attributes progress
+    crystal_progress = mandala_data.get("crystal_progress", {})
+    
+    bubble = BubbleContainer(
+        body=BoxComponent(
+            layout="vertical",
+            spacing="md",
+            paddingAll="lg",
+            contents=[
+                TextComponent(
+                    text="? Mandala?",
+                    weight="bold",
+                    size="xl",
+                    color="#805AD5",
+                    align="center"
+                ),
+                SeparatorComponent(margin="md"),
+                
+                # Overall progress
+                BoxComponent(
+                    layout="vertical",
+                    spacing="sm",
+                    contents=[
+                        TextComponent(
+                            text=f"?: {unlocked_count}/{total_cells} ({progress_percentage}%)",
+                            size="md",
+                            weight="bold",
+                            color="#4A5568"
+                        ),
+                        # Progress bar representation
+                        TextComponent(
+                            text="?" * (progress_percentage // 10) + "?" * (10 - progress_percentage // 10),
+                            size="sm",
+                            color="#FFC857"
+                        )
+                    ]
+                ),
+                
+                SeparatorComponent(margin="md"),
+                
+                # Crystal attributes
+                TextComponent(
+                    text="? ?",
+                    weight="bold",
+                    size="md",
+                    color="#FF6B9D"
+                )
+            ] + create_crystal_progress_components(crystal_progress) + [
+                
+                FillerComponent(flex=1),
+                
+                ButtonComponent(
+                    style="primary",
+                    action=PostbackAction(
+                        label="?Mandalaを",
+                        data="view_detailed_mandala"
+                    )
+                )
+            ]
+        )
+    )
+    
+    return FlexMessage(
+        alt_text=f"? Mandala? {progress_percentage}%",
+        contents=bubble
+    )
+
+def create_crystal_progress_components(crystal_progress: Dict) -> List[BoxComponent]:
+    """Create crystal progress components for mobile display"""
+    crystal_attributes = [
+        ("Self-Discipline", "自動", "?"),
+        ("Empathy", "共有", "?"),
+        ("Resilience", "?", "?"),
+        ("Curiosity", "?", "?"),
+        ("Communication", "コア", "?"),
+        ("Creativity", "創", "?"),
+        ("Courage", "勇", "?"),
+        ("Wisdom", "?", "?")
+    ]
+    
+    components = []
+    
+    for attr_en, attr_jp, emoji in crystal_attributes:
+        progress = crystal_progress.get(attr_en, 0)
+        progress_bar = "?" * (progress // 20) + "?" * (5 - progress // 20)  # 5-dot progress
+        
+        component = BoxComponent(
+            layout="horizontal",
+            spacing="sm",
+            contents=[
+                TextComponent(
+                    text=emoji,
+                    size="sm",
+                    flex=0
+                ),
+                TextComponent(
+                    text=attr_jp,
+                    size="xs",
+                    color="#4A5568",
+                    flex=2
+                ),
+                TextComponent(
+                    text=progress_bar,
+                    size="xs",
+                    color="#FFC857",
+                    flex=2
+                ),
+                TextComponent(
+                    text=f"{progress}%",
+                    size="xs",
+                    color="#718096",
+                    flex=1,
+                    align="end"
+                )
+            ]
+        )
+        components.append(component)
+    
+    return components
+
+def create_mobile_optimized_heart_crystal_tasks(tasks: List[Dict]) -> FlexMessage:
+    """Create mobile-optimized Heart Crystal tasks in 3x3 Mandala format"""
+    # Group tasks into 3x3 grid format (max 9 tasks for mobile optimization)
+    grid_tasks = tasks[:9]
+    
+    # Create 3x3 grid bubbles
+    bubbles = []
+    
+    for i in range(0, len(grid_tasks), 3):
+        row_tasks = grid_tasks[i:i+3]
+        
+        # Create row bubble
+        row_contents = []
+        
+        for task in row_tasks:
+            task_bubble = create_task_bubble_mobile(task)
+            row_contents.append(task_bubble)
+        
+        # Fill empty slots if needed
+        while len(row_contents) < 3:
+            row_contents.append(create_empty_task_bubble())
+        
+        # Create horizontal layout for the row
+        row_bubble = BubbleContainer(
+            size="kilo",  # Compact size for mobile
+            body=BoxComponent(
+                layout="horizontal",
+                spacing="xs",
+                contents=row_contents
+            )
+        )
+        bubbles.append(row_bubble)
+    
+    # Ensure we have 3 rows
+    while len(bubbles) < 3:
+        empty_row = BubbleContainer(
+            size="kilo",
+            body=BoxComponent(
+                layout="horizontal",
+                spacing="xs",
+                contents=[create_empty_task_bubble() for _ in range(3)]
+            )
+        )
+        bubbles.append(empty_row)
+    
+    # Create header bubble
+    header_bubble = BubbleContainer(
+        body=BoxComponent(
+            layout="vertical",
+            spacing="md",
+            contents=[
+                TextComponent(
+                    text="? ?",
+                    weight="bold",
+                    size="xl",
+                    color="#FF6B9D",
+                    align="center"
+                ),
+                TextComponent(
+                    text="タスク",
+                    size="sm",
+                    color="#666666",
+                    align="center"
+                ),
+                SeparatorComponent(margin="md")
+            ]
+        )
+    )
+    
+    # Combine header and grid
+    all_bubbles = [header_bubble] + bubbles
+    
+    carousel = CarouselContainer(contents=all_bubbles)
+    
+    return FlexMessage(
+        alt_text="? ?",
+        contents=carousel
+    )
+
+def create_task_bubble_mobile(task: Dict) -> BoxComponent:
+    """Create individual task bubble optimized for mobile touch"""
+    task_type_emoji = {
+        "routine": "?",
+        "one_shot": "?",
+        "skill_up": "?",
+        "social": "?"
+    }
+    
+    emoji = task_type_emoji.get(task.get("type", "routine"), "?")
+    difficulty_stars = "?" * task.get("difficulty", 1)
+    
+    return BoxComponent(
+        layout="vertical",
+        spacing="xs",
+        paddingAll="sm",
+        backgroundColor="#F8F9FA",
+        cornerRadius="md",
+        contents=[
+            TextComponent(
+                text=emoji,
+                size="lg",
+                align="center"
+            ),
+            TextComponent(
+                text=task.get("title", "タスク")[:8] + ("..." if len(task.get("title", "")) > 8 else ""),
+                size="xs",
+                weight="bold",
+                align="center",
+                wrap=True,
+                maxLines=2
+            ),
+            TextComponent(
+                text=difficulty_stars,
+                size="xxs",
+                align="center",
+                color="#FFC857"
+            ),
+            ButtonComponent(
+                style="primary",
+                height="sm",
+                color="#FF6B9D",
+                action=PostbackAction(
+                    label="?",
+                    data=f"complete_task_{task.get('id', '')}"
+                )
+            )
+        ],
+        action=PostbackAction(
+            data=f"view_task_{task.get('id', '')}"
+        )
+    )
+
+def create_empty_task_bubble() -> BoxComponent:
+    """Create empty task slot for grid layout"""
+    return BoxComponent(
+        layout="vertical",
+        spacing="xs",
+        paddingAll="sm",
+        backgroundColor="#F0F0F0",
+        cornerRadius="md",
+        contents=[
+            TextComponent(
+                text="?",
+                size="lg",
+                align="center",
+                color="#CCCCCC"
+            ),
+            TextComponent(
+                text="?",
+                size="xs",
+                align="center",
+                color="#999999"
+            )
+        ]
+    )
+
+def create_task_completion_success_message(task_title: str, xp_earned: int) -> FlexMessage:
+    """Create mobile-optimized task completion success message"""
+    bubble = BubbleContainer(
+        body=BoxComponent(
+            layout="vertical",
+            spacing="md",
+            paddingAll="lg",
+            backgroundColor="#E8F5E8",
+            contents=[
+                TextComponent(
+                    text="? タスク",
+                    weight="bold",
+                    size="xl",
+                    color="#2E7D32",
+                    align="center"
+                ),
+                SeparatorComponent(margin="md"),
+                BoxComponent(
+                    layout="horizontal",
+                    spacing="sm",
+                    contents=[
+                        TextComponent(
+                            text="?:",
+                            size="sm",
+                            color="#666666",
+                            flex=2
+                        ),
+                        TextComponent(
+                            text=task_title,
+                            size="sm",
+                            weight="bold",
+                            flex=3,
+                            wrap=True
+                        )
+                    ]
+                ),
+                BoxComponent(
+                    layout="horizontal",
+                    spacing="sm",
+                    contents=[
+                        TextComponent(
+                            text="?XP:",
+                            size="sm",
+                            color="#666666",
+                            flex=2
+                        ),
+                        TextComponent(
+                            text=f"+{xp_earned} XP",
+                            size="sm",
+                            weight="bold",
+                            color="#FFC857",
+                            flex=3
+                        )
+                    ]
+                ),
+                ButtonComponent(
+                    style="secondary",
+                    height="sm",
+                    action=PostbackAction(
+                        label="?",
+                        data="view_remaining_tasks"
+                    )
+                )
+            ]
+        )
+    )
+    
+    return FlexMessage(
+        alt_text=f"タスク{task_title}? +{xp_earned} XP",
+        contents=bubble
+    )
+
+def create_evening_story_flex_message(story_data: Dict) -> FlexMessage:
+    """Create evening story delivery as Flex Message"""
+    story_content = story_data.get("content", "?")
+    
+    bubble = BubbleContainer(
+        body=BoxComponent(
+            layout="vertical",
+            spacing="md",
+            contents=[
+                TextComponent(
+                    text="?",
+                    weight="bold",
+                    size="xl",
+                    color="#FF6B6B"
+                ),
+                TextComponent(
+                    text=story_content,
+                    size="md",
+                    wrap=True
+                )
+            ]
+        )
+    )
+    
+    return FlexMessage(alt_text="?", contents=bubble)
+
+@app.post("/webhook")
+async def line_webhook(request: Request, background_tasks: BackgroundTasks):
+    """LINE Bot webhook endpoint"""
+    signature = request.headers.get('X-Line-Signature', '')
+    body = await request.body()
+    
+    try:
+        handler.handle(body.decode('utf-8'), signature)
+    except InvalidSignatureError:
+        raise HTTPException(status_code=400, detail="Invalid signature")
+    
+    return JSONResponse(content={"status": "ok"})
+
+@handler.add(MessageEvent, message=TextMessage)
+def handle_text_message(event):
+    """Handle text messages from users"""
+    line_user_id = event.source.user_id
+    user_id = get_user_id_from_line_id(line_user_id)
+    message_text = event.message.text.lower()
+    
+    if message_text in ["タスク", "task", "?"]:
+        # Send morning task presentation
+        asyncio.create_task(send_mobile_optimized_morning_tasks(line_user_id, user_id))
+    elif message_text in ["物語", "story", "?"]:
+        # Send evening story
+        asyncio.create_task(send_evening_story(line_user_id, user_id))
+    elif message_text in ["mandala", "?", "?"]:
+        # Send current Mandala status
+        asyncio.create_task(send_current_mandala_status(line_user_id, user_id))
+    elif message_text in ["?", "reflection", "?"]:
+        # Send daily reflection prompt
+        asyncio.create_task(send_daily_reflection_prompt(line_user_id, user_id))
+    else:
+        # Default response with mobile-optimized quick reply
+        quick_reply = QuickReply(items=[
+            QuickReplyButton(action=MessageAction(label="? ?", text="タスク")),
+            QuickReplyButton(action=MessageAction(label="? ?", text="物語")),
+            QuickReplyButton(action=MessageAction(label="? Mandala", text="?")),
+            QuickReplyButton(action=MessageAction(label="? ?", text="?"))
+        ])
+        
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(
+                text="こ\n\n?- ?\n?- ?\n?- Mandalaの\n?- ?",
+                quick_reply=quick_reply
+            )
+        )
+
+@handler.add(PostbackEvent)
+def handle_postback(event):
+    """Handle postback events (mobile-optimized task interactions)"""
+    line_user_id = event.source.user_id
+    postback_data = event.postback.data
+    
+    # Get user_id from line_user_id (assuming we have this mapping in Firestore)
+    user_id = get_user_id_from_line_id(line_user_id)
+    
+    if postback_data.startswith("complete_task_"):
+        task_id = postback_data.replace("complete_task_", "")
+        asyncio.create_task(handle_mobile_task_completion(line_user_id, user_id, task_id, event.reply_token))
+    elif postback_data.startswith("view_task_"):
+        task_id = postback_data.replace("view_task_", "")
+        asyncio.create_task(handle_task_detail_view(line_user_id, user_id, task_id, event.reply_token))
+    elif postback_data == "view_remaining_tasks":
+        asyncio.create_task(send_mobile_optimized_morning_tasks(line_user_id, user_id))
+    elif postback_data.startswith("story_choice_"):
+        choice_id = postback_data.replace("story_choice_", "")
+        asyncio.create_task(handle_story_choice_selection(line_user_id, user_id, choice_id, event.reply_token))
+    elif postback_data.startswith("view_choice_"):
+        choice_id = postback_data.replace("view_choice_", "")
+        asyncio.create_task(handle_story_choice_detail(line_user_id, user_id, choice_id, event.reply_token))
+    elif postback_data == "view_daily_reflection":
+        asyncio.create_task(send_daily_reflection_prompt(line_user_id, user_id))
+    elif postback_data.startswith("mandala_element_"):
+        element_id = postback_data.replace("mandala_element_", "")
+        asyncio.create_task(handle_mandala_element_interaction(line_user_id, user_id, element_id, event.reply_token))
+
+def get_user_id_from_line_id(line_user_id: str) -> str:
+    """Get internal user_id from LINE user_id"""
+    try:
+        # Query Firestore for user with this line_user_id
+        users_ref = db.collection("users").where("line_user_id", "==", line_user_id)
+        users = list(users_ref.stream())
+        
+        if users:
+            return users[0].id
+        else:
+            # Create new user if not exists
+            new_user_ref = db.collection("users").document()
+            new_user_ref.set({
+                "line_user_id": line_user_id,
+                "status": "active",
+                "created_at": datetime.now(),
+                "notification_preferences": {
+                    "morning_tasks": True,
+                    "evening_stories": True,
+                    "pomodoro_reminders": True
+                }
+            })
+            return new_user_ref.id
+    except Exception as e:
+        logger.error(f"Error getting user_id from line_id: {e}")
+        return line_user_id  # Fallback
+
+async def handle_task_detail_view(line_user_id: str, user_id: str, task_id: str, reply_token: str):
+    """Handle task detail view for mobile users"""
+    try:
+        task_details = await get_task_details(user_id, task_id)
+        
+        if not task_details:
+            message = TextSendMessage(text="タスク")
+            line_bot_api.reply_message(reply_token, message)
+            return
+        
+        # Create detailed task view
+        detail_bubble = BubbleContainer(
+            body=BoxComponent(
+                layout="vertical",
+                spacing="md",
+                contents=[
+                    TextComponent(
+                        text=f"? {task_details.get('title', 'タスク')}",
+                        weight="bold",
+                        size="lg",
+                        wrap=True
+                    ),
+                    SeparatorComponent(margin="md"),
+                    BoxComponent(
+                        layout="vertical",
+                        spacing="sm",
+                        contents=[
+                            BoxComponent(
+                                layout="horizontal",
+                                contents=[
+                                    TextComponent(text="?:", size="sm", color="#666666", flex=1),
+                                    TextComponent(text=task_details.get("type", "routine"), size="sm", flex=2)
+                                ]
+                            ),
+                            BoxComponent(
+                                layout="horizontal",
+                                contents=[
+                                    TextComponent(text="?:", size="sm", color="#666666", flex=1),
+                                    TextComponent(text="?" * task_details.get("difficulty", 1), size="sm", flex=2)
+                                ]
+                            ),
+                            BoxComponent(
+                                layout="horizontal",
+                                contents=[
+                                    TextComponent(text="?XP:", size="sm", color="#666666", flex=1),
+                                    TextComponent(text=f"{task_details.get('xp_reward', 10)} XP", size="sm", color="#FFC857", flex=2)
+                                ]
+                            )
+                        ]
+                    ),
+                    ButtonComponent(
+                        style="primary",
+                        color="#FF6B9D",
+                        action=PostbackAction(
+                            label="こ",
+                            data=f"complete_task_{task_id}"
+                        )
+                    )
+                ]
+            )
+        )
+        
+        message = FlexMessage(alt_text="タスク", contents=detail_bubble)
+        line_bot_api.reply_message(reply_token, message)
+        
+    except Exception as e:
+        logger.error(f"Error handling task detail view: {e}")
+        message = TextSendMessage(text="タスク")
+        line_bot_api.reply_message(reply_token, message)
+
+async def handle_story_choice_selection(line_user_id: str, user_id: str, choice_id: str, reply_token: str):
+    """Handle story choice selection and link to tomorrow's Mandala"""
+    try:
+        # Get choice details from story service
+        choice_data = await get_story_choice_details(user_id, choice_id)
+        
+        if not choice_data:
+            message = TextSendMessage(text="?")
+            line_bot_api.reply_message(reply_token, message)
+            return
+        
+        # Process choice and link to tomorrow's tasks
+        task_info = None
+        if choice_data.get("real_task_id"):
+            task_info = await link_choice_to_tomorrow_task(user_id, choice_data["real_task_id"])
+        elif choice_data.get("habit_tag"):
+            task_info = await create_habit_task_for_tomorrow(user_id, choice_data["habit_tag"])
+        
+        # Import mobile story functions
+        from mobile_story_delivery import create_story_choice_confirmation
+        
+        # Create confirmation message
+        confirmation_message = create_story_choice_confirmation(choice_data, task_info)
+        line_bot_api.reply_message(reply_token, confirmation_message)
+        
+        # Send follow-up encouragement after 2 seconds
+        await asyncio.sleep(2)
+        encouragement_messages = [
+            "?Mandalaに ?",
+            "こ ?",
+            "物語 ?"
+        ]
+        
+        import random
+        encouragement = random.choice(encouragement_messages)
+        line_bot_api.push_message(line_user_id, TextSendMessage(text=encouragement))
+        
+    except Exception as e:
+        logger.error(f"Error handling story choice selection: {e}")
+        message = TextSendMessage(text="?")
+        line_bot_api.reply_message(reply_token, message)
+
+async def handle_story_choice_detail(line_user_id: str, user_id: str, choice_id: str, reply_token: str):
+    """Handle story choice detail view"""
+    try:
+        choice_data = await get_story_choice_details(user_id, choice_id)
+        
+        if not choice_data:
+            message = TextSendMessage(text="?")
+            line_bot_api.reply_message(reply_token, message)
+            return
+        
+        # Create detailed choice view
+        detail_bubble = BubbleContainer(
+            body=BoxComponent(
+                layout="vertical",
+                spacing="md",
+                contents=[
+                    TextComponent(
+                        text=f"? {choice_data.get('text', '?')}",
+                        weight="bold",
+                        size="lg",
+                        wrap=True
+                    ),
+                    SeparatorComponent(margin="md"),
+                    BoxComponent(
+                        layout="vertical",
+                        spacing="sm",
+                        contents=[
+                            BoxComponent(
+                                layout="horizontal",
+                                contents=[
+                                    TextComponent(text="?:", size="sm", color="#666666", flex=1),
+                                    TextComponent(text=choice_data.get("effect", "?"), size="sm", flex=2, wrap=True)
+                                ]
+                            ),
+                            BoxComponent(
+                                layout="horizontal",
+                                contents=[
+                                    TextComponent(text="タスク:", size="sm", color="#666666", flex=1),
+                                    TextComponent(
+                                        text="あ" if choice_data.get("real_task_id") or choice_data.get("habit_tag") else "な",
+                                        size="sm", 
+                                        flex=2,
+                                        color="#38A169" if choice_data.get("real_task_id") or choice_data.get("habit_tag") else "#718096"
+                                    )
+                                ]
+                            )
+                        ]
+                    ),
+                    ButtonComponent(
+                        style="primary",
+                        color="#805AD5",
+                        action=PostbackAction(
+                            label="こ",
+                            data=f"story_choice_{choice_id}"
+                        )
+                    )
+                ]
+            )
+        )
+        
+        message = FlexSendMessage(alt_text="?", contents=detail_bubble)
+        line_bot_api.reply_message(reply_token, message)
+        
+    except Exception as e:
+        logger.error(f"Error handling story choice detail: {e}")
+        message = TextSendMessage(text="?")
+        line_bot_api.reply_message(reply_token, message)
+
+async def send_daily_reflection_prompt(line_user_id: str, user_id: str):
+    """Send daily reflection prompt (placeholder for future implementation)"""
+    message = TextSendMessage(
+        text="? ?\n?"
+    )
+    line_bot_api.push_message(line_user_id, message)
+
+async def get_story_choice_details(user_id: str, choice_id: str) -> Optional[Dict]:
+    """Get detailed story choice information"""
+    try:
+        response = await line_bot_service.client.get(f"{AI_STORY_URL}/story/choices/{choice_id}")
+        if response.status_code == 200:
+            return response.json()
+        return None
+    except Exception as e:
+        logger.error(f"Error fetching story choice details: {e}")
+        return None
+
+async def link_choice_to_tomorrow_task(user_id: str, task_id: str) -> Optional[Dict]:
+    """Link story choice to tomorrow's task"""
+    try:
+        response = await line_bot_service.client.post(
+            f"{TASK_MGMT_URL}/tasks/{task_id}/schedule-tomorrow",
+            json={"user_id": user_id}
+        )
+        if response.status_code == 200:
+            return response.json()
+        return None
+    except Exception as e:
+        logger.error(f"Error linking choice to tomorrow task: {e}")
+        return None
+
+async def create_habit_task_for_tomorrow(user_id: str, habit_tag: str) -> Optional[Dict]:
+    """Create habit-based task for tomorrow"""
+    try:
+        response = await line_bot_service.client.post(
+            f"{TASK_MGMT_URL}/tasks/create-habit-task",
+            json={"user_id": user_id, "habit_tag": habit_tag, "schedule_date": "tomorrow"}
+        )
+        if response.status_code == 200:
+            return response.json()
+        return None
+    except Exception as e:
+        logger.error(f"Error creating habit task for tomorrow: {e}")
+        return None
+
+async def send_morning_tasks(line_user_id: str, reply_token: str = None):
+    """Send morning task presentation (legacy support)"""
+    user_id = get_user_id_from_line_id(line_user_id)
+    await send_mobile_optimized_morning_tasks(line_user_id, user_id)
+
+async def send_evening_story(line_user_id: str, reply_token: str = None):
+    """Send mobile-optimized evening story content"""
+    try:
+        user_id = get_user_id_from_line_id(line_user_id)
+        story_data = await line_bot_service.get_evening_story(user_id)
+        
+        if story_data:
+            # Import mobile story functions
+            from mobile_story_delivery import (
+                create_mobile_optimized_evening_story,
+                create_evening_motivation_message
+            )
+            
+            # Create mobile-optimized story message
+            story_message = create_mobile_optimized_evening_story(story_data)
+            
+            if reply_token:
+                line_bot_api.reply_message(reply_token, story_message)
+            else:
+                line_bot_api.push_message(line_user_id, story_message)
+            
+            # Send follow-up motivation message after 3 seconds
+            await asyncio.sleep(3)
+            motivation_message = create_evening_motivation_message()
+            line_bot_api.push_message(line_user_id, motivation_message)
+            
+        else:
+            # Fallback message
+            fallback_message = TextSendMessage(
+                text="? ?\n?"
+            )
+            
+            if reply_token:
+                line_bot_api.reply_message(reply_token, fallback_message)
+            else:
+                line_bot_api.push_message(line_user_id, fallback_message)
+            
+    except LineBotApiError as e:
+        logger.error(f"LINE API error in evening story: {e}")
+        # Fallback to FCM
+        await line_bot_service.send_fcm_notification(
+            user_id,
+            "? ?",
+            "?"
+        )
+
+async def handle_mobile_task_completion(line_user_id: str, user_id: str, task_id: str, reply_token: str):
+    """Handle mobile-optimized one-tap task completion with enhanced feedback"""
+    try:
+        # Get task details before completion
+        task_details = await get_task_details(user_id, task_id)
+        
+        # Complete the task
+        completion_result = await line_bot_service.complete_task(user_id, task_id)
+        
+        if completion_result:
+            # Create enhanced success message with XP info
+            task_title = task_details.get("title", "タスク") if task_details else "タスク"
+            xp_earned = task_details.get("xp_reward", 10) if task_details else 10
+            
+            success_message = create_task_completion_success_message(task_title, xp_earned)
+            line_bot_api.reply_message(reply_token, success_message)
+            
+            # Send follow-up encouragement after 2 seconds
+            await asyncio.sleep(2)
+            encouragement_messages = [
+                "? ?",
+                "? ?",
+                "? ?",
+                "自動 ?"
+            ]
+            
+            import random
+            encouragement = random.choice(encouragement_messages)
+            line_bot_api.push_message(line_user_id, TextSendMessage(text=encouragement))
+            
+        else:
+            error_message = TextSendMessage(
+                text="? タスク\nし"
+            )
+            line_bot_api.reply_message(reply_token, error_message)
+        
+    except Exception as e:
+        logger.error(f"Error handling mobile task completion: {e}")
+        error_message = TextSendMessage(
+            text="? システム\n?"
+        )
+        line_bot_api.reply_message(reply_token, error_message)
+
+async def get_task_details(user_id: str, task_id: str) -> Optional[Dict]:
+    """Get detailed task information"""
+    try:
+        response = await line_bot_service.client.get(f"{TASK_MGMT_URL}/tasks/{task_id}")
+        if response.status_code == 200:
+            return response.json()
+        return None
+    except Exception as e:
+        logger.error(f"Error fetching task details: {e}")
+        return None
+
+@app.post("/notifications/send")
+async def send_notification(request: NotificationRequest):
+    """Send notification via LINE Bot or FCM fallback"""
+    try:
+        user_id = request.user_id
+        message_text = request.message
+        notification_type = request.notification_type
+        
+        # Try LINE first
+        try:
+            if notification_type == "pomodoro":
+                message = TextSendMessage(text=f"? {message_text}")
+            elif notification_type == "break":
+                message = TextSendMessage(text=f"? {message_text}")
+            elif notification_type == "hyperfocus":
+                message = TextSendMessage(text=f"? {message_text}")
+            else:
+                message = TextSendMessage(text=message_text)
+            
+            line_bot_api.push_message(user_id, message)
+            return {"status": "sent_via_line"}
+            
+        except LineBotApiError:
+            # Fallback to FCM
+            title_map = {
+                "pomodoro": "?",
+                "break": "?",
+                "hyperfocus": "?",
+                "story": "物語"
+            }
+            
+            await line_bot_service.send_fcm_notification(
+                user_id,
+                title_map.get(notification_type, "?"),
+                message_text
+            )
+            return {"status": "sent_via_fcm"}
+            
+    except Exception as e:
+        logger.error(f"Error sending notification: {e}")
+        raise HTTPException(status_code=500, detail="Failed to send notification")
+
+@app.post("/tasks/complete")
+async def complete_task_api(request: TaskCompletionRequest):
+    """API endpoint for task completion"""
+    try:
+        success = await line_bot_service.complete_task(
+            request.user_id,
+            request.task_id
+        )
+        
+        if success:
+            return {"status": "completed", "task_id": request.task_id}
+        else:
+            raise HTTPException(status_code=400, detail="Failed to complete task")
+            
+    except Exception as e:
+        logger.error(f"Error completing task via API: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {"status": "healthy", "service": "line-bot"}
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize service on startup"""
+    logger.info("LINE Bot service starting up...")
+    
+    # Verify LINE Bot configuration
+    if not LINE_CHANNEL_ACCESS_TOKEN or not LINE_CHANNEL_SECRET:
+        logger.warning("LINE Bot credentials not configured")
+    
+    # Setup scheduled tasks - Mobile optimized Heart Crystal tasks at 7:00 AM
+    scheduler.add_job(
+        scheduled_morning_heart_crystal_tasks,
+        CronTrigger(hour=7, minute=0, timezone=JST),
+        id="morning_heart_crystal_tasks",
+        replace_existing=True
+    )
+    
+    scheduler.add_job(
+        scheduled_evening_stories,
+        CronTrigger(hour=21, minute=30, timezone=JST),
+        id="evening_stories",
+        replace_existing=True
+    )
+    
+    # Start scheduler
+    scheduler.start()
+    logger.info("Scheduler started with mobile-optimized morning Heart Crystal tasks (7:00) and evening stories (21:30)")
+    
+    logger.info("LINE Bot service ready")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup on shutdown"""
+    await line_bot_service.client.aclose()
+    logger.info("LINE Bot service shut down")
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8010)

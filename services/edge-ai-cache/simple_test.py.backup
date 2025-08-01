@@ -1,0 +1,251 @@
+"""
+Edge AI Cache Service [UNICODE_7C21]
+"""
+import asyncio
+import json
+import numpy as np
+from datetime import datetime
+from main import EdgeAICacheEngine, IntelligentCache, CacheStrategy, ModelType
+
+async def test_edge_ai_cache():
+    """Edge AI [UNICODE_30AD]"""
+    print("=== Edge AI Cache Service [UNICODE_30C6] ===")
+    
+    # [UNICODE_30A8]
+    engine = EdgeAICacheEngine()
+    await engine.initialize()
+    print("[UNICODE_2713] Edge AI [UNICODE_30A8]")
+    
+    # [UNICODE_30AD]
+    print("\n=== [UNICODE_30AD] ===")
+    cache = engine.cache
+    
+    # [UNICODE_30C7]
+    await cache.put("test_story", "[UNICODE_6614]...", ModelType.STORY_GENERATION, "user_001")
+    await cache.put("test_task", {"type": "routine", "difficulty": 3}, ModelType.TASK_RECOMMENDATION, "user_001")
+    await cache.put("test_mood", {"score": 4, "energy": 3}, ModelType.MOOD_PREDICTION, "user_001")
+    
+    print("[UNICODE_2713] [UNICODE_30AD]")
+    
+    # [UNICODE_30C7]
+    story = await cache.get("test_story", "user_001")
+    task = await cache.get("test_task", "user_001")
+    mood = await cache.get("test_mood", "user_001")
+    
+    print(f"[UNICODE_2713] [UNICODE_30B9]: {story}")
+    print(f"[UNICODE_2713] [UNICODE_30BF]: {task}")
+    print(f"[UNICODE_2713] [UNICODE_6C17]: {mood}")
+    
+    # [UNICODE_30AD]
+    stats = cache.get_stats()
+    print(f"\n=== [UNICODE_30AD] ===")
+    print(f"[UNICODE_30AD]: {stats['cache_size']}")
+    print(f"[UNICODE_30D2]: {stats['hit_rate']:.3f}")
+    print(f"[UNICODE_7DCF]: {stats['total_hits']}")
+    print(f"[UNICODE_7DCF]: {stats['total_misses']}")
+    print(f"[UNICODE_6226]: {stats['strategy']}")
+    
+    # AI[UNICODE_63A8]
+    print("\n=== AI[UNICODE_63A8] ===")
+    
+    # [UNICODE_30B9]
+    story_input = {"prompt": "[UNICODE_52C7]", "length": 100}
+    story_result = await engine.get_cached_inference(ModelType.STORY_GENERATION, story_input, "user_001")
+    print(f"[UNICODE_2713] [UNICODE_30B9]: {story_result}")
+    
+    # [UNICODE_30BF]
+    task_input = {"user_mood": 4, "time_of_day": "morning", "difficulty_preference": 3}
+    task_result = await engine.get_cached_inference(ModelType.TASK_RECOMMENDATION, task_input, "user_001")
+    print(f"[UNICODE_2713] [UNICODE_30BF]: {task_result}")
+    
+    # [UNICODE_6C17]
+    mood_input = {"recent_tasks": [3, 4, 2], "sleep_hours": 7, "weather": "sunny"}
+    mood_result = await engine.get_cached_inference(ModelType.MOOD_PREDICTION, mood_input, "user_001")
+    print(f"[UNICODE_2713] [UNICODE_6C17]: {mood_result}")
+    
+    # [UNICODE_30AD]
+    print("\n=== [UNICODE_30AD] ===")
+    story_result2 = await engine.get_cached_inference(ModelType.STORY_GENERATION, story_input, "user_001")
+    print(f"[UNICODE_2713] 2[UNICODE_56DE]: {story_result2}")
+    
+    # [UNICODE_7D71]
+    updated_stats = cache.get_stats()
+    print(f"[UNICODE_2713] [UNICODE_66F4]: {updated_stats['hit_rate']:.3f}")
+    print(f"[UNICODE_2713] [UNICODE_66F4]: {updated_stats['total_hits']}")
+    
+    # [UNICODE_30AA]
+    print("\n=== [UNICODE_30AA] ===")
+    
+    # [UNICODE_30AA]
+    operations = [
+        {
+            "type": "task_completion",
+            "task_id": "task_001",
+            "user_id": "user_001",
+            "xp_gained": 50
+        },
+        {
+            "type": "mood_update",
+            "user_id": "user_001",
+            "mood_score": 4,
+            "energy_level": 3
+        },
+        {
+            "type": "story_progress",
+            "user_id": "user_001",
+            "story_id": "story_001",
+            "chapter": 2
+        }
+    ]
+    
+    for op in operations:
+        await engine.add_to_offline_queue(op)
+    
+    print(f"[UNICODE_2713] [UNICODE_30AA]: {len(operations)}[UNICODE_4EF6]")
+    print(f"[UNICODE_2713] [UNICODE_30AD]: {len(engine.offline_queue)}")
+    
+    # [UNICODE_30AA]
+    sync_result = await engine.sync_offline_operations()
+    print(f"[UNICODE_2713] [UNICODE_30AA]: {sync_result}")
+    
+    # [UNICODE_30E6]
+    print("\n=== [UNICODE_30E6] ===")
+    
+    # [UNICODE_30A2]
+    for i in range(30):
+        cache.access_history.append({
+            "key": f"pattern_key_{i % 5}",
+            "user_id": "user_001",
+            "timestamp": datetime.now(),
+            "hit": i % 3 == 0  # 33%[UNICODE_306E]
+        })
+    
+    # [UNICODE_30D1]
+    await cache._analyze_user_pattern("user_001")
+    
+    if "user_001" in cache.user_patterns:
+        pattern = cache.user_patterns["user_001"]
+        print(f"[UNICODE_2713] [UNICODE_30E6]")
+        print(f"  - [UNICODE_4E88]: {pattern.prediction_accuracy:.3f}")
+        print(f"  - [UNICODE_6642]: {len(pattern.time_patterns)}")
+        print(f"  - [UNICODE_30BF]: {len(pattern.task_preferences)}")
+    
+    # [UNICODE_4E88]
+    print("\n=== [UNICODE_4E88] ===")
+    
+    # [UNICODE_4E88]
+    prediction_score = await cache._calculate_prediction_score(
+        "predictive_key", "user_001", ModelType.STORY_GENERATION
+    )
+    print(f"[UNICODE_2713] [UNICODE_4E88]: {prediction_score:.3f}")
+    
+    # [UNICODE_95A2]
+    related_keys = await cache._predict_related_keys(
+        "user_001", "base_story_key", cache.user_patterns.get("user_001")
+    )
+    print(f"[UNICODE_2713] [UNICODE_95A2]: {related_keys}")
+    
+    # [UNICODE_30AD]
+    print("\n=== [UNICODE_30AD] ===")
+    
+    strategies = [CacheStrategy.LRU, CacheStrategy.LFU, CacheStrategy.PREDICTIVE, CacheStrategy.HYBRID]
+    
+    for strategy in strategies:
+        test_cache = IntelligentCache(max_size=5, strategy=strategy)
+        
+        # [UNICODE_30C6]
+        for i in range(7):  # [UNICODE_5BB9]
+            await test_cache.put(f"strategy_key_{i}", f"value_{i}", ModelType.USER_BEHAVIOR)
+        
+        stats = test_cache.get_stats()
+        print(f"[UNICODE_2713] {strategy.value}[UNICODE_6226]: [UNICODE_30B5]={stats['cache_size']}, [UNICODE_9000]={stats['total_evictions']}")
+    
+    # [UNICODE_30D1]
+    print("\n=== [UNICODE_30D1] ===")
+    
+    import time
+    
+    # [UNICODE_5927]
+    start_time = time.time()
+    
+    for i in range(100):
+        key = f"perf_key_{i}"
+        value = f"performance_test_value_{i}" * 10  # [UNICODE_9577]
+        await cache.put(key, value, ModelType.USER_BEHAVIOR, "perf_user")
+    
+    put_time = time.time() - start_time
+    print(f"[UNICODE_2713] 100[UNICODE_4EF6]PUT[UNICODE_64CD]: {put_time:.3f}[UNICODE_79D2]")
+    
+    start_time = time.time()
+    
+    hit_count = 0
+    for i in range(100):
+        key = f"perf_key_{i}"
+        result = await cache.get(key, "perf_user")
+        if result is not None:
+            hit_count += 1
+    
+    get_time = time.time() - start_time
+    print(f"[UNICODE_2713] 100[UNICODE_4EF6]GET[UNICODE_64CD]: {get_time:.3f}[UNICODE_79D2]")
+    print(f"[UNICODE_2713] [UNICODE_30D2]: {hit_count}/100")
+    
+    # [UNICODE_6700]
+    print("\n=== [UNICODE_6700] ===")
+    final_stats = cache.get_stats()
+    print(f"[UNICODE_6700]: {final_stats['cache_size']}")
+    print(f"[UNICODE_6700]: {final_stats['hit_rate']:.3f}")
+    print(f"[UNICODE_30E6]: {final_stats['user_patterns_count']}")
+    print(f"[UNICODE_7DCF]: {final_stats['total_evictions']}")
+    
+    print("\n=== [UNICODE_30C6] ===")
+    return True
+
+def test_api_endpoints():
+    """API [UNICODE_30A8]"""
+    print("\n=== API [UNICODE_30A8] ===")
+    
+    from fastapi.testclient import TestClient
+    from main import app
+    
+    client = TestClient(app)
+    
+    # [UNICODE_30D8]
+    response = client.get("/edge-ai/health")
+    assert response.status_code == 200
+    print("[UNICODE_2713] GET /edge-ai/health")
+    
+    # [UNICODE_30AD]
+    response = client.get("/edge-ai/cache/stats")
+    assert response.status_code == 200
+    print("[UNICODE_2713] GET /edge-ai/cache/stats")
+    
+    # [UNICODE_30E2]
+    response = client.get("/edge-ai/models/status")
+    assert response.status_code == 200
+    print("[UNICODE_2713] GET /edge-ai/models/status")
+    
+    # [UNICODE_30AA]
+    operation = {
+        "type": "task_completion",
+        "task_id": "api_test_task",
+        "user_id": "api_test_user"
+    }
+    response = client.post("/edge-ai/offline/add", json=operation)
+    assert response.status_code == 200
+    print("[UNICODE_2713] POST /edge-ai/offline/add")
+    
+    # [UNICODE_30AA]
+    response = client.post("/edge-ai/offline/sync")
+    assert response.status_code == 200
+    print("[UNICODE_2713] POST /edge-ai/offline/sync")
+    
+    print("[UNICODE_2713] [UNICODE_5168]API[UNICODE_30A8]")
+
+if __name__ == "__main__":
+    # [UNICODE_975E]
+    asyncio.run(test_edge_ai_cache())
+    
+    # API [UNICODE_30C6]
+    test_api_endpoints()
+    
+    print("\n[UNICODE_1F389] Edge AI Cache Service [UNICODE_30C6]")

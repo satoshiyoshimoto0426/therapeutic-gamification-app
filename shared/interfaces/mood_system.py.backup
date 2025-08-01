@@ -1,0 +1,440 @@
+"""
+Mood Tracking System Interface
+
+[UNICODE_65E5]XP[UNICODE_4FC2]
+1-5[UNICODE_30B9]0.8-1.2[UNICODE_306E]
+
+Requirements: 5.4
+"""
+
+from typing import Dict, List, Optional, Tuple, Any
+from dataclasses import dataclass, field
+from datetime import datetime, date, timedelta
+from enum import Enum
+import statistics
+from pydantic import BaseModel, Field
+
+
+class MoodLevel(int, Enum):
+    """[UNICODE_6C17]1-5[UNICODE_30B9]"""
+    VERY_LOW = 1      # [UNICODE_3068]
+    LOW = 2           # [UNICODE_5C11]
+    NEUTRAL = 3       # [UNICODE_666E]
+    HIGH = 4          # [UNICODE_826F]
+    VERY_HIGH = 5     # [UNICODE_3068]
+
+
+class MoodCategory(str, Enum):
+    """[UNICODE_6C17]"""
+    ENERGY = "energy"           # [UNICODE_30A8]
+    MOTIVATION = "motivation"   # [UNICODE_3084]
+    FOCUS = "focus"            # [UNICODE_96C6]
+    ANXIETY = "anxiety"        # [UNICODE_4E0D]
+    STRESS = "stress"          # [UNICODE_30B9]
+    SOCIAL = "social"          # [UNICODE_793E]
+    PHYSICAL = "physical"      # [UNICODE_4F53]
+    OVERALL = "overall"        # [UNICODE_5168]
+
+
+class MoodTrigger(str, Enum):
+    """[UNICODE_6C17]"""
+    SLEEP = "sleep"                    # [UNICODE_7761]
+    EXERCISE = "exercise"              # [UNICODE_904B]
+    WORK_STUDY = "work_study"         # [UNICODE_4ED5]
+    SOCIAL_INTERACTION = "social"      # [UNICODE_793E]
+    WEATHER = "weather"               # [UNICODE_5929]
+    HEALTH = "health"                 # [UNICODE_5065]
+    ACHIEVEMENT = "achievement"        # [UNICODE_9054]
+    STRESS_EVENT = "stress_event"     # [UNICODE_30B9]
+    MEDICATION = "medication"         # [UNICODE_85AC]
+    UNKNOWN = "unknown"               # [UNICODE_4E0D]
+
+
+@dataclass
+class MoodEntry:
+    """[UNICODE_6C17]"""
+    entry_id: str
+    uid: str
+    date: date
+    timestamp: datetime
+    
+    # [UNICODE_6C17]1-5[UNICODE_30B9]
+    overall_mood: MoodLevel
+    energy_level: MoodLevel
+    motivation_level: MoodLevel
+    focus_level: MoodLevel
+    anxiety_level: MoodLevel  # 1=[UNICODE_9AD8], 5=[UNICODE_4F4E]
+    stress_level: MoodLevel   # 1=[UNICODE_9AD8], 5=[UNICODE_4F4E]
+    social_mood: MoodLevel
+    physical_condition: MoodLevel
+    
+    # [UNICODE_8FFD]
+    mood_triggers: List[MoodTrigger] = field(default_factory=list)
+    notes: str = ""
+    sleep_hours: Optional[float] = None
+    exercise_minutes: Optional[int] = None
+    
+    # [UNICODE_30E1]
+    created_at: datetime = field(default_factory=datetime.now)
+    updated_at: Optional[datetime] = None
+    
+    def get_mood_coefficient(self) -> float:
+        """XP[UNICODE_8A08]0.8-1.2[UNICODE_7BC4]"""
+        # [UNICODE_5168]
+        return 0.8 + (self.overall_mood.value - 1) * 0.1
+    
+    def get_weighted_mood_coefficient(self) -> float:
+        """[UNICODE_91CD]"""
+        # [UNICODE_8907]
+        weights = {
+            'overall': 0.3,
+            'energy': 0.2,
+            'motivation': 0.2,
+            'focus': 0.15,
+            'anxiety': 0.075,  # [UNICODE_9006]
+            'stress': 0.075    # [UNICODE_9006]
+        }
+        
+        # [UNICODE_4E0D]
+        anxiety_reversed = 6 - self.anxiety_level.value
+        stress_reversed = 6 - self.stress_level.value
+        
+        weighted_score = (
+            self.overall_mood.value * weights['overall'] +
+            self.energy_level.value * weights['energy'] +
+            self.motivation_level.value * weights['motivation'] +
+            self.focus_level.value * weights['focus'] +
+            anxiety_reversed * weights['anxiety'] +
+            stress_reversed * weights['stress']
+        )
+        
+        # 1-5[UNICODE_30B9]0.8-1.2[UNICODE_306B]
+        return 0.8 + (weighted_score - 1) * 0.1
+    
+    def get_category_scores(self) -> Dict[str, int]:
+        """[UNICODE_30AB]"""
+        return {
+            MoodCategory.OVERALL.value: self.overall_mood.value,
+            MoodCategory.ENERGY.value: self.energy_level.value,
+            MoodCategory.MOTIVATION.value: self.motivation_level.value,
+            MoodCategory.FOCUS.value: self.focus_level.value,
+            MoodCategory.ANXIETY.value: 6 - self.anxiety_level.value,  # [UNICODE_9006]
+            MoodCategory.STRESS.value: 6 - self.stress_level.value,    # [UNICODE_9006]
+            MoodCategory.SOCIAL.value: self.social_mood.value,
+            MoodCategory.PHYSICAL.value: self.physical_condition.value
+        }
+    
+    def get_mood_summary(self) -> str:
+        """[UNICODE_6C17]"""
+        mood_descriptions = {
+            1: "[UNICODE_3068]",
+            2: "[UNICODE_5C11]", 
+            3: "[UNICODE_666E]",
+            4: "[UNICODE_826F]",
+            5: "[UNICODE_3068]"
+        }
+        
+        overall_desc = mood_descriptions[self.overall_mood.value]
+        
+        # [UNICODE_7279]
+        highlights = []
+        if self.energy_level.value >= 4:
+            highlights.append("[UNICODE_30A8]")
+        elif self.energy_level.value <= 2:
+            highlights.append("[UNICODE_75B2]")
+            
+        if self.motivation_level.value >= 4:
+            highlights.append("[UNICODE_3084]")
+        elif self.motivation_level.value <= 2:
+            highlights.append("[UNICODE_3084]")
+            
+        if self.anxiety_level.value <= 2:
+            highlights.append("[UNICODE_4E0D]")
+        if self.stress_level.value <= 2:
+            highlights.append("[UNICODE_30B9]")
+            
+        if highlights:
+            return f"{overall_desc}[UNICODE_FF08]{', '.join(highlights)}[UNICODE_FF09]"
+        else:
+            return overall_desc
+
+
+@dataclass
+class MoodTrend:
+    """[UNICODE_6C17]"""
+    period_days: int
+    start_date: date
+    end_date: date
+    
+    # [UNICODE_5E73]
+    avg_overall_mood: float
+    avg_energy: float
+    avg_motivation: float
+    avg_focus: float
+    avg_anxiety: float
+    avg_stress: float
+    
+    # [UNICODE_30C8]
+    overall_trend: float  # [UNICODE_6B63]
+    energy_trend: float
+    motivation_trend: float
+    
+    # [UNICODE_7D71]
+    best_day: Optional[date] = None
+    worst_day: Optional[date] = None
+    mood_variance: float = 0.0
+    
+    # [UNICODE_6C17]
+    avg_mood_coefficient: float = 1.0
+    min_mood_coefficient: float = 0.8
+    max_mood_coefficient: float = 1.2
+
+
+class MoodTrackingSystem:
+    """[UNICODE_6C17]"""
+    
+    def __init__(self):
+        self.mood_entries: Dict[str, Dict[str, MoodEntry]] = {}  # uid -> date_str -> MoodEntry
+        self.daily_reminders: Dict[str, bool] = {}  # uid -> reminder_enabled
+    
+    def log_mood(self, uid: str, mood_data: Dict[str, Any]) -> MoodEntry:
+        """[UNICODE_6C17]"""
+        entry_date = mood_data.get('date', date.today())
+        date_str = entry_date.isoformat()
+        
+        # [UNICODE_30A8]ID[UNICODE_3092]
+        entry_id = f"mood_{uid}_{date_str}"
+        
+        # [UNICODE_6C17]
+        mood_entry = MoodEntry(
+            entry_id=entry_id,
+            uid=uid,
+            date=entry_date,
+            timestamp=datetime.now(),
+            overall_mood=MoodLevel(mood_data['overall_mood']),
+            energy_level=MoodLevel(mood_data.get('energy_level', mood_data['overall_mood'])),
+            motivation_level=MoodLevel(mood_data.get('motivation_level', mood_data['overall_mood'])),
+            focus_level=MoodLevel(mood_data.get('focus_level', mood_data['overall_mood'])),
+            anxiety_level=MoodLevel(mood_data.get('anxiety_level', 3)),
+            stress_level=MoodLevel(mood_data.get('stress_level', 3)),
+            social_mood=MoodLevel(mood_data.get('social_mood', mood_data['overall_mood'])),
+            physical_condition=MoodLevel(mood_data.get('physical_condition', mood_data['overall_mood'])),
+            mood_triggers=[MoodTrigger(t) for t in mood_data.get('mood_triggers', [])],
+            notes=mood_data.get('notes', ''),
+            sleep_hours=mood_data.get('sleep_hours'),
+            exercise_minutes=mood_data.get('exercise_minutes')
+        )
+        
+        # [UNICODE_30B9]
+        if uid not in self.mood_entries:
+            self.mood_entries[uid] = {}
+        
+        self.mood_entries[uid][date_str] = mood_entry
+        
+        return mood_entry
+    
+    def get_mood_entry(self, uid: str, target_date: date) -> Optional[MoodEntry]:
+        """[UNICODE_6307]"""
+        date_str = target_date.isoformat()
+        return self.mood_entries.get(uid, {}).get(date_str)
+    
+    def get_recent_mood_entries(self, uid: str, days: int = 7) -> List[MoodEntry]:
+        """[UNICODE_6700]"""
+        if uid not in self.mood_entries:
+            return []
+        
+        cutoff_date = date.today() - timedelta(days=days)
+        recent_entries = []
+        
+        for date_str, entry in self.mood_entries[uid].items():
+            if entry.date >= cutoff_date:
+                recent_entries.append(entry)
+        
+        # [UNICODE_65E5]
+        recent_entries.sort(key=lambda x: x.date, reverse=True)
+        return recent_entries
+    
+    def get_mood_coefficient_for_date(self, uid: str, target_date: date) -> float:
+        """[UNICODE_6307]"""
+        mood_entry = self.get_mood_entry(uid, target_date)
+        if mood_entry:
+            return mood_entry.get_weighted_mood_coefficient()
+        else:
+            # [UNICODE_30C7]
+            return 1.0
+    
+    def get_current_mood_coefficient(self, uid: str) -> float:
+        """[UNICODE_73FE]"""
+        return self.get_mood_coefficient_for_date(uid, date.today())
+    
+    def analyze_mood_trend(self, uid: str, days: int = 30) -> MoodTrend:
+        """[UNICODE_6C17]"""
+        entries = self.get_recent_mood_entries(uid, days)
+        
+        if not entries:
+            # [UNICODE_30C7]
+            return MoodTrend(
+                period_days=days,
+                start_date=date.today() - timedelta(days=days),
+                end_date=date.today(),
+                avg_overall_mood=3.0,
+                avg_energy=3.0,
+                avg_motivation=3.0,
+                avg_focus=3.0,
+                avg_anxiety=3.0,
+                avg_stress=3.0,
+                overall_trend=0.0,
+                energy_trend=0.0,
+                motivation_trend=0.0,
+                avg_mood_coefficient=1.0
+            )
+        
+        # [UNICODE_7D71]
+        overall_moods = [entry.overall_mood.value for entry in entries]
+        energy_levels = [entry.energy_level.value for entry in entries]
+        motivation_levels = [entry.motivation_level.value for entry in entries]
+        focus_levels = [entry.focus_level.value for entry in entries]
+        anxiety_levels = [6 - entry.anxiety_level.value for entry in entries]  # [UNICODE_9006]
+        stress_levels = [6 - entry.stress_level.value for entry in entries]    # [UNICODE_9006]
+        
+        # [UNICODE_6C17]
+        mood_coefficients = [entry.get_weighted_mood_coefficient() for entry in entries]
+        
+        # [UNICODE_30C8]
+        def calculate_trend(values: List[float]) -> float:
+            if len(values) < 2:
+                return 0.0
+            
+            n = len(values)
+            x_values = list(range(n))
+            
+            # [UNICODE_7DDA]
+            x_mean = sum(x_values) / n
+            y_mean = sum(values) / n
+            
+            numerator = sum((x - x_mean) * (y - y_mean) for x, y in zip(x_values, values))
+            denominator = sum((x - x_mean) ** 2 for x in x_values)
+            
+            return numerator / denominator if denominator != 0 else 0.0
+        
+        # [UNICODE_6700]
+        best_entry = max(entries, key=lambda x: x.overall_mood.value)
+        worst_entry = min(entries, key=lambda x: x.overall_mood.value)
+        
+        return MoodTrend(
+            period_days=days,
+            start_date=min(entry.date for entry in entries),
+            end_date=max(entry.date for entry in entries),
+            avg_overall_mood=statistics.mean(overall_moods),
+            avg_energy=statistics.mean(energy_levels),
+            avg_motivation=statistics.mean(motivation_levels),
+            avg_focus=statistics.mean(focus_levels),
+            avg_anxiety=statistics.mean(anxiety_levels),
+            avg_stress=statistics.mean(stress_levels),
+            overall_trend=calculate_trend(overall_moods),
+            energy_trend=calculate_trend(energy_levels),
+            motivation_trend=calculate_trend(motivation_levels),
+            best_day=best_entry.date,
+            worst_day=worst_entry.date,
+            mood_variance=statistics.variance(overall_moods) if len(overall_moods) > 1 else 0.0,
+            avg_mood_coefficient=statistics.mean(mood_coefficients),
+            min_mood_coefficient=min(mood_coefficients),
+            max_mood_coefficient=max(mood_coefficients)
+        )
+    
+    def get_mood_insights(self, uid: str) -> Dict[str, Any]:
+        """[UNICODE_6C17]"""
+        recent_entries = self.get_recent_mood_entries(uid, 14)  # 2[UNICODE_9031]
+        
+        if not recent_entries:
+            return {"message": "[UNICODE_6C17]"}
+        
+        # [UNICODE_6700]
+        latest_entry = recent_entries[0]
+        
+        # [UNICODE_5E73]
+        avg_mood = statistics.mean([entry.overall_mood.value for entry in recent_entries])
+        current_vs_avg = latest_entry.overall_mood.value - avg_mood
+        
+        # [UNICODE_30C8]
+        trigger_counts = {}
+        for entry in recent_entries:
+            for trigger in entry.mood_triggers:
+                trigger_counts[trigger.value] = trigger_counts.get(trigger.value, 0) + 1
+        
+        most_common_triggers = sorted(trigger_counts.items(), key=lambda x: x[1], reverse=True)[:3]
+        
+        # [UNICODE_6C17]
+        weekday_moods = {}
+        for entry in recent_entries:
+            weekday = entry.date.strftime('%A')
+            if weekday not in weekday_moods:
+                weekday_moods[weekday] = []
+            weekday_moods[weekday].append(entry.overall_mood.value)
+        
+        best_weekday = max(weekday_moods.items(), key=lambda x: statistics.mean(x[1]))[0] if weekday_moods else None
+        
+        return {
+            "latest_mood": latest_entry.get_mood_summary(),
+            "current_vs_average": current_vs_avg,
+            "trend_direction": "improving" if current_vs_avg > 0.5 else "declining" if current_vs_avg < -0.5 else "stable",
+            "most_common_triggers": most_common_triggers,
+            "best_weekday": best_weekday,
+            "mood_coefficient": latest_entry.get_weighted_mood_coefficient(),
+            "data_points": len(recent_entries)
+        }
+    
+    def set_daily_reminder(self, uid: str, enabled: bool) -> None:
+        """[UNICODE_65E5]"""
+        self.daily_reminders[uid] = enabled
+    
+    def get_users_needing_reminder(self) -> List[str]:
+        """[UNICODE_30EA]"""
+        today = date.today()
+        users_needing_reminder = []
+        
+        for uid, reminder_enabled in self.daily_reminders.items():
+            if reminder_enabled:
+                # [UNICODE_4ECA]
+                if not self.get_mood_entry(uid, today):
+                    users_needing_reminder.append(uid)
+        
+        return users_needing_reminder
+    
+    def export_mood_data(self, uid: str, start_date: date, end_date: date) -> List[Dict[str, Any]]:
+        """[UNICODE_6C17]"""
+        if uid not in self.mood_entries:
+            return []
+        
+        exported_data = []
+        current_date = start_date
+        
+        while current_date <= end_date:
+            date_str = current_date.isoformat()
+            entry = self.mood_entries[uid].get(date_str)
+            
+            if entry:
+                exported_data.append({
+                    "date": date_str,
+                    "overall_mood": entry.overall_mood.value,
+                    "energy_level": entry.energy_level.value,
+                    "motivation_level": entry.motivation_level.value,
+                    "focus_level": entry.focus_level.value,
+                    "anxiety_level": entry.anxiety_level.value,
+                    "stress_level": entry.stress_level.value,
+                    "social_mood": entry.social_mood.value,
+                    "physical_condition": entry.physical_condition.value,
+                    "mood_coefficient": entry.get_weighted_mood_coefficient(),
+                    "mood_triggers": [trigger.value for trigger in entry.mood_triggers],
+                    "notes": entry.notes,
+                    "sleep_hours": entry.sleep_hours,
+                    "exercise_minutes": entry.exercise_minutes
+                })
+            
+            current_date += timedelta(days=1)
+        
+        return exported_data
+
+
+# [UNICODE_30B0]
+mood_tracking_system = MoodTrackingSystem()

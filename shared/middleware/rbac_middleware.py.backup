@@ -1,0 +1,277 @@
+"""
+RBAC Middleware
+
+FastAPI[UNICODE_7528]RBAC[UNICODE_6A29]
+Guardian/Support System Portal[UNICODE_7528]
+
+Requirements: 6.1
+"""
+
+from fastapi import HTTPException, Depends, Request, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from typing import Dict, List, Any, Optional, Callable
+import jwt
+from datetime import datetime, timedelta
+import os
+
+from shared.interfaces.rbac_system import (
+    RBACSystem, ResourceType, Action, PermissionLevel,
+    rbac_system
+)
+
+
+# JWT[UNICODE_8A2D]
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRATION_HOURS = 24
+
+# HTTPBearer[UNICODE_8A8D]
+security = HTTPBearer()
+
+
+class AuthenticationError(HTTPException):
+    """[UNICODE_8A8D]"""
+    def __init__(self, detail: str = "Authentication failed"):
+        super().__init__(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=detail,
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
+
+class AuthorizationError(HTTPException):
+    """[UNICODE_8A8D]"""
+    def __init__(self, detail: str = "Access denied"):
+        super().__init__(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=detail
+        )
+
+
+def create_access_token(guardian_id: str, user_id: str, 
+                       permission_level: PermissionLevel) -> str:
+    """[UNICODE_30A2]"""
+    payload = {
+        "guardian_id": guardian_id,
+        "user_id": user_id,
+        "permission_level": permission_level.value,
+        "exp": datetime.utcnow() + timedelta(hours=JWT_EXPIRATION_HOURS),
+        "iat": datetime.utcnow(),
+        "type": "guardian_access"
+    }
+    
+    return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+
+
+def verify_access_token(token: str) -> Dict[str, Any]:
+    """[UNICODE_30A2]"""
+    try:
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        
+        # [UNICODE_30C8]
+        if payload.get("type") != "guardian_access":
+            raise AuthenticationError("Invalid token type")
+        
+        # [UNICODE_5FC5]
+        required_fields = ["guardian_id", "user_id", "permission_level"]
+        for field in required_fields:
+            if field not in payload:
+                raise AuthenticationError(f"Missing required field: {field}")
+        
+        return payload
+        
+    except jwt.ExpiredSignatureError:
+        raise AuthenticationError("Token has expired")
+    except jwt.InvalidTokenError:
+        raise AuthenticationError("Invalid token")
+
+
+async def get_current_guardian(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+) -> Dict[str, Any]:
+    """[UNICODE_73FE]"""
+    token = credentials.credentials
+    payload = verify_access_token(token)
+    
+    # RBAC[UNICODE_30B7]
+    guardian_id = payload["guardian_id"]
+    user_id = payload["user_id"]
+    
+    permission_summary = rbac_system.get_permission_summary(guardian_id, user_id)
+    if not permission_summary["has_access"]:
+        raise AuthorizationError("Guardian access not found or expired")
+    
+    return {
+        "guardian_id": guardian_id,
+        "user_id": user_id,
+        "permission_level": payload["permission_level"],
+        "permissions": permission_summary["permissions"]
+    }
+
+
+def require_permission(resource_type: ResourceType, action: Action):
+    """[UNICODE_6A29]"""
+    def decorator(func: Callable) -> Callable:
+        async def wrapper(*args, **kwargs):
+            # [UNICODE_5F15]
+            guardian_info = None
+            for arg in args:
+                if isinstance(arg, dict) and "guardian_id" in arg:
+                    guardian_info = arg
+                    break
+            
+            if not guardian_info:
+                # kwargs[UNICODE_304B]
+                for key, value in kwargs.items():
+                    if isinstance(value, dict) and "guardian_id" in value:
+                        guardian_info = value
+                        break
+            
+            if not guardian_info:
+                raise AuthorizationError("Guardian information not found")
+            
+            # [UNICODE_6A29]
+            access_result = rbac_middleware.check_guardian_access(
+                guardian_info["guardian_id"],
+                guardian_info["user_id"],
+                resource_type,
+                action
+            )
+            
+            if not access_result["allowed"]:
+                raise AuthorizationError(f"Insufficient permissions: {access_result['error']}")
+            
+            return await func(*args, **kwargs)
+        
+        return wrapper
+    return decorator
+
+
+class RBACDependency:
+    """RBAC[UNICODE_4F9D]"""
+    
+    def __init__(self, resource_type: ResourceType, action: Action):
+        self.resource_type = resource_type
+        self.action = action
+    
+    def __call__(self, guardian_info: Dict[str, Any] = Depends(get_current_guardian)):
+        """[UNICODE_6A29]"""
+        access_result = rbac_middleware.check_guardian_access(
+            guardian_info["guardian_id"],
+            guardian_info["user_id"],
+            self.resource_type,
+            self.action
+        )
+        
+        if not access_result["allowed"]:
+            raise AuthorizationError(f"Insufficient permissions for {self.resource_type.value}:{self.action.value}")
+        
+        return guardian_info
+
+
+# [UNICODE_4FBF]
+def require_view_access():
+    """[UNICODE_95B2]"""
+    return RBACDependency(ResourceType.USER_PROFILE, Action.READ)
+
+
+def require_task_edit_access():
+    """[UNICODE_30BF]"""
+    return RBACDependency(ResourceType.TASK_DATA, Action.WRITE)
+
+
+def require_chat_send_access():
+    """[UNICODE_30C1]"""
+    return RBACDependency(ResourceType.CHAT_MESSAGES, Action.WRITE)
+
+
+def require_report_access():
+    """[UNICODE_30EC]"""
+    return RBACDependency(ResourceType.REPORTS, Action.READ)
+
+
+class GuardianAuthService:
+    """[UNICODE_4FDD]"""
+    
+    def __init__(self):
+        self.rbac_system = rbac_system
+    
+    def authenticate_guardian(self, guardian_id: str, user_id: str, 
+                           permission_level: PermissionLevel) -> Dict[str, Any]:
+        """[UNICODE_4FDD]"""
+        # [UNICODE_6A29]
+        permission_summary = self.rbac_system.get_permission_summary(guardian_id, user_id)
+        if not permission_summary["has_access"]:
+            raise AuthenticationError("Guardian access not found")
+        
+        # [UNICODE_6A29]
+        if permission_summary["permission_level"] != permission_level.value:
+            raise AuthorizationError("Permission level mismatch")
+        
+        # [UNICODE_30A2]
+        access_token = create_access_token(guardian_id, user_id, permission_level)
+        
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "expires_in": JWT_EXPIRATION_HOURS * 3600,
+            "guardian_id": guardian_id,
+            "user_id": user_id,
+            "permission_level": permission_level.value,
+            "permissions": permission_summary["permissions"]
+        }
+    
+    def grant_guardian_access(self, user_id: str, guardian_id: str, 
+                            permission_level: PermissionLevel,
+                            granted_by: str,
+                            expires_at: Optional[datetime] = None) -> bool:
+        """[UNICODE_4FDD]"""
+        return self.rbac_system.grant_role(
+            user_id, guardian_id, permission_level, granted_by, expires_at
+        )
+    
+    def revoke_guardian_access(self, user_id: str, guardian_id: str) -> bool:
+        """[UNICODE_4FDD]"""
+        return self.rbac_system.revoke_role(user_id, guardian_id)
+    
+    def get_guardian_users(self, guardian_id: str) -> List[Dict[str, Any]]:
+        """[UNICODE_4FDD]"""
+        return self.rbac_system.get_guardian_users(guardian_id)
+    
+    def get_user_guardians(self, user_id: str) -> List[Dict[str, Any]]:
+        """[UNICODE_30E6]"""
+        return self.rbac_system.get_user_guardians(user_id)
+    
+    def check_access(self, guardian_id: str, user_id: str,
+                    resource_type: ResourceType, action: Action) -> bool:
+        """[UNICODE_30A2]"""
+        return self.rbac_system.check_permission(guardian_id, user_id, resource_type, action)
+
+
+# [UNICODE_30B0]
+guardian_auth_service = GuardianAuthService()
+
+
+# FastAPI[UNICODE_7528]
+async def rbac_middleware_func(request: Request, call_next):
+    """RBAC[UNICODE_6A29]"""
+    # [UNICODE_8A8D]
+    protected_paths = ["/guardian/", "/api/guardian/"]
+    
+    if any(request.url.path.startswith(path) for path in protected_paths):
+        # Authorization[UNICODE_30D8]
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            raise AuthenticationError("Missing or invalid authorization header")
+        
+        # [UNICODE_30C8]
+        token = auth_header.split(" ")[1]
+        try:
+            payload = verify_access_token(token)
+            # [UNICODE_30EA]
+            request.state.guardian_info = payload
+        except AuthenticationError:
+            raise
+    
+    response = await call_next(request)
+    return response

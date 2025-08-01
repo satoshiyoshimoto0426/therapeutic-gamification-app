@@ -1,0 +1,330 @@
+# アラート通知チャンネル設定
+apiVersion: monitoring.googleapis.com/v1
+kind: NotificationChannel
+metadata:
+  name: therapeutic-slack-alerts
+  project: PROJECT_ID
+spec:
+  type: "slack"
+  displayName: "Therapeutic App Slack Alerts"
+  description: "治療アプリのSlackアラート通知"
+  
+  labels:
+    channel_name: "#therapeutic-app-alerts"
+    url: "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
+  
+  userLabels:
+    team: "therapeutic-development"
+    environment: "production"
+    severity: "normal"
+
+---
+apiVersion: monitoring.googleapis.com/v1
+kind: NotificationChannel
+metadata:
+  name: therapeutic-emergency-slack
+  project: PROJECT_ID
+spec:
+  type: "slack"
+  displayName: "Therapeutic App Emergency Slack"
+  description: "治療アプリの緊急Slackアラート通知"
+  
+  labels:
+    channel_name: "#therapeutic-app-emergency"
+    url: "https://hooks.slack.com/services/YOUR/EMERGENCY/WEBHOOK"
+  
+  userLabels:
+    team: "therapeutic-development"
+    environment: "production"
+    severity: "critical"
+
+---
+apiVersion: monitoring.googleapis.com/v1
+kind: NotificationChannel
+metadata:
+  name: therapeutic-email-alerts
+  project: PROJECT_ID
+spec:
+  type: "email"
+  displayName: "Therapeutic App Email Alerts"
+  description: "治療アプリのメールアラート通知"
+  
+  labels:
+    email_address: "therapeutic-alerts@example.com"
+  
+  userLabels:
+    team: "therapeutic-development"
+    environment: "production"
+
+---
+apiVersion: monitoring.googleapis.com/v1
+kind: NotificationChannel
+metadata:
+  name: therapeutic-safety-email
+  project: PROJECT_ID
+spec:
+  type: "email"
+  displayName: "Therapeutic Safety Team Email"
+  description: "治療安全性チームのメール通知"
+  
+  labels:
+    email_address: "safety-team@example.com"
+  
+  userLabels:
+    team: "safety-team"
+    environment: "production"
+    priority: "high"
+
+---
+apiVersion: monitoring.googleapis.com/v1
+kind: NotificationChannel
+metadata:
+  name: therapeutic-oncall-sms
+  project: PROJECT_ID
+spec:
+  type: "sms"
+  displayName: "Therapeutic On-call SMS"
+  description: "治療アプリのオンコールSMS通知"
+  
+  labels:
+    number: "+81-90-XXXX-XXXX"
+  
+  userLabels:
+    team: "oncall-team"
+    environment: "production"
+    priority: "critical"
+
+---
+# 治療効果監視アラート
+apiVersion: monitoring.googleapis.com/v1
+kind: AlertPolicy
+metadata:
+  name: therapeutic-effectiveness-alerts
+  project: PROJECT_ID
+spec:
+  displayName: "Therapeutic Effectiveness Alerts"
+  documentation:
+    content: "治療効果とユーザーエンゲージメントの監視"
+    mimeType: "text/markdown"
+  
+  conditions:
+  # 1. ユーザーエンゲージメント低下監視
+  - displayName: "User Engagement Score < 0.6"
+    conditionThreshold:
+      filter: |
+        resource.type="global"
+        metric.type="custom.googleapis.com/therapeutic/user/engagement_score"
+      comparison: COMPARISON_LESS_THAN
+      thresholdValue: 0.6  # 60%
+      duration: 1800s  # 30分間継続
+      aggregations:
+      - alignmentPeriod: 300s
+        perSeriesAligner: ALIGN_MEAN
+        crossSeriesReducer: REDUCE_MEAN
+        groupByFields:
+        - metric.labels.user_state
+  
+  # 2. タスク完了率低下監視
+  - displayName: "Task Completion Rate < 70%"
+    conditionThreshold:
+      filter: |
+        resource.type="global"
+        metric.type="custom.googleapis.com/therapeutic/task/completion_rate"
+      comparison: COMPARISON_LESS_THAN
+      thresholdValue: 0.7  # 70%
+      duration: 3600s  # 1時間継続
+      aggregations:
+      - alignmentPeriod: 300s
+        perSeriesAligner: ALIGN_MEAN
+        crossSeriesReducer: REDUCE_MEAN
+        groupByFields:
+        - metric.labels.task_type
+  
+  # 3. 無関心状態ユーザー増加監視
+  - displayName: "Apathy State Users Increasing"
+    conditionThreshold:
+      filter: |
+        resource.type="global"
+        metric.type="custom.googleapis.com/therapeutic/user/engagement_score"
+        metric.labels.user_state="APATHY"
+      comparison: COMPARISON_GREATER_THAN
+      thresholdValue: 100  # 100人以上
+      duration: 7200s  # 2時間継続
+      aggregations:
+      - alignmentPeriod: 600s
+        perSeriesAligner: ALIGN_MEAN
+        crossSeriesReducer: REDUCE_COUNT
+  
+  notificationChannels:
+  - projects/PROJECT_ID/notificationChannels/therapeutic-slack-alerts
+  - projects/PROJECT_ID/notificationChannels/therapeutic-email-alerts
+  
+  alertStrategy:
+    autoClose: 43200s  # 12時間で自動クローズ
+    notificationRateLimit:
+      period: 1800s  # 30分間隔
+  
+  severity: WARNING
+  enabled: true
+
+---
+# システム健全性監視アラート
+apiVersion: monitoring.googleapis.com/v1
+kind: AlertPolicy
+metadata:
+  name: therapeutic-system-health-alerts
+  project: PROJECT_ID
+spec:
+  displayName: "Therapeutic System Health Alerts"
+  documentation:
+    content: "システム健全性とインフラストラクチャの監視"
+    mimeType: "text/markdown"
+  
+  conditions:
+  # 1. Firestore接続エラー監視
+  - displayName: "Firestore Connection Errors"
+    conditionThreshold:
+      filter: |
+        resource.type="cloud_run_revision"
+        resource.labels.service_name="therapeutic-gamification-app"
+        metric.type="logging.googleapis.com/user/firestore_connection_errors"
+      comparison: COMPARISON_GREATER_THAN
+      thresholdValue: 10  # 10件以上
+      duration: 300s  # 5分間
+      aggregations:
+      - alignmentPeriod: 60s
+        perSeriesAligner: ALIGN_RATE
+        crossSeriesReducer: REDUCE_SUM
+  
+  # 2. OpenAI API制限監視
+  - displayName: "OpenAI API Rate Limit Exceeded"
+    conditionThreshold:
+      filter: |
+        resource.type="cloud_run_revision"
+        resource.labels.service_name="therapeutic-gamification-app"
+        metric.type="logging.googleapis.com/user/openai_rate_limit_errors"
+      comparison: COMPARISON_GREATER_THAN
+      thresholdValue: 5  # 5件以上
+      duration: 180s  # 3分間
+      aggregations:
+      - alignmentPeriod: 60s
+        perSeriesAligner: ALIGN_RATE
+        crossSeriesReducer: REDUCE_SUM
+  
+  # 3. Secret Manager アクセスエラー監視
+  - displayName: "Secret Manager Access Errors"
+    conditionThreshold:
+      filter: |
+        resource.type="cloud_run_revision"
+        resource.labels.service_name="therapeutic-gamification-app"
+        metric.type="logging.googleapis.com/user/secret_manager_errors"
+      comparison: COMPARISON_GREATER_THAN
+      thresholdValue: 3  # 3件以上
+      duration: 300s  # 5分間
+      aggregations:
+      - alignmentPeriod: 60s
+        perSeriesAligner: ALIGN_RATE
+        crossSeriesReducer: REDUCE_SUM
+  
+  # 4. Cloud Storage アクセスエラー監視
+  - displayName: "Cloud Storage Access Errors"
+    conditionThreshold:
+      filter: |
+        resource.type="gcs_bucket"
+        resource.labels.bucket_name=~"therapeutic-app-.*-prod"
+        metric.type="storage.googleapis.com/api/request_count"
+        metric.labels.response_code!="200"
+      comparison: COMPARISON_GREATER_THAN
+      thresholdValue: 20  # 20件以上
+      duration: 600s  # 10分間
+      aggregations:
+      - alignmentPeriod: 60s
+        perSeriesAligner: ALIGN_RATE
+        crossSeriesReducer: REDUCE_SUM
+  
+  notificationChannels:
+  - projects/PROJECT_ID/notificationChannels/therapeutic-slack-alerts
+  - projects/PROJECT_ID/notificationChannels/therapeutic-oncall-sms
+  
+  alertStrategy:
+    autoClose: 7200s  # 2時間で自動クローズ
+    notificationRateLimit:
+      period: 600s  # 10分間隔
+  
+  severity: ERROR
+  enabled: true
+
+---
+# GDPR/プライバシー監視アラート
+apiVersion: monitoring.googleapis.com/v1
+kind: AlertPolicy
+metadata:
+  name: therapeutic-privacy-alerts
+  project: PROJECT_ID
+spec:
+  displayName: "Therapeutic Privacy & GDPR Alerts"
+  documentation:
+    content: "プライバシー保護とGDPR準拠の監視"
+    mimeType: "text/markdown"
+  
+  conditions:
+  # 1. 個人データアクセス異常監視
+  - displayName: "Unusual Personal Data Access"
+    conditionThreshold:
+      filter: |
+        resource.type="cloud_run_revision"
+        resource.labels.service_name="therapeutic-gamification-app"
+        jsonPayload.event_type="data_access"
+        jsonPayload.data_classification="personal"
+      comparison: COMPARISON_GREATER_THAN
+      thresholdValue: 1000  # 1000件以上
+      duration: 3600s  # 1時間
+      aggregations:
+      - alignmentPeriod: 300s
+        perSeriesAligner: ALIGN_RATE
+        crossSeriesReducer: REDUCE_SUM
+  
+  # 2. データ削除要求処理失敗監視
+  - displayName: "Data Deletion Request Failures"
+    conditionThreshold:
+      filter: |
+        resource.type="cloud_run_revision"
+        resource.labels.service_name="therapeutic-gamification-app"
+        jsonPayload.event_type="data_deletion_request"
+        jsonPayload.status="failed"
+      comparison: COMPARISON_GREATER_THAN
+      thresholdValue: 1  # 1件以上
+      duration: 300s  # 5分間
+      aggregations:
+      - alignmentPeriod: 60s
+        perSeriesAligner: ALIGN_RATE
+        crossSeriesReducer: REDUCE_SUM
+  
+  # 3. 地域外アクセス監視
+  - displayName: "Access from Non-JP Regions"
+    conditionThreshold:
+      filter: |
+        resource.type="cloud_run_revision"
+        resource.labels.service_name="therapeutic-gamification-app"
+        jsonPayload.client_region!="JP"
+        jsonPayload.event_type="user_authentication"
+      comparison: COMPARISON_GREATER_THAN
+      thresholdValue: 10  # 10件以上
+      duration: 600s  # 10分間
+      aggregations:
+      - alignmentPeriod: 60s
+        perSeriesAligner: ALIGN_RATE
+        crossSeriesReducer: REDUCE_SUM
+  
+  notificationChannels:
+  - projects/PROJECT_ID/notificationChannels/therapeutic-emergency-slack
+  - projects/PROJECT_ID/notificationChannels/therapeutic-safety-email
+  - projects/PROJECT_ID/notificationChannels/therapeutic-oncall-sms
+  
+  alertStrategy:
+    autoClose: 1800s  # 30分で自動クローズ
+    notificationRateLimit:
+      period: 300s  # 5分間隔
+  
+  severity: CRITICAL
+  enabled: true

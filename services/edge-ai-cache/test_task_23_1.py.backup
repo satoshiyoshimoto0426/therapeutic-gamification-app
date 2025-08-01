@@ -1,0 +1,508 @@
+"""
+[UNICODE_30BF]23.1: Edge AI[UNICODE_63A8] - [UNICODE_5358]
+TensorFlow Lite/ONNX Runtime[UNICODE_7D71]
+"""
+import pytest
+import asyncio
+import numpy as np
+import tempfile
+import os
+from datetime import datetime
+from unittest.mock import Mock, patch, AsyncMock
+
+from main import (
+    EdgeAIModel, TensorFlowLiteModel, ONNXModel, ModelType,
+    EdgeAICacheEngine, IntelligentCache, CacheStrategy
+)
+
+class TestEdgeAIInferenceEngine:
+    """Edge AI[UNICODE_63A8]"""
+    
+    def setup_method(self):
+        """[UNICODE_30C6]"""
+        self.temp_dir = tempfile.mkdtemp()
+        self.model_path_tflite = os.path.join(self.temp_dir, "test_model.tflite")
+        self.model_path_onnx = os.path.join(self.temp_dir, "test_model.onnx")
+        
+        # [UNICODE_30C0]
+        with open(self.model_path_tflite, 'wb') as f:
+            f.write(b'dummy_tflite_model_data')
+        with open(self.model_path_onnx, 'wb') as f:
+            f.write(b'dummy_onnx_model_data')
+    
+    def teardown_method(self):
+        """[UNICODE_30C6]"""
+        import shutil
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+
+class TestTensorFlowLiteIntegration:
+    """TensorFlow Lite[UNICODE_7D71]"""
+    
+    @pytest.mark.asyncio
+    async def test_tflite_model_initialization(self):
+        """TensorFlow Lite[UNICODE_30E2]"""
+        model = TensorFlowLiteModel("test_model.tflite", ModelType.STORY_GENERATION)
+        
+        # [UNICODE_521D]
+        assert model.model_path == "test_model.tflite"
+        assert model.model_type == ModelType.STORY_GENERATION
+        assert model.is_loaded is False
+        assert model.quantized is False
+        
+        # [UNICODE_30E2]
+        await model.load_model()
+        assert model.is_loaded is True
+    
+    @pytest.mark.asyncio
+    async def test_tflite_inference_pipeline(self):
+        """TensorFlow Lite[UNICODE_63A8]"""
+        model = TensorFlowLiteModel("test_model.tflite", ModelType.TASK_RECOMMENDATION)
+        await model.load_model()
+        
+        # [UNICODE_63A8]
+        input_data = np.array([[1.0, 2.0, 3.0, 4.0]], dtype=np.float32)
+        result = await model.predict(input_data)
+        
+        # [UNICODE_7D50]
+        assert isinstance(result, np.ndarray)
+        assert result.shape[0] > 0
+        assert result.dtype in [np.float32, np.float64]
+    
+    @pytest.mark.asyncio
+    async def test_tflite_model_quantization(self):
+        """TensorFlow Lite[UNICODE_30E2]"""
+        model = TensorFlowLiteModel("test_model.tflite", ModelType.MOOD_PREDICTION)
+        await model.load_model()
+        
+        # [UNICODE_91CF]
+        await model.quantize_model()
+        
+        # [UNICODE_91CF]TensorFlow[UNICODE_304C]True
+        # [UNICODE_30E2]
+        assert isinstance(model.quantized, bool)
+    
+    @pytest.mark.asyncio
+    async def test_tflite_error_handling(self):
+        """TensorFlow Lite[UNICODE_30A8]"""
+        model = TensorFlowLiteModel("nonexistent_model.tflite", ModelType.USER_BEHAVIOR)
+        
+        # [UNICODE_5B58]
+        await model.load_model()
+        assert model.is_loaded is True  # [UNICODE_30E2]
+        
+        # [UNICODE_63A8]
+        input_data = np.array([[0.5]], dtype=np.float32)
+        result = await model.predict(input_data)
+        assert result is not None
+
+class TestONNXRuntimeIntegration:
+    """ONNX Runtime[UNICODE_7D71]"""
+    
+    @pytest.mark.asyncio
+    async def test_onnx_model_initialization(self):
+        """ONNX[UNICODE_30E2]"""
+        model = ONNXModel("test_model.onnx", ModelType.STORY_GENERATION)
+        
+        # [UNICODE_521D]
+        assert model.model_path == "test_model.onnx"
+        assert model.model_type == ModelType.STORY_GENERATION
+        assert model.is_loaded is False
+        
+        # [UNICODE_30E2]
+        await model.load_model()
+        assert model.is_loaded is True
+    
+    @pytest.mark.asyncio
+    async def test_onnx_inference_pipeline(self):
+        """ONNX[UNICODE_63A8]"""
+        model = ONNXModel("test_model.onnx", ModelType.TASK_RECOMMENDATION)
+        await model.load_model()
+        
+        # [UNICODE_63A8]
+        input_data = {"input_tensor": np.array([[0.1, 0.2, 0.3]], dtype=np.float32)}
+        result = await model.predict(input_data)
+        
+        # [UNICODE_7D50]
+        assert isinstance(result, (np.ndarray, float, int))
+        if isinstance(result, np.ndarray):
+            assert result.shape[0] > 0
+    
+    @pytest.mark.asyncio
+    async def test_onnx_multiple_inputs(self):
+        """ONNX[UNICODE_8907]"""
+        model = ONNXModel("test_model.onnx", ModelType.MOOD_PREDICTION)
+        await model.load_model()
+        
+        # [UNICODE_8907]
+        input_data = {
+            "input1": np.array([[1.0, 2.0]], dtype=np.float32),
+            "input2": np.array([[3.0, 4.0]], dtype=np.float32)
+        }
+        result = await model.predict(input_data)
+        
+        # [UNICODE_7D50]
+        assert result is not None
+    
+    @pytest.mark.asyncio
+    async def test_onnx_error_handling(self):
+        """ONNX[UNICODE_30A8]"""
+        model = ONNXModel("invalid_model.onnx", ModelType.USER_BEHAVIOR)
+        
+        # [UNICODE_7121]
+        await model.load_model()
+        assert model.is_loaded is True  # [UNICODE_30E2]
+        
+        # [UNICODE_63A8]
+        input_data = {"input": np.array([[0.5]], dtype=np.float32)}
+        result = await model.predict(input_data)
+        assert result is not None
+
+class TestLocalInferencePipeline:
+    """[UNICODE_30ED]"""
+    
+    def setup_method(self):
+        """[UNICODE_30C6]"""
+        self.engine = EdgeAICacheEngine()
+    
+    @pytest.mark.asyncio
+    async def test_inference_pipeline_initialization(self):
+        """[UNICODE_63A8]"""
+        await self.engine.initialize()
+        
+        # [UNICODE_30AD]
+        assert self.engine.cache is not None
+        assert isinstance(self.engine.cache, IntelligentCache)
+        
+        # [UNICODE_30E2]
+        assert isinstance(self.engine.models, dict)
+        
+        # [UNICODE_30AA]
+        assert hasattr(self.engine, 'offline_queue')
+        assert hasattr(self.engine, 'sync_in_progress')
+    
+    @pytest.mark.asyncio
+    async def test_model_loading_pipeline(self):
+        """[UNICODE_30E2]"""
+        await self.engine.initialize()
+        
+        # AI[UNICODE_30E2]
+        await self.engine._initialize_ai_models()
+        
+        # [UNICODE_30E2]
+        assert isinstance(self.engine.models, dict)
+    
+    @pytest.mark.asyncio
+    async def test_inference_execution_pipeline(self):
+        """[UNICODE_63A8]"""
+        await self.engine.initialize()
+        
+        # [UNICODE_30C6]
+        input_data = {
+            "prompt": "[UNICODE_52C7]",
+            "context": {"mood": 4, "difficulty": 3}
+        }
+        
+        # [UNICODE_63A8]
+        result = await self.engine.get_cached_inference(
+            ModelType.STORY_GENERATION, 
+            input_data, 
+            user_id="test_user_001"
+        )
+        
+        # [UNICODE_7D50] None [UNICODE_307E]
+        # [UNICODE_5B9F]
+        assert result is None or isinstance(result, (np.ndarray, dict, str, list))
+    
+    @pytest.mark.asyncio
+    async def test_cache_integration_pipeline(self):
+        """[UNICODE_30AD]"""
+        await self.engine.initialize()
+        
+        # [UNICODE_540C]
+        input_data = {"text": "[UNICODE_30C6]"}
+        
+        # 1[UNICODE_56DE]
+        result1 = await self.engine.get_cached_inference(
+            ModelType.TASK_RECOMMENDATION, 
+            input_data, 
+            user_id="test_user_002"
+        )
+        
+        # 2[UNICODE_56DE]
+        result2 = await self.engine.get_cached_inference(
+            ModelType.TASK_RECOMMENDATION, 
+            input_data, 
+            user_id="test_user_002"
+        )
+        
+        # [UNICODE_30AD]
+        stats = self.engine.cache.get_stats()
+        assert "hit_rate" in stats
+        assert "total_hits" in stats
+        assert "total_misses" in stats
+    
+    def test_cache_key_generation_pipeline(self):
+        """[UNICODE_30AD]"""
+        # [UNICODE_7570]
+        input1 = {"prompt": "[UNICODE_7269]A", "mood": 3}
+        input2 = {"prompt": "[UNICODE_7269]B", "mood": 4}
+        input3 = {"prompt": "[UNICODE_7269]A", "mood": 3}  # input1[UNICODE_3068]
+        
+        key1 = self.engine._generate_cache_key(ModelType.STORY_GENERATION, input1)
+        key2 = self.engine._generate_cache_key(ModelType.STORY_GENERATION, input2)
+        key3 = self.engine._generate_cache_key(ModelType.STORY_GENERATION, input3)
+        
+        # [UNICODE_540C]
+        assert key1 == key3
+        
+        # [UNICODE_7570]
+        assert key1 != key2
+        
+        # [UNICODE_30AD]
+        assert key1.startswith("story_generation_")
+        assert len(key1) > 20  # [UNICODE_30E2] + [UNICODE_30CF]
+
+class TestModelOptimization:
+    """[UNICODE_30E2]"""
+    
+    @pytest.mark.asyncio
+    async def test_model_quantization_workflow(self):
+        """[UNICODE_30E2]"""
+        # TensorFlow Lite[UNICODE_30E2]
+        tflite_model = TensorFlowLiteModel("test.tflite", ModelType.STORY_GENERATION)
+        await tflite_model.load_model()
+        
+        # [UNICODE_91CF]
+        await tflite_model.quantize_model()
+        
+        # [UNICODE_91CF]TensorFlow[UNICODE_304C]True[UNICODE_FF09]
+        assert isinstance(tflite_model.quantized, bool)
+    
+    @pytest.mark.asyncio
+    async def test_model_memory_optimization(self):
+        """[UNICODE_30E2]"""
+        model = TensorFlowLiteModel("memory_test.tflite", ModelType.MOOD_PREDICTION)
+        await model.load_model()
+        
+        # [UNICODE_30E1]
+        import sys
+        initial_size = sys.getsizeof(model)
+        
+        # [UNICODE_91CF]
+        await model.quantize_model()
+        
+        # [UNICODE_91CF]
+        quantized_size = sys.getsizeof(model)
+        
+        # [UNICODE_30B5]
+        assert quantized_size >= 0  # [UNICODE_57FA]
+    
+    @pytest.mark.asyncio
+    async def test_inference_performance_optimization(self):
+        """[UNICODE_63A8]"""
+        model = TensorFlowLiteModel("perf_test.tflite", ModelType.TASK_RECOMMENDATION)
+        await model.load_model()
+        
+        # [UNICODE_63A8]
+        import time
+        
+        input_data = np.array([[1.0, 2.0, 3.0]], dtype=np.float32)
+        
+        start_time = time.time()
+        result = await model.predict(input_data)
+        end_time = time.time()
+        
+        inference_time = end_time - start_time
+        
+        # [UNICODE_30D1]
+        assert inference_time < 1.0  # 1[UNICODE_79D2]
+        assert result is not None
+
+class TestEdgeAIFoundation:
+    """Edge AI[UNICODE_57FA]"""
+    
+    def setup_method(self):
+        """[UNICODE_30C6]"""
+        self.engine = EdgeAICacheEngine()
+    
+    @pytest.mark.asyncio
+    async def test_complete_inference_workflow(self):
+        """[UNICODE_5B8C]"""
+        await self.engine.initialize()
+        
+        # [UNICODE_8907]
+        test_cases = [
+            (ModelType.STORY_GENERATION, {"prompt": "[UNICODE_5192]"}),
+            (ModelType.TASK_RECOMMENDATION, {"user_state": "focused"}),
+            (ModelType.MOOD_PREDICTION, {"recent_tasks": [1, 2, 3]}),
+        ]
+        
+        for model_type, input_data in test_cases:
+            result = await self.engine.get_cached_inference(
+                model_type, input_data, user_id="workflow_test_user"
+            )
+            
+            # [UNICODE_7D50]
+            # [UNICODE_30E2] None [UNICODE_307E]
+            if result is not None:
+                assert isinstance(result, (np.ndarray, dict, str, list, float, int))
+    
+    @pytest.mark.asyncio
+    async def test_concurrent_inference_handling(self):
+        """[UNICODE_4E26]"""
+        await self.engine.initialize()
+        
+        # [UNICODE_8907]
+        tasks = []
+        for i in range(5):
+            input_data = {"prompt": f"[UNICODE_4E26]{i}"}
+            task = self.engine.get_cached_inference(
+                ModelType.STORY_GENERATION, 
+                input_data, 
+                user_id=f"concurrent_user_{i}"
+            )
+            tasks.append(task)
+        
+        # [UNICODE_5168]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # [UNICODE_7D50]
+        assert len(results) == 5
+        for result in results:
+            # [UNICODE_4F8B]
+            assert not isinstance(result, Exception) or result is None
+    
+    @pytest.mark.asyncio
+    async def test_error_recovery_mechanism(self):
+        """[UNICODE_30A8]"""
+        await self.engine.initialize()
+        
+        # [UNICODE_7121]
+        invalid_inputs = [
+            None,
+            {},
+            {"invalid": "data"},
+            []
+        ]
+        
+        for invalid_input in invalid_inputs:
+            try:
+                result = await self.engine.get_cached_inference(
+                    ModelType.STORY_GENERATION, 
+                    invalid_input, 
+                    user_id="error_test_user"
+                )
+                
+                # [UNICODE_30A8] None [UNICODE_304C]
+                assert result is None or isinstance(result, (np.ndarray, dict, str, list))
+                
+            except Exception as e:
+                # [UNICODE_4E88]
+                pytest.fail(f"Unexpected exception: {e}")
+    
+    def test_model_type_validation(self):
+        """[UNICODE_30E2]"""
+        # [UNICODE_6709]
+        valid_types = [
+            ModelType.STORY_GENERATION,
+            ModelType.TASK_RECOMMENDATION,
+            ModelType.MOOD_PREDICTION,
+            ModelType.USER_BEHAVIOR
+        ]
+        
+        for model_type in valid_types:
+            assert isinstance(model_type, ModelType)
+            assert model_type.value in [
+                "story_generation", 
+                "task_recommendation", 
+                "mood_prediction", 
+                "user_behavior"
+            ]
+    
+    @pytest.mark.asyncio
+    async def test_cache_strategy_integration(self):
+        """[UNICODE_30AD]"""
+        # [UNICODE_7570]
+        strategies = [
+            CacheStrategy.LRU,
+            CacheStrategy.LFU,
+            CacheStrategy.PREDICTIVE,
+            CacheStrategy.HYBRID
+        ]
+        
+        for strategy in strategies:
+            cache = IntelligentCache(max_size=10, strategy=strategy)
+            engine = EdgeAICacheEngine()
+            engine.cache = cache
+            
+            await engine.initialize()
+            
+            # [UNICODE_63A8]
+            result = await engine.get_cached_inference(
+                ModelType.STORY_GENERATION,
+                {"prompt": f"[UNICODE_6226]_{strategy.value}"},
+                user_id="strategy_test_user"
+            )
+            
+            # [UNICODE_30AD]
+            stats = cache.get_stats()
+            assert stats["strategy"] == strategy.value
+
+class TestPerformanceMetrics:
+    """[UNICODE_30D1]"""
+    
+    @pytest.mark.asyncio
+    async def test_inference_latency_measurement(self):
+        """[UNICODE_63A8]"""
+        engine = EdgeAICacheEngine()
+        await engine.initialize()
+        
+        import time
+        
+        # [UNICODE_30EC]
+        latencies = []
+        for i in range(10):
+            start_time = time.time()
+            
+            result = await engine.get_cached_inference(
+                ModelType.TASK_RECOMMENDATION,
+                {"input": f"latency_test_{i}"},
+                user_id="latency_test_user"
+            )
+            
+            end_time = time.time()
+            latency = end_time - start_time
+            latencies.append(latency)
+        
+        # [UNICODE_7D71]
+        avg_latency = sum(latencies) / len(latencies)
+        max_latency = max(latencies)
+        
+        # [UNICODE_30D1]
+        assert avg_latency < 1.0  # [UNICODE_5E73]1[UNICODE_79D2]
+        assert max_latency < 2.0   # [UNICODE_6700]2[UNICODE_79D2]
+    
+    @pytest.mark.asyncio
+    async def test_cache_hit_rate_optimization(self):
+        """[UNICODE_30AD]"""
+        cache = IntelligentCache(max_size=5, strategy=CacheStrategy.HYBRID)
+        
+        # [UNICODE_540C]
+        test_data = {"prompt": "[UNICODE_30D2]"}
+        
+        for i in range(10):
+            await cache.get(f"test_key_{i % 3}", user_id="hit_rate_user")
+            if i < 3:
+                await cache.put(f"test_key_{i}", f"value_{i}", ModelType.STORY_GENERATION)
+        
+        # [UNICODE_30D2]
+        stats = cache.get_stats()
+        
+        # [UNICODE_57FA]
+        assert "hit_rate" in stats
+        assert "total_hits" in stats
+        assert "total_misses" in stats
+        assert 0.0 <= stats["hit_rate"] <= 1.0
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

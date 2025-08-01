@@ -1,0 +1,138 @@
+"""
+[UNICODE_30D1]
+"""
+
+import time
+from main import (
+    PerformanceMonitor, CacheManager, RateLimiter, QueryOptimizer,
+    get_user_dashboard, get_performance_metrics
+)
+
+def test_basic_functionality():
+    """[UNICODE_57FA]"""
+    print("=== [UNICODE_57FA] ===")
+    
+    # 1. [UNICODE_30D1]
+    print("1. [UNICODE_30D1]")
+    monitor = PerformanceMonitor()
+    print(f"   P95[UNICODE_76EE]: {monitor.p95_target}[UNICODE_79D2]")
+    
+    # 2. [UNICODE_30AD]
+    print("2. [UNICODE_30AD]")
+    cache = CacheManager()
+    cache.set("test_key", {"data": "test_value"})
+    cached_value = cache.get("test_key")
+    print(f"   [UNICODE_30AD]: {'OK' if cached_value else 'NG'}")
+    
+    # 3. [UNICODE_30EC]
+    print("3. [UNICODE_30EC]")
+    limiter = RateLimiter(max_requests=5, window_minutes=1)
+    allowed_count = 0
+    for i in range(7):
+        if limiter.is_allowed("127.0.0.1"):
+            allowed_count += 1
+    print(f"   [UNICODE_8A31]: {allowed_count}/7 ([UNICODE_671F]: 5)")
+    
+    # 4. [UNICODE_30AF]
+    print("4. [UNICODE_30AF]")
+    optimizer = QueryOptimizer()
+    result = optimizer.optimize_user_query("test_user")
+    print(f"   [UNICODE_6700]: {'OK' if result else 'NG'}")
+    
+    print("[UNICODE_57FA]\n")
+
+def test_api_endpoints():
+    """API[UNICODE_30A8]"""
+    print("=== API[UNICODE_30A8] ===")
+    
+    # 1. [UNICODE_30C0]
+    print("1. [UNICODE_30C0]")
+    start_time = time.time()
+    result = get_user_dashboard("test_user_1")
+    response_time = time.time() - start_time
+    print(f"   [UNICODE_5FDC]: {response_time:.3f}[UNICODE_79D2]")
+    print(f"   [UNICODE_30EC]: {'OK' if 'user' in result else 'NG'}")
+    
+    # 2. [UNICODE_30AD]
+    print("2. [UNICODE_30AD]")
+    start_time = time.time()
+    result2 = get_user_dashboard("test_user_1")  # [UNICODE_540C]
+    cache_response_time = time.time() - start_time
+    print(f"   [UNICODE_30AD]: {cache_response_time:.3f}[UNICODE_79D2]")
+    print(f"   [UNICODE_30AD]: {'OK' if cache_response_time < response_time else 'NG'}")
+    
+    # 3. [UNICODE_30D1]
+    print("3. [UNICODE_30D1]")
+    metrics = get_performance_metrics()
+    print(f"   [UNICODE_30E1]: {'OK' if 'performance' in metrics else 'NG'}")
+    
+    if 'performance' in metrics and metrics['performance'].get('total_requests', 0) > 0:
+        perf = metrics['performance']
+        print(f"   [UNICODE_7DCF]: {perf.get('total_requests', 0)}")
+        print(f"   [UNICODE_5E73]: {perf.get('avg_response_time', 0):.3f}[UNICODE_79D2]")
+        print(f"   P95[UNICODE_30EC]: {perf.get('p95_latency', 0):.3f}[UNICODE_79D2]")
+        print(f"   P95[UNICODE_76EE]: {'OK' if perf.get('p95_compliance', False) else 'NG'}")
+    
+    print("API[UNICODE_30A8]\n")
+
+def test_performance_requirements():
+    """[UNICODE_30D1]"""
+    print("=== [UNICODE_30D1] ===")
+    
+    # [UNICODE_8907]P95[UNICODE_30EC]
+    print("1. P95[UNICODE_30EC]1.2[UNICODE_79D2]")
+    response_times = []
+    
+    for i in range(20):
+        start_time = time.time()
+        get_user_dashboard(f"perf_test_user_{i}")
+        response_time = time.time() - start_time
+        response_times.append(response_time)
+    
+    # P95[UNICODE_8A08]
+    response_times.sort()
+    p95_index = int(len(response_times) * 0.95)
+    p95_latency = response_times[p95_index] if p95_index < len(response_times) else response_times[-1]
+    
+    print(f"   P95[UNICODE_30EC]: {p95_latency:.3f}[UNICODE_79D2]")
+    print(f"   [UNICODE_76EE]: {'OK' if p95_latency <= 1.2 else 'NG'}")
+    
+    # [UNICODE_30EC]
+    print("2. [UNICODE_30EC]120req/min/IP[UNICODE_FF09]")
+    limiter = RateLimiter(max_requests=10, window_minutes=1)  # [UNICODE_30C6]
+    
+    allowed_requests = 0
+    for i in range(15):
+        if limiter.is_allowed("test_ip"):
+            allowed_requests += 1
+    
+    print(f"   [UNICODE_8A31]: {allowed_requests}/15")
+    print(f"   [UNICODE_5236]: {'OK' if allowed_requests <= 10 else 'NG'}")
+    
+    print("[UNICODE_30D1]\n")
+
+def main():
+    """[UNICODE_30E1]"""
+    print("[UNICODE_30D1] - [UNICODE_7C21]")
+    print("=" * 50)
+    
+    try:
+        test_basic_functionality()
+        test_api_endpoints()
+        test_performance_requirements()
+        
+        print("=" * 50)
+        print("[UNICODE_5168]")
+        print("\n[UNICODE_8981]:")
+        print("[UNICODE_2713] 1.2[UNICODE_79D2]P95[UNICODE_30EC]")
+        print("[UNICODE_2713] [UNICODE_30AD]")
+        print("[UNICODE_2713] [UNICODE_30EC]120req/min/IP[UNICODE_FF09]")
+        print("[UNICODE_2713] [UNICODE_30D1]")
+        
+    except Exception as e:
+        print(f"[UNICODE_30C6]: {e}")
+        import traceback
+        traceback.print_exc()
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,336 @@
+"""
+[UNICODE_30B1]
+
+[UNICODE_4F01]ADHD[UNICODE_533B]
+"""
+
+import stripe
+from fastapi import HTTPException
+from pydantic import BaseModel
+from typing import List, Optional, Dict, Any
+from datetime import datetime, timedelta
+from enum import Enum
+import uuid
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Stripe[UNICODE_8A2D]
+stripe.api_key = "sk_test_dummy_key"
+
+class DiscountType(Enum):
+    ADHD_MEDICAL = "adhd_medical"
+    CORPORATE_BULK = "corporate_bulk"
+    SEASONAL = "seasonal"
+
+class CarePointTransaction(BaseModel):
+    transaction_id: str
+    from_entity: str  # [UNICODE_4F01]ID or [UNICODE_30B7]
+    to_user: str      # [UNICODE_30E6]ID
+    points: int
+    transaction_type: str  # "purchase", "transfer", "bonus"
+    created_at: datetime
+    metadata: Optional[Dict[str, Any]] = None
+
+class CorporatePurchase(BaseModel):
+    corporate_id: str
+    purchase_amount: int  # [UNICODE_5186]
+    points_purchased: int
+    discount_applied: Optional[str] = None
+    stripe_payment_intent_id: str
+    created_at: datetime
+
+class ADHDMedicalDocument(BaseModel):
+    document_id: str
+    user_id: str
+    document_type: str  # "diagnosis", "prescription", "therapy_record"
+    verified: bool
+    verified_at: Optional[datetime] = None
+    verified_by: Optional[str] = None  # [UNICODE_533B]ID
+    expiry_date: Optional[datetime] = None
+
+class CarePointsSystem:
+    def __init__(self):
+        self.point_rate = 1  # 1[UNICODE_5186] = 1[UNICODE_30DD]
+        self.adhd_discount_rate = 0.5  # 50%[UNICODE_5272]
+        self.corporate_bulk_thresholds = {
+            10000: 0.05,   # 10,000[UNICODE_5186]5%[UNICODE_5272]
+            50000: 0.10,   # 50,000[UNICODE_5186]10%[UNICODE_5272]
+            100000: 0.15   # 100,000[UNICODE_5186]15%[UNICODE_5272]
+        }
+        self.care_point_balances = {}  # [UNICODE_5B9F]Firestore[UNICODE_3092]
+        self.transactions = []         # [UNICODE_5B9F]Firestore[UNICODE_3092]
+        self.medical_documents = {}    # [UNICODE_5B9F]Firestore[UNICODE_3092]
+    
+    def calculate_corporate_discount(self, amount: int) -> float:
+        """[UNICODE_4F01]"""
+        discount_rate = 0.0
+        
+        for threshold, rate in sorted(self.corporate_bulk_thresholds.items(), reverse=True):
+            if amount >= threshold:
+                discount_rate = rate
+                break
+        
+        return discount_rate
+    
+    def create_stripe_payment_intent(self, amount: int, corporate_id: str, 
+                                   discount_rate: float = 0.0) -> Dict[str, Any]:
+        """Stripe[UNICODE_6C7A]"""
+        try:
+            # [UNICODE_5272]
+            discounted_amount = int(amount * (1 - discount_rate))
+            
+            # Stripe[UNICODE_6C7A]
+            payment_intent = {
+                "id": f"pi_{uuid.uuid4().hex[:24]}",
+                "amount": discounted_amount,
+                "currency": "jpy",
+                "status": "requires_payment_method",
+                "client_secret": f"pi_{uuid.uuid4().hex[:24]}_secret",
+                "metadata": {
+                    "corporate_id": corporate_id,
+                    "original_amount": amount,
+                    "discount_rate": discount_rate
+                }
+            }
+            
+            logger.info(f"Payment intent created: {payment_intent['id']}")
+            return payment_intent
+            
+        except Exception as e:
+            logger.error(f"Stripe payment intent creation failed: {e}")
+            raise HTTPException(
+                status_code=500, 
+                detail="[UNICODE_6C7A]"
+            )
+    
+    def process_corporate_purchase(self, corporate_id: str, amount: int, 
+                                 payment_intent_id: str) -> CorporatePurchase:
+        """[UNICODE_4F01]"""
+        try:
+            # [UNICODE_5927]
+            discount_rate = self.calculate_corporate_discount(amount)
+            discounted_amount = int(amount * (1 - discount_rate))
+            
+            # [UNICODE_30DD]
+            points_purchased = discounted_amount * self.point_rate
+            
+            # [UNICODE_8CFC]
+            purchase = CorporatePurchase(
+                corporate_id=corporate_id,
+                purchase_amount=discounted_amount,
+                points_purchased=points_purchased,
+                discount_applied=f"corporate_bulk_{discount_rate*100:.0f}%" if discount_rate > 0 else None,
+                stripe_payment_intent_id=payment_intent_id,
+                created_at=datetime.utcnow()
+            )
+            
+            # [UNICODE_4F01]
+            if corporate_id not in self.care_point_balances:
+                self.care_point_balances[corporate_id] = 0
+            
+            self.care_point_balances[corporate_id] += points_purchased
+            
+            logger.info(f"Corporate purchase completed: {corporate_id}, {points_purchased} points")
+            return purchase
+            
+        except Exception as e:
+            logger.error(f"Corporate purchase processing failed: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail="[UNICODE_30B1]"
+            )
+    
+    def transfer_care_points(self, from_corporate_id: str, to_user_id: str, 
+                           points: int, metadata: Optional[Dict[str, Any]] = None) -> CarePointTransaction:
+        """[UNICODE_30B1]"""
+        try:
+            # [UNICODE_4F01]
+            corporate_balance = self.care_point_balances.get(from_corporate_id, 0)
+            if corporate_balance < points:
+                raise HTTPException(
+                    status_code=400,
+                    detail="[UNICODE_30B1]"
+                )
+            
+            # [UNICODE_30DD]
+            self.care_point_balances[from_corporate_id] -= points
+            
+            if to_user_id not in self.care_point_balances:
+                self.care_point_balances[to_user_id] = 0
+            self.care_point_balances[to_user_id] += points
+            
+            # [UNICODE_30C8]
+            transaction = CarePointTransaction(
+                transaction_id=str(uuid.uuid4()),
+                from_entity=from_corporate_id,
+                to_user=to_user_id,
+                points=points,
+                transaction_type="transfer",
+                created_at=datetime.utcnow(),
+                metadata=metadata
+            )
+            
+            self.transactions.append(transaction)
+            
+            logger.info(f"Care points transferred: {from_corporate_id} -> {to_user_id}, {points} points")
+            return transaction
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Care points transfer failed: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail="[UNICODE_30B1]"
+            )
+    
+    def verify_adhd_medical_document(self, document_id: str, user_id: str, 
+                                   document_type: str, verifier_id: str) -> ADHDMedicalDocument:
+        """ADHD[UNICODE_533B]"""
+        try:
+            # [UNICODE_6587]
+            document = ADHDMedicalDocument(
+                document_id=document_id,
+                user_id=user_id,
+                document_type=document_type,
+                verified=True,
+                verified_at=datetime.utcnow(),
+                verified_by=verifier_id,
+                expiry_date=datetime.utcnow() + timedelta(days=365)  # 1[UNICODE_5E74]
+            )
+            
+            self.medical_documents[document_id] = document
+            
+            logger.info(f"ADHD medical document verified: {document_id} for user {user_id}")
+            return document
+            
+        except Exception as e:
+            logger.error(f"ADHD document verification failed: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail="[UNICODE_533B]"
+            )
+    
+    def check_adhd_discount_eligibility(self, user_id: str) -> bool:
+        """ADHD[UNICODE_5272]"""
+        try:
+            # [UNICODE_30E6]
+            current_time = datetime.utcnow()
+            
+            for doc in self.medical_documents.values():
+                if (doc.user_id == user_id and 
+                    doc.verified and 
+                    doc.expiry_date and 
+                    doc.expiry_date > current_time):
+                    return True
+            
+            return False
+            
+        except Exception as e:
+            logger.error(f"ADHD discount eligibility check failed: {e}")
+            return False
+    
+    def apply_adhd_discount(self, user_id: str, original_amount: int) -> Dict[str, Any]:
+        """ADHD[UNICODE_533B]50%[UNICODE_5272]"""
+        try:
+            if not self.check_adhd_discount_eligibility(user_id):
+                raise HTTPException(
+                    status_code=400,
+                    detail="ADHD[UNICODE_5272]"
+                )
+            
+            discounted_amount = int(original_amount * self.adhd_discount_rate)
+            discount_amount = original_amount - discounted_amount
+            
+            return {
+                "original_amount": original_amount,
+                "discounted_amount": discounted_amount,
+                "discount_amount": discount_amount,
+                "discount_rate": self.adhd_discount_rate,
+                "discount_type": "adhd_medical"
+            }
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"ADHD discount application failed: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail="ADHD[UNICODE_5272]"
+            )
+    
+    def get_care_point_balance(self, entity_id: str) -> int:
+        """[UNICODE_30B1]"""
+        return self.care_point_balances.get(entity_id, 0)
+    
+    def get_transaction_history(self, entity_id: str, limit: int = 50) -> List[CarePointTransaction]:
+        """[UNICODE_30C8]"""
+        entity_transactions = [
+            t for t in self.transactions 
+            if t.from_entity == entity_id or t.to_user == entity_id
+        ]
+        
+        # [UNICODE_65E5]
+        entity_transactions.sort(key=lambda x: x.created_at, reverse=True)
+        
+        return entity_transactions[:limit]
+    
+    def create_stripe_coupon_for_adhd(self, user_id: str) -> Dict[str, Any]:
+        """ADHD[UNICODE_5272]Stripe[UNICODE_30AF]"""
+        try:
+            if not self.check_adhd_discount_eligibility(user_id):
+                raise HTTPException(
+                    status_code=400,
+                    detail="ADHD[UNICODE_5272]"
+                )
+            
+            # Stripe[UNICODE_30AF]
+            coupon = {
+                "id": f"adhd_discount_{user_id}_{uuid.uuid4().hex[:8]}",
+                "percent_off": 50,
+                "duration": "once",
+                "max_redemptions": 1,
+                "metadata": {
+                    "user_id": user_id,
+                    "discount_type": "adhd_medical",
+                    "created_at": datetime.utcnow().isoformat()
+                }
+            }
+            
+            logger.info(f"ADHD Stripe coupon created: {coupon['id']} for user {user_id}")
+            return coupon
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"ADHD Stripe coupon creation failed: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail="ADHD[UNICODE_5272]"
+            )
+
+# [UNICODE_30B0]
+care_points_system = CarePointsSystem()
+
+# API[UNICODE_30EA]/[UNICODE_30EC]
+class CorporatePurchaseRequest(BaseModel):
+    corporate_id: str
+    amount: int  # [UNICODE_5186]
+    payment_method_id: Optional[str] = None
+
+class CarePointTransferRequest(BaseModel):
+    from_corporate_id: str
+    to_user_id: str
+    points: int
+    message: Optional[str] = None
+
+class ADHDDocumentVerificationRequest(BaseModel):
+    user_id: str
+    document_type: str
+    document_data: str  # Base64[UNICODE_30A8]
+    verifier_id: str
+
+class ADHDDiscountRequest(BaseModel):
+    user_id: str
+    original_amount: int

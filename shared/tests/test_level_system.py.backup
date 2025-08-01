@@ -1,0 +1,417 @@
+"""
+[UNICODE_30EC]
+Level system comprehensive tests
+Requirements: 4.4, 4.5
+"""
+
+import pytest
+import math
+from datetime import datetime
+from shared.interfaces.level_system import (
+    LevelCalculator, PlayerLevelManager, YuLevelManager, 
+    LevelSystemManager, LevelProgression
+)
+
+
+class TestLevelCalculator:
+    """LevelCalculator[UNICODE_30AF]"""
+    
+    def test_basic_xp_calculation(self):
+        """[UNICODE_57FA]XP[UNICODE_8A08]"""
+        # [UNICODE_30EC]1[UNICODE_306F]0XP
+        assert LevelCalculator.calculate_xp_for_level(1) == 0
+        
+        # [UNICODE_30EC]2[UNICODE_306F]XP
+        level_2_xp = LevelCalculator.calculate_xp_for_level(2)
+        assert level_2_xp > 0
+        print(f"[UNICODE_2713] Level 2 requires: {level_2_xp} XP")
+        
+        # [UNICODE_30EC]3[UNICODE_306F]XP
+        level_3_xp = LevelCalculator.calculate_xp_for_level(3)
+        assert level_3_xp > level_2_xp
+        print(f"[UNICODE_2713] Level 3 requires: {level_3_xp} XP")
+        
+        # [UNICODE_6307]
+        level_10_xp = LevelCalculator.calculate_xp_for_level(10)
+        level_20_xp = LevelCalculator.calculate_xp_for_level(20)
+        
+        # [UNICODE_30EC]20[UNICODE_306F]10[UNICODE_306E]2[UNICODE_500D]XP[UNICODE_304C]
+        assert level_20_xp > level_10_xp * 2
+        print(f"[UNICODE_2713] Level 10: {level_10_xp} XP, Level 20: {level_20_xp} XP")
+    
+    def test_exponential_growth(self):
+        """[UNICODE_6307]"""
+        xp_values = []
+        for level in [1, 5, 10, 15, 20, 25, 30]:
+            xp = LevelCalculator.calculate_xp_for_level(level)
+            xp_values.append((level, xp))
+            print(f"[UNICODE_2713] Level {level}: {xp:,} XP")
+        
+        # [UNICODE_6210]
+        for i in range(1, len(xp_values)):
+            prev_level, prev_xp = xp_values[i-1]
+            curr_level, curr_xp = xp_values[i]
+            
+            if prev_xp > 0:
+                growth_rate = curr_xp / prev_xp
+                # [UNICODE_6307]1[UNICODE_3088]
+                assert growth_rate > 1.0
+    
+    def test_level_from_xp(self):
+        """XP[UNICODE_304B]"""
+        test_cases = [
+            (0, 1),      # 0XP[UNICODE_306F]1
+            (50, 1),     # [UNICODE_5C11]XP[UNICODE_306F]1
+            (100, 2),    # [UNICODE_57FA]XP[UNICODE_3067]2
+            (500, 3),    # [UNICODE_3088]XP[UNICODE_3067]
+        ]
+        
+        for xp, expected_min_level in test_cases:
+            calculated_level = LevelCalculator.get_level_from_xp(xp)
+            assert calculated_level >= expected_min_level
+            print(f"[UNICODE_2713] {xp} XP = Level {calculated_level}")
+    
+    def test_level_progression(self):
+        """[UNICODE_30EC]"""
+        test_xp = 1000
+        progression = LevelCalculator.get_level_progression(test_xp)
+        
+        assert isinstance(progression, LevelProgression)
+        assert progression.current_level >= 1
+        assert progression.current_xp == test_xp
+        assert progression.xp_for_current_level <= test_xp
+        assert progression.xp_for_next_level > test_xp
+        assert progression.xp_needed_for_next > 0
+        assert 0 <= progression.progress_percentage <= 100
+        
+        print(f"[UNICODE_2713] {test_xp} XP progression:")
+        print(f"  - Current Level: {progression.current_level}")
+        print(f"  - Progress: {progression.progress_percentage:.1f}%")
+        print(f"  - XP needed for next: {progression.xp_needed_for_next}")
+    
+    def test_level_up_rewards(self):
+        """[UNICODE_30EC]"""
+        # [UNICODE_30EC]4[UNICODE_304B]6[UNICODE_3078]5[UNICODE_3067]
+        rewards = LevelCalculator.calculate_level_up_rewards(4, 6)
+        assert len(rewards) > 0
+        assert any("milestone_reward_level_5" in reward for reward in rewards)
+        print(f"[UNICODE_2713] Level 4[UNICODE_2192]6 rewards: {rewards}")
+        
+        # [UNICODE_30EC]9[UNICODE_304B]11[UNICODE_3078]10[UNICODE_3067]
+        rewards = LevelCalculator.calculate_level_up_rewards(9, 11)
+        assert any("major_milestone_level_10" in reward for reward in rewards)
+        assert any("bonus_crystal_growth" in reward for reward in rewards)
+        print(f"[UNICODE_2713] Level 9[UNICODE_2192]11 rewards: {rewards}")
+
+
+class TestPlayerLevelManager:
+    """PlayerLevelManager[UNICODE_30AF]"""
+    
+    def test_initial_state(self):
+        """[UNICODE_521D]"""
+        manager = PlayerLevelManager(initial_xp=0)
+        
+        assert manager.total_xp == 0
+        assert manager.level_progression.current_level == 1
+        assert len(manager.level_history) == 0
+        print("[UNICODE_2713] Player manager initialized correctly")
+    
+    def test_xp_addition_without_level_up(self):
+        """[UNICODE_30EC]XP[UNICODE_8FFD]"""
+        manager = PlayerLevelManager(initial_xp=0)
+        
+        result = manager.add_xp(50, "test_task")
+        
+        assert result["xp_added"] == 50
+        assert result["level_up"] is False
+        assert result["old_level"] == 1
+        assert result["new_level"] == 1
+        assert len(result["rewards"]) == 0
+        assert manager.total_xp == 50
+        
+        print(f"[UNICODE_2713] Added 50 XP without level up: Level {result['new_level']}")
+    
+    def test_xp_addition_with_level_up(self):
+        """[UNICODE_30EC]XP[UNICODE_8FFD]"""
+        manager = PlayerLevelManager(initial_xp=0)
+        
+        # [UNICODE_5341]XP[UNICODE_3092]
+        large_xp = 500
+        result = manager.add_xp(large_xp, "major_achievement")
+        
+        assert result["xp_added"] == large_xp
+        assert result["level_up"] is True
+        assert result["new_level"] > result["old_level"]
+        assert len(result["rewards"]) > 0
+        assert len(manager.level_history) > 0
+        
+        print(f"[UNICODE_2713] Added {large_xp} XP with level up: Level {result['old_level']}[UNICODE_2192]{result['new_level']}")
+        print(f"  - Rewards: {result['rewards']}")
+    
+    def test_xp_breakdown(self):
+        """XP[UNICODE_5185]"""
+        manager = PlayerLevelManager(initial_xp=300)
+        breakdown = manager.get_xp_breakdown()
+        
+        assert breakdown["total_xp"] == 300
+        assert breakdown["current_level"] >= 1
+        assert breakdown["xp_for_current_level"] <= 300
+        assert breakdown["xp_for_next_level"] > 300
+        assert breakdown["xp_needed_for_next"] > 0
+        assert 0 <= breakdown["progress_percentage"] <= 100
+        
+        print("[UNICODE_2713] XP breakdown:")
+        for key, value in breakdown.items():
+            print(f"  - {key}: {value}")
+    
+    def test_xp_simulation(self):
+        """XP[UNICODE_8FFD]"""
+        manager = PlayerLevelManager(initial_xp=100)
+        original_xp = manager.total_xp
+        original_level = manager.level_progression.current_level
+        
+        # [UNICODE_30B7]
+        simulation = manager.simulate_xp_addition(400)
+        
+        # [UNICODE_5B9F]XP[UNICODE_3084]
+        assert manager.total_xp == original_xp
+        assert manager.level_progression.current_level == original_level
+        
+        # [UNICODE_30B7]
+        assert simulation["simulated_total_xp"] == original_xp + 400
+        assert simulation["simulated_level"] >= original_level
+        
+        print(f"[UNICODE_2713] XP simulation: {original_xp}[UNICODE_2192]{simulation['simulated_total_xp']} XP")
+        print(f"  - Level: {original_level}[UNICODE_2192]{simulation['simulated_level']}")
+        print(f"  - Level up: {simulation['level_up']}")
+
+
+class TestYuLevelManager:
+    """YuLevelManager[UNICODE_30AF]"""
+    
+    def test_initial_state(self):
+        """[UNICODE_521D]"""
+        manager = YuLevelManager(initial_level=1)
+        
+        assert manager.current_level == 1
+        assert len(manager.growth_events) == 0
+        assert len(manager.personality_traits) == 4
+        assert all(0 <= trait <= 1 for trait in manager.personality_traits.values())
+        
+        print("[UNICODE_2713] Yu manager initialized correctly")
+        print(f"  - Personality traits: {manager.personality_traits}")
+    
+    def test_natural_growth(self):
+        """[UNICODE_81EA]"""
+        manager = YuLevelManager(initial_level=1)
+        
+        # [UNICODE_30D7]
+        result = manager.grow_naturally(player_level=10, days_passed=5)
+        
+        # [UNICODE_6210]
+        if result["growth_occurred"]:
+            assert result["new_level"] > result["old_level"]
+            assert len(manager.growth_events) > 0
+            print(f"[UNICODE_2713] Yu natural growth: Level {result['old_level']}[UNICODE_2192]{result['new_level']}")
+        else:
+            print("[UNICODE_2713] Yu natural growth: No growth this time")
+        
+        print(f"  - Personality traits: {result['personality_traits']}")
+    
+    def test_interaction_growth(self):
+        """[UNICODE_76F8]"""
+        manager = YuLevelManager(initial_level=1)
+        
+        # [UNICODE_8907]
+        interaction_types = ["story_choice", "task_completion", "crystal_resonance", "emotional_support"]
+        growth_occurred = False
+        
+        for interaction in interaction_types:
+            result = manager.grow_from_interaction(interaction, player_level=5)
+            if result["growth_occurred"]:
+                growth_occurred = True
+                print(f"[UNICODE_2713] Yu interaction growth ({interaction}): Level {result['old_level']}[UNICODE_2192]{result['new_level']}")
+                break
+        
+        if not growth_occurred:
+            print("[UNICODE_2713] Yu interaction growth: No growth occurred (probabilistic)")
+    
+    def test_personality_description(self):
+        """[UNICODE_6027]"""
+        manager = YuLevelManager(initial_level=1)
+        
+        # [UNICODE_7279]
+        manager.personality_traits["wisdom"] = 0.8
+        
+        description = manager.get_personality_description()
+        assert isinstance(description, str)
+        assert len(description) > 0
+        assert "[UNICODE_77E5]" in description or "wisdom" in description.lower()
+        
+        print(f"[UNICODE_2713] Yu personality description: {description}")
+
+
+class TestLevelSystemManager:
+    """LevelSystemManager[UNICODE_30AF]"""
+    
+    def test_system_initialization(self):
+        """[UNICODE_30B7]"""
+        manager = LevelSystemManager(player_xp=200, yu_level=2)
+        
+        assert manager.player_manager.total_xp == 200
+        assert manager.yu_manager.current_level == 2
+        assert len(manager.system_events) == 0
+        
+        print("[UNICODE_2713] Level system manager initialized correctly")
+    
+    def test_integrated_xp_addition(self):
+        """[UNICODE_7D71]XP[UNICODE_8FFD]"""
+        manager = LevelSystemManager(player_xp=100, yu_level=1)
+        
+        result = manager.add_player_xp(300, "integrated_test")
+        
+        assert "player" in result
+        assert "yu" in result
+        assert "system_event" in result
+        assert len(manager.system_events) == 1
+        
+        player_result = result["player"]
+        yu_result = result["yu"]
+        
+        print(f"[UNICODE_2713] Integrated XP addition:")
+        print(f"  - Player: Level {player_result['old_level']}[UNICODE_2192]{player_result['new_level']}")
+        print(f"  - Yu: Level {yu_result['old_level']}[UNICODE_2192]{yu_result['new_level']}")
+    
+    def test_yu_interaction_trigger(self):
+        """[UNICODE_30E6]"""
+        manager = LevelSystemManager(player_xp=500, yu_level=2)
+        
+        result = manager.trigger_yu_interaction("story_choice")
+        
+        assert "yu" in result
+        assert "system_event" in result
+        assert len(manager.system_events) == 1
+        
+        print(f"[UNICODE_2713] Yu interaction triggered: {result['yu']['growth_occurred']}")
+    
+    def test_system_status(self):
+        """[UNICODE_30B7]"""
+        manager = LevelSystemManager(player_xp=1000, yu_level=3)
+        
+        status = manager.get_system_status()
+        
+        assert "player" in status
+        assert "yu" in status
+        assert "level_difference" in status
+        assert "recent_events" in status
+        
+        assert status["player"]["xp"] == 1000
+        assert status["yu"]["level"] == 3
+        assert isinstance(status["level_difference"], int)
+        
+        print("[UNICODE_2713] System status:")
+        print(f"  - Player Level: {status['player']['level']} (XP: {status['player']['xp']})")
+        print(f"  - Yu Level: {status['yu']['level']}")
+        print(f"  - Level Difference: {status['level_difference']}")
+        print(f"  - Yu Description: {status['yu']['description']}")
+
+
+class TestLevelSystemIntegration:
+    """[UNICODE_30EC]"""
+    
+    def test_complete_level_progression(self):
+        """[UNICODE_5B8C]"""
+        manager = LevelSystemManager(player_xp=0, yu_level=1)
+        
+        # [UNICODE_6BB5]XP[UNICODE_3092]
+        xp_additions = [100, 200, 300, 500, 1000]
+        
+        for xp in xp_additions:
+            result = manager.add_player_xp(xp, f"progression_test_{xp}")
+            
+            player_level = result["player"]["new_level"]
+            yu_level = result["yu"]["new_level"]
+            
+            print(f"[UNICODE_2713] Added {xp} XP: Player L{player_level}, Yu L{yu_level}")
+            
+            # [UNICODE_30D7]XP[UNICODE_8FFD]
+            assert player_level >= 1
+            
+            # [UNICODE_30E6]
+            assert yu_level <= player_level + 2  # [UNICODE_591A]
+        
+        # [UNICODE_6700]
+        final_status = manager.get_system_status()
+        print(f"[UNICODE_2713] Final state: Player L{final_status['player']['level']}, Yu L{final_status['yu']['level']}")
+        
+        # [UNICODE_30B7]
+        assert len(manager.system_events) == len(xp_additions)
+    
+    def test_level_calculation_consistency(self):
+        """[UNICODE_30EC]"""
+        # [UNICODE_69D8]XP[UNICODE_5024]
+        test_xp_values = [0, 100, 500, 1000, 2000, 5000, 10000]
+        
+        for xp in test_xp_values:
+            level = LevelCalculator.get_level_from_xp(xp)
+            required_xp = LevelCalculator.calculate_xp_for_level(level)
+            next_level_xp = LevelCalculator.calculate_xp_for_level(level + 1)
+            
+            # [UNICODE_73FE]XP[UNICODE_4EE5]
+            assert xp >= required_xp
+            
+            # [UNICODE_6B21]XP[UNICODE_672A]
+            assert xp < next_level_xp
+            
+            print(f"[UNICODE_2713] {xp} XP = Level {level} (range: {required_xp}-{next_level_xp-1})")
+
+
+def run_all_tests():
+    """[UNICODE_5168]"""
+    print("=== Running Level System Tests ===")
+    
+    # [UNICODE_30EC]
+    calc_test = TestLevelCalculator()
+    calc_test.test_basic_xp_calculation()
+    calc_test.test_exponential_growth()
+    calc_test.test_level_from_xp()
+    calc_test.test_level_progression()
+    calc_test.test_level_up_rewards()
+    print("[UNICODE_2713] Level calculator tests passed\n")
+    
+    # [UNICODE_30D7]
+    player_test = TestPlayerLevelManager()
+    player_test.test_initial_state()
+    player_test.test_xp_addition_without_level_up()
+    player_test.test_xp_addition_with_level_up()
+    player_test.test_xp_breakdown()
+    player_test.test_xp_simulation()
+    print("[UNICODE_2713] Player level manager tests passed\n")
+    
+    # [UNICODE_30E6]
+    yu_test = TestYuLevelManager()
+    yu_test.test_initial_state()
+    yu_test.test_natural_growth()
+    yu_test.test_interaction_growth()
+    yu_test.test_personality_description()
+    print("[UNICODE_2713] Yu level manager tests passed\n")
+    
+    # [UNICODE_30B7]
+    system_test = TestLevelSystemManager()
+    system_test.test_system_initialization()
+    system_test.test_integrated_xp_addition()
+    system_test.test_yu_interaction_trigger()
+    system_test.test_system_status()
+    print("[UNICODE_2713] Level system manager tests passed\n")
+    
+    # [UNICODE_7D71]
+    integration_test = TestLevelSystemIntegration()
+    integration_test.test_complete_level_progression()
+    integration_test.test_level_calculation_consistency()
+    print("[UNICODE_2713] Integration tests passed\n")
+    
+    print("=== All Level System Tests Passed! ===")
+
+
+if __name__ == "__main__":
+    run_all_tests()

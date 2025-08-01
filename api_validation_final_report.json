@@ -1,0 +1,315 @@
+{
+  "overall_success": true,
+  "overall_success_rate": 100.0,
+  "total_tests": 24,
+  "total_success": 24,
+  "category_summary": {
+    "サービス可用性": {
+      "success_count": 3,
+      "total_count": 3,
+      "success_rate": 100.0
+    },
+    "API通信": {
+      "success_count": 3,
+      "total_count": 3,
+      "success_rate": 100.0
+    },
+    "エラーハンドリング": {
+      "success_count": 3,
+      "total_count": 3,
+      "success_rate": 100.0
+    },
+    "レスポンス形式": {
+      "success_count": 3,
+      "total_count": 3,
+      "success_rate": 100.0
+    },
+    "CORS設定": {
+      "success_count": 9,
+      "total_count": 9,
+      "success_rate": 100.0
+    },
+    "パフォーマンス": {
+      "success_count": 3,
+      "total_count": 3,
+      "success_rate": 100.0
+    }
+  },
+  "detailed_results": {
+    "service_availability": [
+      {
+        "service": "Core Game Engine",
+        "success": true,
+        "response_time_ms": 357.66005516052246,
+        "status_code": 200,
+        "port": 8001
+      },
+      {
+        "service": "Auth Service",
+        "success": true,
+        "response_time_ms": 271.0762023925781,
+        "status_code": 200,
+        "port": 8002
+      },
+      {
+        "service": "Task Management",
+        "success": true,
+        "response_time_ms": 261.3341808319092,
+        "status_code": 200,
+        "port": 8003
+      }
+    ],
+    "api_communication": [
+      {
+        "service": "Core Game Engine",
+        "endpoint": "/health",
+        "method": "GET",
+        "success": true,
+        "status_code": 200,
+        "response_time_ms": 266.3125991821289
+      },
+      {
+        "service": "Auth Service",
+        "endpoint": "/health",
+        "method": "GET",
+        "success": true,
+        "status_code": 200,
+        "response_time_ms": 257.7855587005615
+      },
+      {
+        "service": "Task Management",
+        "endpoint": "/health",
+        "method": "GET",
+        "success": true,
+        "status_code": 200,
+        "response_time_ms": 264.72949981689453
+      }
+    ],
+    "error_handling": [
+      {
+        "service": "Core Game Engine",
+        "description": "存在しないエンドポイント",
+        "success": true,
+        "status_code": 404,
+        "has_error_detail": true,
+        "expected_status": [
+          404
+        ]
+      },
+      {
+        "service": "Auth Service",
+        "description": "無効なパス",
+        "success": true,
+        "status_code": 404,
+        "has_error_detail": true,
+        "expected_status": [
+          404,
+          405
+        ]
+      },
+      {
+        "service": "Task Management",
+        "description": "許可されていないメソッド",
+        "success": true,
+        "status_code": 405,
+        "has_error_detail": true,
+        "expected_status": [
+          405
+        ]
+      }
+    ],
+    "response_format": [
+      {
+        "service": "Core Game Engine",
+        "success": true,
+        "status_code": 200,
+        "format_analysis": {
+          "service": "Core Game Engine",
+          "is_json": true,
+          "has_status": true,
+          "has_service": true,
+          "fields": [
+            "status",
+            "service"
+          ],
+          "structure": "dict"
+        }
+      },
+      {
+        "service": "Auth Service",
+        "success": true,
+        "status_code": 200,
+        "format_analysis": {
+          "service": "Auth Service",
+          "is_json": true,
+          "has_status": true,
+          "has_service": true,
+          "fields": [
+            "status",
+            "service"
+          ],
+          "structure": "dict"
+        }
+      },
+      {
+        "service": "Task Management",
+        "success": true,
+        "status_code": 200,
+        "format_analysis": {
+          "service": "Task Management",
+          "is_json": true,
+          "has_status": true,
+          "has_service": true,
+          "fields": [
+            "status",
+            "service"
+          ],
+          "structure": "dict"
+        }
+      }
+    ],
+    "cors_configuration": [
+      {
+        "service": "Core Game Engine",
+        "origin": "http://localhost:3000",
+        "success": true,
+        "cors_headers": {
+          "Access-Control-Allow-Origin": "http://localhost:3000",
+          "Access-Control-Allow-Methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+          "Access-Control-Allow-Headers": "Content-Type",
+          "Access-Control-Allow-Credentials": "true"
+        },
+        "status_code": 200
+      },
+      {
+        "service": "Core Game Engine",
+        "origin": "http://localhost:5173",
+        "success": true,
+        "cors_headers": {
+          "Access-Control-Allow-Origin": "http://localhost:5173",
+          "Access-Control-Allow-Methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+          "Access-Control-Allow-Headers": "Content-Type",
+          "Access-Control-Allow-Credentials": "true"
+        },
+        "status_code": 200
+      },
+      {
+        "service": "Core Game Engine",
+        "origin": "https://example.com",
+        "success": true,
+        "cors_headers": {
+          "Access-Control-Allow-Origin": "https://example.com",
+          "Access-Control-Allow-Methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+          "Access-Control-Allow-Headers": "Content-Type",
+          "Access-Control-Allow-Credentials": "true"
+        },
+        "status_code": 200
+      },
+      {
+        "service": "Auth Service",
+        "origin": "http://localhost:3000",
+        "success": true,
+        "cors_headers": {
+          "Access-Control-Allow-Origin": "http://localhost:3000",
+          "Access-Control-Allow-Methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+          "Access-Control-Allow-Headers": "Content-Type",
+          "Access-Control-Allow-Credentials": "true"
+        },
+        "status_code": 200
+      },
+      {
+        "service": "Auth Service",
+        "origin": "http://localhost:5173",
+        "success": true,
+        "cors_headers": {
+          "Access-Control-Allow-Origin": "http://localhost:5173",
+          "Access-Control-Allow-Methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+          "Access-Control-Allow-Headers": "Content-Type",
+          "Access-Control-Allow-Credentials": "true"
+        },
+        "status_code": 200
+      },
+      {
+        "service": "Auth Service",
+        "origin": "https://example.com",
+        "success": true,
+        "cors_headers": {
+          "Access-Control-Allow-Origin": "https://example.com",
+          "Access-Control-Allow-Methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+          "Access-Control-Allow-Headers": "Content-Type",
+          "Access-Control-Allow-Credentials": "true"
+        },
+        "status_code": 200
+      },
+      {
+        "service": "Task Management",
+        "origin": "http://localhost:3000",
+        "success": true,
+        "cors_headers": {
+          "Access-Control-Allow-Origin": "http://localhost:3000",
+          "Access-Control-Allow-Methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+          "Access-Control-Allow-Headers": "Content-Type",
+          "Access-Control-Allow-Credentials": "true"
+        },
+        "status_code": 200
+      },
+      {
+        "service": "Task Management",
+        "origin": "http://localhost:5173",
+        "success": true,
+        "cors_headers": {
+          "Access-Control-Allow-Origin": "http://localhost:5173",
+          "Access-Control-Allow-Methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+          "Access-Control-Allow-Headers": "Content-Type",
+          "Access-Control-Allow-Credentials": "true"
+        },
+        "status_code": 200
+      },
+      {
+        "service": "Task Management",
+        "origin": "https://example.com",
+        "success": true,
+        "cors_headers": {
+          "Access-Control-Allow-Origin": "https://example.com",
+          "Access-Control-Allow-Methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+          "Access-Control-Allow-Headers": "Content-Type",
+          "Access-Control-Allow-Credentials": "true"
+        },
+        "status_code": 200
+      }
+    ],
+    "performance": [
+      {
+        "service": "Core Game Engine",
+        "success": true,
+        "avg_response_time_ms": 54.16092872619629,
+        "min_response_time_ms": 1.2123584747314453,
+        "max_response_time_ms": 262.5854015350342,
+        "successful_requests": 5,
+        "total_requests": 5
+      },
+      {
+        "service": "Auth Service",
+        "success": true,
+        "avg_response_time_ms": 52.30569839477539,
+        "min_response_time_ms": 1.0726451873779297,
+        "max_response_time_ms": 254.51898574829102,
+        "successful_requests": 5,
+        "total_requests": 5
+      },
+      {
+        "service": "Task Management",
+        "success": true,
+        "avg_response_time_ms": 53.31826210021973,
+        "min_response_time_ms": 1.9350051879882812,
+        "max_response_time_ms": 258.63099098205566,
+        "successful_requests": 5,
+        "total_requests": 5
+      }
+    ]
+  },
+  "recommendations": [
+    "すべての検証項目が正常に完了しました。API連携は適切に動作しています。"
+  ],
+  "timestamp": "2025-07-30T09:54:33.332113"
+}

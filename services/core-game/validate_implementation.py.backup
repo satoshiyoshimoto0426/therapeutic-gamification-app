@@ -1,0 +1,180 @@
+"""
+[UNICODE_30B3]API[UNICODE_5B9F]
+Validate Core Game Engine API implementation
+"""
+
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+
+def validate_api_implementation():
+    """API[UNICODE_5B9F]"""
+    print("=== Core Game Engine API Implementation Validation ===")
+    
+    try:
+        # 1. FastAPI[UNICODE_30A2]
+        from main import app
+        print("[UNICODE_2713] FastAPI app imported successfully")
+        
+        # 2. [UNICODE_5FC5]
+        from main import (
+            AddXPRequest, AddXPResponse, GetLevelProgressRequest,
+            CheckResonanceRequest, ResonanceEventTriggerRequest,
+            GameSystemStatusRequest, GameSystemStatusResponse
+        )
+        print("[UNICODE_2713] API models imported successfully")
+        
+        # 3. [UNICODE_5171]
+        from shared.interfaces.level_system import LevelSystemManager
+        from shared.interfaces.resonance_system import ResonanceEventManager
+        print("[UNICODE_2713] Shared interfaces imported successfully")
+        
+        # 4. API[UNICODE_30EB]
+        routes = [route.path for route in app.routes]
+        expected_routes = [
+            "/health",
+            "/xp/add",
+            "/level/progress", 
+            "/resonance/check",
+            "/resonance/trigger",
+            "/system/status",
+            "/xp/calculate"
+        ]
+        
+        for route in expected_routes:
+            if route in routes:
+                print(f"[UNICODE_2713] Route {route} exists")
+            else:
+                print(f"[UNICODE_2717] Route {route} missing")
+        
+        # 5. [UNICODE_30D8]
+        from main import get_or_create_game_system, get_or_create_resonance_manager
+        from main import create_error_response, create_success_response
+        print("[UNICODE_2713] Helper functions available")
+        
+        # 6. [UNICODE_57FA]
+        print("\n--- Basic Functionality Test ---")
+        
+        # [UNICODE_30B2]
+        game_system = get_or_create_game_system("test_user")
+        print(f"[UNICODE_2713] Game system created for test_user")
+        
+        # XP[UNICODE_8FFD]
+        result = game_system.add_player_xp(100, "validation_test")
+        print(f"[UNICODE_2713] XP added: {result['player']['xp_added']} XP")
+        print(f"[UNICODE_2713] Level: {result['player']['old_level']} [UNICODE_2192] {result['player']['new_level']}")
+        
+        # [UNICODE_5171]
+        resonance_manager = get_or_create_resonance_manager("test_user")
+        print("[UNICODE_2713] Resonance manager created")
+        
+        # [UNICODE_5171]
+        status = game_system.get_system_status()
+        can_resonate, resonance_type = resonance_manager.check_resonance_conditions(
+            status["player"]["level"], status["yu"]["level"]
+        )
+        print(f"[UNICODE_2713] Resonance check: {can_resonate} ({resonance_type})")
+        
+        # 7. [UNICODE_30EC]
+        print("\n--- Response Model Validation ---")
+        
+        # AddXPResponse[UNICODE_306E]
+        add_xp_response = AddXPResponse(
+            success=True,
+            uid="test_user",
+            xp_added=100,
+            total_xp=100,
+            old_level=1,
+            new_level=2,
+            level_up=True,
+            rewards=["test_reward"],
+            yu_growth={"old_level": 1, "new_level": 1, "growth_occurred": False}
+        )
+        print("[UNICODE_2713] AddXPResponse model validation passed")
+        
+        # GameSystemStatusResponse[UNICODE_306E]
+        status_response = GameSystemStatusResponse(
+            uid="test_user",
+            player_level=2,
+            player_xp=100,
+            yu_level=1,
+            level_difference=1,
+            resonance_available=False,
+            last_resonance=None,
+            total_resonance_events=0,
+            system_health="healthy"
+        )
+        print("[UNICODE_2713] GameSystemStatusResponse model validation passed")
+        
+        # 8. [UNICODE_30A8]
+        print("\n--- Error Handling Validation ---")
+        
+        error_response = create_error_response(
+            "TEST_ERROR",
+            "This is a test error",
+            {"test": "data"},
+            400
+        )
+        print("[UNICODE_2713] Error response creation working")
+        
+        success_response = create_success_response({"test": "data"})
+        print("[UNICODE_2713] Success response creation working")
+        
+        print("\n=== Validation Completed Successfully ===")
+        return True
+        
+    except ImportError as e:
+        print(f"[UNICODE_2717] Import error: {e}")
+        return False
+    except Exception as e:
+        print(f"[UNICODE_2717] Validation error: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def validate_api_endpoints():
+    """API[UNICODE_30A8]"""
+    print("\n=== API Endpoints Detailed Validation ===")
+    
+    try:
+        from main import app
+        
+        # [UNICODE_30EB]
+        print("Available routes:")
+        for route in app.routes:
+            if hasattr(route, 'methods') and hasattr(route, 'path'):
+                methods = ', '.join(route.methods)
+                print(f"  {methods:10} {route.path}")
+        
+        # [UNICODE_30DF]
+        print(f"\nMiddleware count: {len(app.user_middleware)}")
+        
+        # [UNICODE_4F8B]
+        print(f"Exception handlers: {len(app.exception_handlers)}")
+        
+        return True
+        
+    except Exception as e:
+        print(f"[UNICODE_2717] Endpoint validation error: {e}")
+        return False
+
+def main():
+    """[UNICODE_30E1]"""
+    print("Starting Core Game Engine API validation...\n")
+    
+    # [UNICODE_57FA]
+    basic_validation = validate_api_implementation()
+    
+    # [UNICODE_30A8]
+    endpoint_validation = validate_api_endpoints()
+    
+    if basic_validation and endpoint_validation:
+        print("\n[UNICODE_1F389] All validations passed! Core Game Engine API is ready.")
+        return True
+    else:
+        print("\n[UNICODE_274C] Some validations failed. Please check the implementation.")
+        return False
+
+if __name__ == "__main__":
+    success = main()
+    exit(0 if success else 1)

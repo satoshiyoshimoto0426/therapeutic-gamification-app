@@ -1,0 +1,350 @@
+#!/usr/bin/env python3
+"""
+Mood-XP Integration Tests
+
+[UNICODE_30BF]7.2[UNICODE_306E]:
+- [UNICODE_6C17]XP[UNICODE_8A08]
+- [UNICODE_6C17]
+- [UNICODE_6C17]API[UNICODE_30A8]
+- [UNICODE_6C17]
+
+Requirements: 5.2, 5.4
+"""
+
+import pytest
+import sys
+import os
+from fastapi.testclient import TestClient
+from datetime import datetime, date, timedelta
+
+# Add project root to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+from services.mood_tracking.main import app
+from shared.interfaces.mood_system import mood_tracking_system
+
+
+class TestMoodXPIntegration:
+    """[UNICODE_6C17]-XP[UNICODE_7D71]"""
+    
+    def setup_method(self):
+        """[UNICODE_30C6]"""
+        self.client = TestClient(app)
+        self.test_uid = "xp_integration_test_user"
+    
+    def test_mood_coefficient_for_xp_endpoint(self):
+        """XP[UNICODE_8A08]"""
+        # [UNICODE_307E]
+        mood_request = {
+            "overall_mood": 4,
+            "notes": "[UNICODE_826F]"
+        }
+        
+        log_response = self.client.post(f"/mood/{self.test_uid}/log", json=mood_request)
+        assert log_response.status_code == 200
+        
+        # XP[UNICODE_8A08]
+        response = self.client.get(
+            f"/mood/{self.test_uid}/coefficient/for-xp?task_difficulty=3&base_xp=30"
+        )
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data["uid"] == self.test_uid
+        assert data["mood_coefficient"] == 1.1  # [UNICODE_6C17]4 -> 1.1
+        assert data["base_xp"] == 30
+        assert data["adjusted_xp"] == 33  # 30 * 1.1 = 33
+        assert data["xp_bonus"] == 3
+        assert data["has_mood_log"] is True
+        assert data["overall_mood"] == 4
+        assert "calculation_details" in data
+        assert data["calculation_details"]["mood_impact"] == "positive"
+    
+    def test_mood_coefficient_for_xp_no_mood_log(self):
+        """[UNICODE_6C17]XP[UNICODE_4FC2]"""
+        response = self.client.get(
+            f"/mood/no_mood_user/coefficient/for-xp?task_difficulty=2&base_xp=20"
+        )
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data["mood_coefficient"] == 1.0  # [UNICODE_30C7]
+        assert data["base_xp"] == 20
+        assert data["adjusted_xp"] == 20  # 20 * 1.0 = 20
+        assert data["xp_bonus"] == 0
+        assert data["has_mood_log"] is False
+        assert data["overall_mood"] is None
+        assert data["calculation_details"]["mood_impact"] == "neutral"
+    
+    def test_xp_integration_endpoint(self):
+        """XP[UNICODE_7D71]"""
+        # [UNICODE_8907]
+        for i in range(5):
+            log_date = (date.today() - timedelta(days=i)).isoformat()
+            mood_request = {
+                "overall_mood": 3 + (i % 3),  # 3,4,5,3,4[UNICODE_306E]
+                "energy_level": 2 + i % 4,
+                "motivation_level": 1 + i % 5,
+                "anxiety_level": 3 - (i % 2),  # 3,2,3,2,3[UNICODE_306E]
+                "log_date": log_date
+            }
+            
+            response = self.client.post(f"/mood/{self.test_uid}/log", json=mood_request)
+            assert response.status_code == 200
+        
+        # XP[UNICODE_7D71]
+        integration_request = {
+            "task_type": "one_shot",
+            "base_xp": 50,
+            "task_difficulty": 3
+        }
+        
+        response = self.client.post(
+            f"/mood/{self.test_uid}/xp-integration",
+            json=integration_request
+        )
+        assert response.status_code == 200
+        
+        data = response.json()
+        
+        # [UNICODE_7D71]
+        integration_result = data["integration_result"]
+        assert integration_result["base_xp"] == 50
+        assert 0.8 <= integration_result["mood_coefficient"] <= 1.2
+        assert integration_result["adjusted_xp"] > 0
+        assert integration_result["task_type"] == "one_shot"
+        assert integration_result["task_difficulty"] == 3
+        
+        # [UNICODE_6C17]
+        mood_context = data["mood_context"]
+        assert mood_context["has_today_log"] is True
+        assert mood_context["overall_mood"] is not None
+        assert mood_context["recent_entries_count"] == 5
+        assert "trend_direction" in mood_context
+        
+        # [UNICODE_6CBB]
+        therapeutic_feedback = data["therapeutic_feedback"]
+        assert "message" in therapeutic_feedback
+        assert "encouragement" in therapeutic_feedback
+        assert "insights" in therapeutic_feedback
+        assert "mood_impact" in therapeutic_feedback
+        
+        # [UNICODE_63A8]
+        recommendations = data["recommendations"]
+        assert isinstance(recommendations, list)
+        assert len(recommendations) > 0
+    
+    def test_therapeutic_feedback_generation(self):
+        """[UNICODE_6CBB]"""
+        # [UNICODE_4F4E]
+        low_mood_request = {
+            "overall_mood": 2,
+            "energy_level": 1,
+            "anxiety_level": 2,  # [UNICODE_9AD8]
+            "notes": "[UNICODE_4ECA]"
+        }
+        
+        log_response = self.client.post(f"/mood/{self.test_uid}/log", json=low_mood_request)
+        assert log_response.status_code == 200
+        
+        integration_request = {
+            "base_xp": 20,
+            "task_difficulty": 1
+        }
+        
+        response = self.client.post(
+            f"/mood/{self.test_uid}/xp-integration",
+            json=integration_request
+        )
+        assert response.status_code == 200
+        
+        data = response.json()
+        feedback = data["therapeutic_feedback"]
+        
+        # [UNICODE_4F4E]
+        assert feedback["mood_impact"] == "challenging"
+        assert "[UNICODE_7D20]" in feedback["message"] or "[UNICODE_53D6]" in feedback["message"]
+        assert len(feedback["insights"]) > 0
+        
+        # [UNICODE_63A8]
+        recommendations = data["recommendations"]
+        assert any("[UNICODE_7121]" in rec or "[UNICODE_7C21]" in rec for rec in recommendations)
+    
+    def test_mood_coefficient_range_validation(self):
+        """[UNICODE_6C17]"""
+        # [UNICODE_5404]
+        mood_levels = [1, 2, 3, 4, 5]
+        expected_coefficients = [0.8, 0.9, 1.0, 1.1, 1.2]
+        
+        for mood_level, expected_coeff in zip(mood_levels, expected_coefficients):
+            # [UNICODE_6C17]
+            mood_request = {"overall_mood": mood_level}
+            log_response = self.client.post(f"/mood/coeff_test_{mood_level}/log", json=mood_request)
+            assert log_response.status_code == 200
+            
+            # [UNICODE_4FC2]
+            response = self.client.get(
+                f"/mood/coeff_test_{mood_level}/coefficient/for-xp?base_xp=100"
+            )
+            assert response.status_code == 200
+            
+            data = response.json()
+            # [UNICODE_57FA]
+            basic_coeff = 0.8 + (mood_level - 1) * 0.1
+            assert abs(basic_coeff - expected_coeff) < 0.01
+            
+            # [UNICODE_8ABF]XP[UNICODE_304C]
+            assert 80 <= data["adjusted_xp"] <= 120  # 100 * (0.8-1.2)
+    
+    def test_mood_history_analysis_integration(self):
+        """[UNICODE_6C17]"""
+        # [UNICODE_6539]
+        for i in range(10):
+            log_date = (date.today() - timedelta(days=9-i)).isoformat()
+            mood_level = min(5, 2 + i // 2)  # [UNICODE_5F90]
+            
+            mood_request = {
+                "overall_mood": mood_level,
+                "energy_level": mood_level,
+                "motivation_level": mood_level,
+                "log_date": log_date
+            }
+            
+            response = self.client.post(f"/mood/{self.test_uid}/log", json=mood_request)
+            assert response.status_code == 200
+        
+        # [UNICODE_7D71]
+        integration_request = {"base_xp": 40}
+        
+        response = self.client.post(
+            f"/mood/{self.test_uid}/xp-integration",
+            json=integration_request
+        )
+        assert response.status_code == 200
+        
+        data = response.json()
+        
+        # [UNICODE_5C65]
+        mood_context = data["mood_context"]
+        assert mood_context["recent_entries_count"] >= 7  # [UNICODE_6700]7[UNICODE_65E5]
+        
+        # [UNICODE_6CBB]
+        feedback = data["therapeutic_feedback"]
+        insights = feedback["insights"]
+        
+        # [UNICODE_6539]
+        trend_mentioned = any(
+            "[UNICODE_6539]" in insight or "[UNICODE_826F]" in insight or "[UNICODE_5B89]" in insight 
+            for insight in insights
+        )
+        # [UNICODE_30C8]
+        # [UNICODE_305D]
+        assert len(insights) > 0
+    
+    def test_xp_integration_error_handling(self):
+        """XP[UNICODE_7D71]"""
+        # [UNICODE_7121]
+        invalid_request = {
+            "base_xp": -10,  # [UNICODE_8CA0]
+            "task_difficulty": 10  # [UNICODE_7BC4]
+        }
+        
+        response = self.client.post(
+            f"/mood/{self.test_uid}/xp-integration",
+            json=invalid_request
+        )
+        # [UNICODE_30A8]
+        # [UNICODE_5B9F]
+        assert response.status_code in [200, 400, 422]
+    
+    def test_mood_recommendations_variety(self):
+        """[UNICODE_6C17]"""
+        test_cases = [
+            {
+                "mood_data": {
+                    "overall_mood": 5,
+                    "energy_level": 5,
+                    "motivation_level": 5
+                },
+                "expected_keywords": ["[UNICODE_6311]", "[UNICODE_6D3B]"]
+            },
+            {
+                "mood_data": {
+                    "overall_mood": 1,
+                    "energy_level": 1,
+                    "anxiety_level": 1
+                },
+                "expected_keywords": ["[UNICODE_7121]", "[UNICODE_7C21]", "[UNICODE_4F11]"]
+            },
+            {
+                "mood_data": {
+                    "overall_mood": 3,
+                    "focus_level": 1
+                },
+                "expected_keywords": ["[UNICODE_96C6]", "[UNICODE_74B0]"]
+            }
+        ]
+        
+        for i, test_case in enumerate(test_cases):
+            test_uid = f"recommendation_test_{i}"
+            
+            # [UNICODE_6C17]
+            log_response = self.client.post(f"/mood/{test_uid}/log", json=test_case["mood_data"])
+            assert log_response.status_code == 200
+            
+            # [UNICODE_7D71]
+            integration_request = {"base_xp": 30}
+            response = self.client.post(f"/mood/{test_uid}/xp-integration", json=integration_request)
+            assert response.status_code == 200
+            
+            data = response.json()
+            recommendations = data["recommendations"]
+            
+            # [UNICODE_671F]
+            recommendations_text = " ".join(recommendations)
+            keyword_found = any(
+                keyword in recommendations_text 
+                for keyword in test_case["expected_keywords"]
+            )
+            
+            # [UNICODE_5C11]
+            assert len(recommendations) > 0
+            print(f"Test case {i}: Generated {len(recommendations)} recommendations")
+
+
+def test_integration_with_core_game_engine():
+    """[UNICODE_30B3]"""
+    # [UNICODE_5B9F]
+    # [UNICODE_3053]XP[UNICODE_8A08]
+    
+    client = TestClient(app)
+    test_uid = "core_game_integration_test"
+    
+    # [UNICODE_9AD8]
+    mood_request = {
+        "overall_mood": 5,
+        "energy_level": 5,
+        "motivation_level": 5
+    }
+    
+    log_response = client.post(f"/mood/{test_uid}/log", json=mood_request)
+    assert log_response.status_code == 200
+    
+    # XP[UNICODE_8A08]
+    response = client.get(f"/mood/{test_uid}/coefficient/for-xp?base_xp=100")
+    assert response.status_code == 200
+    
+    data = response.json()
+    
+    # [UNICODE_9AD8]
+    assert data["mood_coefficient"] > 1.0
+    assert data["adjusted_xp"] > data["base_xp"]
+    assert data["xp_bonus"] > 0
+    
+    # [UNICODE_30B3]
+    assert "calculation_details" in data
+    assert "formula" in data["calculation_details"]
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

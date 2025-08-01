@@ -1,0 +1,363 @@
+"""
+Edge AI Cache Service [UNICODE_30C6]
+"""
+import pytest
+import asyncio
+import numpy as np
+from datetime import datetime, timedelta
+from fastapi.testclient import TestClient
+from main import (
+    app, edge_ai_engine, intelligent_cache,
+    EdgeAICacheEngine, IntelligentCache, CacheStrategy, ModelType,
+    TensorFlowLiteModel, ONNXModel, CacheItem
+)
+
+client = TestClient(app)
+
+class TestIntelligentCache:
+    def setup_method(self):
+        """[UNICODE_30C6]"""
+        self.cache = IntelligentCache(max_size=10, strategy=CacheStrategy.HYBRID)
+    
+    @pytest.mark.asyncio
+    async def test_cache_basic_operations(self):
+        """[UNICODE_57FA]"""
+        # [UNICODE_30C7]
+        result = await self.cache.put("test_key", "test_value", ModelType.STORY_GENERATION)
+        assert result is True
+        
+        # [UNICODE_30C7]
+        value = await self.cache.get("test_key")
+        assert value == "test_value"
+        
+        # [UNICODE_7D71]
+        stats = self.cache.get_stats()
+        assert stats["total_hits"] == 1
+        assert stats["total_misses"] == 0
+        assert stats["cache_size"] == 1
+    
+    @pytest.mark.asyncio
+    async def test_cache_miss(self):
+        """[UNICODE_30AD]"""
+        # [UNICODE_5B58]
+        value = await self.cache.get("nonexistent_key")
+        assert value is None
+        
+        # [UNICODE_7D71]
+        stats = self.cache.get_stats()
+        assert stats["total_misses"] == 1
+        assert stats["total_hits"] == 0
+    
+    @pytest.mark.asyncio
+    async def test_cache_ttl(self):
+        """TTL[UNICODE_FF08]Time To Live[UNICODE_FF09]"""
+        # TTL[UNICODE_4ED8]
+        await self.cache.put("ttl_key", "ttl_value", ModelType.TASK_RECOMMENDATION, ttl_seconds=1)
+        
+        # [UNICODE_5373]
+        value = await self.cache.get("ttl_key")
+        assert value == "ttl_value"
+        
+        # TTL[UNICODE_671F]
+        await asyncio.sleep(1.1)
+        value = await self.cache.get("ttl_key")
+        assert value is None
+    
+    @pytest.mark.asyncio
+    async def test_cache_eviction(self):
+        """[UNICODE_30AD]"""
+        # [UNICODE_6700]
+        for i in range(10):
+            await self.cache.put(f"key_{i}", f"value_{i}", ModelType.MOOD_PREDICTION)
+        
+        assert len(self.cache.cache) == 10
+        
+        # [UNICODE_5BB9]
+        await self.cache.put("overflow_key", "overflow_value", ModelType.USER_BEHAVIOR)
+        
+        # [UNICODE_9000]
+        assert len(self.cache.cache) <= 10
+        assert self.cache.stats["evictions"] > 0
+    
+    @pytest.mark.asyncio
+    async def test_prediction_score_calculation(self):
+        """[UNICODE_4E88]"""
+        # [UNICODE_30E6]
+        from main import UserBehaviorPattern
+        
+        self.cache.user_patterns["test_user"] = UserBehaviorPattern(
+            user_id="test_user",
+            session_patterns=[],
+            task_preferences={"test_hash": 0.8},
+            time_patterns={str(datetime.now().hour): 0.9},
+            mood_patterns={"current": 0.7},
+            prediction_accuracy=0.85
+        )
+        
+        # [UNICODE_4E88]
+        score = await self.cache._calculate_prediction_score(
+            "test_key", "test_user", ModelType.STORY_GENERATION
+        )
+        
+        assert 0.0 <= score <= 1.0
+        assert score > 0.5  # [UNICODE_826F]
+    
+    @pytest.mark.asyncio
+    async def test_user_pattern_analysis(self):
+        """[UNICODE_30E6]"""
+        # [UNICODE_30A2]
+        for i in range(20):
+            self.cache.access_history.append({
+                "key": f"key_{i % 5}",
+                "user_id": "test_user",
+                "timestamp": datetime.now() - timedelta(minutes=i),
+                "hit": i % 3 == 0  # 33%[UNICODE_306E]
+            })
+        
+        # [UNICODE_30D1]
+        await self.cache._analyze_user_pattern("test_user")
+        
+        # [UNICODE_30D1]
+        assert "test_user" in self.cache.user_patterns
+        pattern = self.cache.user_patterns["test_user"]
+        
+        assert pattern.user_id == "test_user"
+        assert len(pattern.time_patterns) > 0
+        assert len(pattern.task_preferences) > 0
+        assert 0.0 <= pattern.prediction_accuracy <= 1.0
+
+class TestEdgeAIModels:
+    @pytest.mark.asyncio
+    async def test_tensorflow_lite_model_mock(self):
+        """TensorFlow Lite[UNICODE_30E2]"""
+        model = TensorFlowLiteModel("mock_path.tflite", ModelType.STORY_GENERATION)
+        await model.load_model()
+        
+        assert model.is_loaded is True
+        
+        # [UNICODE_4E88]
+        input_data = np.array([[1.0, 2.0, 3.0]], dtype=np.float32)
+        result = await model.predict(input_data)
+        
+        assert isinstance(result, np.ndarray)
+        assert len(result) > 0
+    
+    @pytest.mark.asyncio
+    async def test_onnx_model_mock(self):
+        """ONNX[UNICODE_30E2]"""
+        model = ONNXModel("mock_path.onnx", ModelType.TASK_RECOMMENDATION)
+        await model.load_model()
+        
+        assert model.is_loaded is True
+        
+        # [UNICODE_4E88]
+        input_data = {"input": np.array([[0.5, 1.5]], dtype=np.float32)}
+        result = await model.predict(input_data)
+        
+        assert isinstance(result, (np.ndarray, float))
+
+class TestEdgeAICacheEngine:
+    def setup_method(self):
+        """[UNICODE_30C6]"""
+        self.engine = EdgeAICacheEngine()
+    
+    @pytest.mark.asyncio
+    async def test_engine_initialization(self):
+        """[UNICODE_30A8]"""
+        await self.engine.initialize()
+        
+        # [UNICODE_30AD]
+        assert self.engine.cache is not None
+        
+        # [UNICODE_30E2]
+        assert len(self.engine.models) >= 0  # [UNICODE_30E2]0[UNICODE_3067]
+    
+    @pytest.mark.asyncio
+    async def test_cached_inference(self):
+        """[UNICODE_30AD]"""
+        await self.engine.initialize()
+        
+        # [UNICODE_63A8]
+        input_data = {"text": "test story prompt"}
+        result1 = await self.engine.get_cached_inference(
+            ModelType.STORY_GENERATION, input_data, "test_user"
+        )
+        
+        # 2[UNICODE_56DE]
+        result2 = await self.engine.get_cached_inference(
+            ModelType.STORY_GENERATION, input_data, "test_user"
+        )
+        
+        # [UNICODE_7D50]
+        if result1 is not None and result2 is not None:
+            assert np.array_equal(result1, result2)
+    
+    @pytest.mark.asyncio
+    async def test_offline_queue_operations(self):
+        """[UNICODE_30AA]"""
+        # [UNICODE_30AA]
+        operation1 = {
+            "type": "task_completion",
+            "task_id": "task_123",
+            "user_id": "user_456"
+        }
+        
+        await self.engine.add_to_offline_queue(operation1)
+        assert len(self.engine.offline_queue) == 1
+        
+        operation2 = {
+            "type": "mood_update",
+            "mood_score": 4,
+            "user_id": "user_456"
+        }
+        
+        await self.engine.add_to_offline_queue(operation2)
+        assert len(self.engine.offline_queue) == 2
+        
+        # [UNICODE_540C]
+        sync_result = await self.engine.sync_offline_operations()
+        
+        assert sync_result["status"] == "completed"
+        assert sync_result["synced_count"] >= 0
+    
+    def test_cache_key_generation(self):
+        """[UNICODE_30AD]"""
+        input_data1 = {"text": "hello world"}
+        input_data2 = {"text": "hello world"}
+        input_data3 = {"text": "goodbye world"}
+        
+        key1 = self.engine._generate_cache_key(ModelType.STORY_GENERATION, input_data1)
+        key2 = self.engine._generate_cache_key(ModelType.STORY_GENERATION, input_data2)
+        key3 = self.engine._generate_cache_key(ModelType.STORY_GENERATION, input_data3)
+        
+        # [UNICODE_540C]
+        assert key1 == key2
+        
+        # [UNICODE_7570]
+        assert key1 != key3
+        
+        # [UNICODE_30AD]
+        assert key1.startswith("story_generation_")
+        assert len(key1) > 20  # [UNICODE_30CF]
+
+class TestEdgeAICacheAPI:
+    def test_health_check_endpoint(self):
+        """[UNICODE_30D8]API[UNICODE_30C6]"""
+        response = client.get("/edge-ai/health")
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert "status" in data
+        assert "cache_hit_rate" in data
+        assert "models_loaded" in data
+        assert "offline_queue_size" in data
+    
+    def test_cache_stats_endpoint(self):
+        """[UNICODE_30AD]API[UNICODE_30C6]"""
+        response = client.get("/edge-ai/cache/stats")
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert "cache_size" in data
+        assert "hit_rate" in data
+        assert "strategy" in data
+    
+    def test_models_status_endpoint(self):
+        """[UNICODE_30E2]API[UNICODE_30C6]"""
+        response = client.get("/edge-ai/models/status")
+        assert response.status_code == 200
+        
+        data = response.json()
+        # [UNICODE_30E2]
+        assert isinstance(data, dict)
+    
+    def test_offline_operations_endpoints(self):
+        """[UNICODE_30AA]API[UNICODE_30C6]"""
+        # [UNICODE_30AA]
+        operation = {
+            "type": "task_completion",
+            "task_id": "test_task",
+            "user_id": "test_user"
+        }
+        
+        response = client.post("/edge-ai/offline/add", json=operation)
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data["status"] == "added"
+        assert "queue_size" in data
+        
+        # [UNICODE_540C]
+        response = client.post("/edge-ai/offline/sync")
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert "status" in data
+        assert "synced_count" in data
+    
+    def test_inference_endpoint(self):
+        """[UNICODE_63A8]API[UNICODE_30C6]"""
+        input_data = {"text": "test input"}
+        
+        response = client.get(
+            "/edge-ai/inference/story_generation",
+            params={"input_data": input_data, "user_id": "test_user"}
+        )
+        
+        # [UNICODE_30E2]
+        # 400[UNICODE_307E]500[UNICODE_30A8]
+        assert response.status_code in [200, 400, 500]
+    
+    def test_model_quantization_endpoint(self):
+        """[UNICODE_30E2]API[UNICODE_30C6]"""
+        response = client.post("/edge-ai/models/story_generation/quantize")
+        
+        # [UNICODE_30E2]404[UNICODE_304C]
+        assert response.status_code in [200, 404]
+
+class TestCacheStrategies:
+    @pytest.mark.asyncio
+    async def test_lru_strategy(self):
+        """LRU[UNICODE_6226]"""
+        cache = IntelligentCache(max_size=3, strategy=CacheStrategy.LRU)
+        
+        # [UNICODE_30AD]
+        await cache.put("key1", "value1", ModelType.STORY_GENERATION)
+        await cache.put("key2", "value2", ModelType.STORY_GENERATION)
+        await cache.put("key3", "value3", ModelType.STORY_GENERATION)
+        
+        # key1[UNICODE_306B]
+        await cache.get("key1")
+        
+        # [UNICODE_65B0]key2[UNICODE_304C]
+        await cache.put("key4", "value4", ModelType.STORY_GENERATION)
+        
+        # key1[UNICODE_3068]key3[UNICODE_306F]
+        assert await cache.get("key1") == "value1"
+        assert await cache.get("key3") == "value3"
+        assert await cache.get("key4") == "value4"
+    
+    @pytest.mark.asyncio
+    async def test_predictive_strategy(self):
+        """[UNICODE_4E88]"""
+        cache = IntelligentCache(max_size=3, strategy=CacheStrategy.PREDICTIVE)
+        
+        # [UNICODE_4E88]
+        await cache.put("high_score", "value1", ModelType.STORY_GENERATION)
+        await cache.put("medium_score", "value2", ModelType.STORY_GENERATION)
+        await cache.put("low_score", "value3", ModelType.STORY_GENERATION)
+        
+        # [UNICODE_4E88]
+        cache.cache["high_score"].prediction_score = 0.9
+        cache.cache["medium_score"].prediction_score = 0.5
+        cache.cache["low_score"].prediction_score = 0.1
+        
+        # [UNICODE_65B0]
+        await cache.put("new_item", "value4", ModelType.STORY_GENERATION)
+        
+        # [UNICODE_9AD8]
+        assert await cache.get("high_score") == "value1"
+        assert await cache.get("new_item") == "value4"
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

@@ -1,0 +1,486 @@
+"""
+RBAC (Role-Based Access Control) System Interface
+
+Guardian/Support System Portal[UNICODE_7528]
+3[UNICODE_3064]view-only[UNICODE_3001]task-edit[UNICODE_3001]chat-send[UNICODE_FF09]
+
+Requirements: 6.1
+"""
+
+from typing import Dict, List, Optional, Set, Any
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+import json
+
+
+class PermissionLevel(Enum):
+    """[UNICODE_6A29]"""
+    VIEW_ONLY = "view-only"      # [UNICODE_95B2]
+    TASK_EDIT = "task-edit"      # [UNICODE_30BF]
+    CHAT_SEND = "chat-send"      # [UNICODE_30C1]
+
+
+class ResourceType(Enum):
+    """[UNICODE_30EA]"""
+    USER_PROFILE = "user_profile"
+    TASK_DATA = "task_data"
+    PROGRESS_DATA = "progress_data"
+    CHAT_MESSAGES = "chat_messages"
+    REPORTS = "reports"
+    MANDALA_GRID = "mandala_grid"
+    STORY_DATA = "story_data"
+    MOOD_DATA = "mood_data"
+    DASHBOARD = "dashboard"
+    TASKS = "tasks"
+    CHAT = "chat"
+
+
+class Action(Enum):
+    """[UNICODE_30A2]"""
+    READ = "read"
+    WRITE = "write"
+    DELETE = "delete"
+    EXECUTE = "execute"
+    VIEW = "view"
+    EDIT = "edit"
+    SEND = "send"
+
+
+@dataclass
+class Permission:
+    """[UNICODE_6A29]"""
+    resource_type: ResourceType
+    actions: Set[Action]
+    conditions: Dict[str, Any] = field(default_factory=dict)
+    
+    def allows_action(self, action: Action, context: Dict[str, Any] = None) -> bool:
+        """[UNICODE_6307]"""
+        if action not in self.actions:
+            return False
+        
+        # [UNICODE_6761]
+        if self.conditions and context:
+            for condition_key, condition_value in self.conditions.items():
+                if context.get(condition_key) != condition_value:
+                    return False
+        
+        return True
+
+
+@dataclass
+class Role:
+    """[UNICODE_30ED]"""
+    name: str
+    permission_level: PermissionLevel
+    permissions: List[Permission]
+    description: str
+    is_active: bool = True
+    created_at: datetime = field(default_factory=datetime.now)
+    
+    def has_permission(self, resource_type: ResourceType, action: Action, 
+                      context: Dict[str, Any] = None) -> bool:
+        """[UNICODE_6307]"""
+        if not self.is_active:
+            return False
+        
+        for permission in self.permissions:
+            if permission.resource_type == resource_type:
+                return permission.allows_action(action, context)
+        
+        return False
+    
+    def get_allowed_actions(self, resource_type: ResourceType) -> Set[Action]:
+        """[UNICODE_6307]"""
+        for permission in self.permissions:
+            if permission.resource_type == resource_type:
+                return permission.actions
+        return set()
+
+
+@dataclass
+class UserRole:
+    """[UNICODE_30E6]"""
+    user_id: str
+    guardian_id: str
+    role: Role
+    granted_by: str
+    granted_at: datetime = field(default_factory=datetime.now)
+    expires_at: Optional[datetime] = None
+    is_active: bool = True
+    
+    def is_valid(self) -> bool:
+        """[UNICODE_30ED]"""
+        if not self.is_active:
+            return False
+        
+        if self.expires_at and datetime.now() > self.expires_at:
+            return False
+        
+        return self.role.is_active
+
+
+class RBACSystem:
+    """RBAC[UNICODE_6A29]"""
+    
+    def __init__(self):
+        self.roles: Dict[str, Role] = {}
+        self.user_roles: Dict[str, List[UserRole]] = {}  # user_id -> UserRole list
+        self.guardian_roles: Dict[str, List[UserRole]] = {}  # guardian_id -> UserRole list
+        
+        # [UNICODE_30C7]
+        self._initialize_default_roles()
+    
+    def _initialize_default_roles(self) -> None:
+        """[UNICODE_30C7]"""
+        
+        # View-Only Role
+        view_only_permissions = [
+            Permission(ResourceType.USER_PROFILE, {Action.READ}),
+            Permission(ResourceType.PROGRESS_DATA, {Action.READ}),
+            Permission(ResourceType.REPORTS, {Action.READ}),
+            Permission(ResourceType.MANDALA_GRID, {Action.READ}),
+            Permission(ResourceType.MOOD_DATA, {Action.READ}),
+        ]
+        
+        view_only_role = Role(
+            name="Guardian Viewer",
+            permission_level=PermissionLevel.VIEW_ONLY,
+            permissions=view_only_permissions,
+            description="[UNICODE_95B2]"
+        )
+        
+        # Task-Edit Role
+        task_edit_permissions = [
+            Permission(ResourceType.USER_PROFILE, {Action.READ}),
+            Permission(ResourceType.TASK_DATA, {Action.READ, Action.WRITE}),
+            Permission(ResourceType.PROGRESS_DATA, {Action.READ}),
+            Permission(ResourceType.REPORTS, {Action.READ}),
+            Permission(ResourceType.MANDALA_GRID, {Action.READ, Action.WRITE}),
+            Permission(ResourceType.MOOD_DATA, {Action.READ}),
+        ]
+        
+        task_edit_role = Role(
+            name="Guardian Task Editor",
+            permission_level=PermissionLevel.TASK_EDIT,
+            permissions=task_edit_permissions,
+            description="[UNICODE_30BF]"
+        )
+        
+        # Chat-Send Role
+        chat_send_permissions = [
+            Permission(ResourceType.USER_PROFILE, {Action.READ}),
+            Permission(ResourceType.TASK_DATA, {Action.READ, Action.WRITE}),
+            Permission(ResourceType.PROGRESS_DATA, {Action.READ}),
+            Permission(ResourceType.CHAT_MESSAGES, {Action.READ, Action.WRITE}),
+            Permission(ResourceType.REPORTS, {Action.READ}),
+            Permission(ResourceType.MANDALA_GRID, {Action.READ, Action.WRITE}),
+            Permission(ResourceType.MOOD_DATA, {Action.READ}),
+            Permission(ResourceType.STORY_DATA, {Action.READ}),
+        ]
+        
+        chat_send_role = Role(
+            name="Guardian Full Access",
+            permission_level=PermissionLevel.CHAT_SEND,
+            permissions=chat_send_permissions,
+            description="[UNICODE_30C1]"
+        )
+        
+        # [UNICODE_30ED]
+        self.roles[PermissionLevel.VIEW_ONLY.value] = view_only_role
+        self.roles[PermissionLevel.TASK_EDIT.value] = task_edit_role
+        self.roles[PermissionLevel.CHAT_SEND.value] = chat_send_role
+    
+    def grant_role(self, user_id: str, guardian_id: str, permission_level: PermissionLevel,
+                   granted_by: str, expires_at: Optional[datetime] = None) -> bool:
+        """[UNICODE_30E6]"""
+        if permission_level.value not in self.roles:
+            return False
+        
+        role = self.roles[permission_level.value]
+        user_role = UserRole(
+            user_id=user_id,
+            guardian_id=guardian_id,
+            role=role,
+            granted_by=granted_by,
+            expires_at=expires_at
+        )
+        
+        # [UNICODE_30E6]
+        if user_id not in self.user_roles:
+            self.user_roles[user_id] = []
+        self.user_roles[user_id].append(user_role)
+        
+        # [UNICODE_4FDD]
+        if guardian_id not in self.guardian_roles:
+            self.guardian_roles[guardian_id] = []
+        self.guardian_roles[guardian_id].append(user_role)
+        
+        return True
+    
+    def revoke_role(self, user_id: str, guardian_id: str) -> bool:
+        """[UNICODE_30ED]"""
+        # [UNICODE_30E6]
+        if user_id in self.user_roles:
+            self.user_roles[user_id] = [
+                ur for ur in self.user_roles[user_id] 
+                if ur.guardian_id != guardian_id
+            ]
+        
+        # [UNICODE_4FDD]
+        if guardian_id in self.guardian_roles:
+            self.guardian_roles[guardian_id] = [
+                ur for ur in self.guardian_roles[guardian_id] 
+                if ur.user_id != user_id
+            ]
+        
+        return True
+    
+    def check_permission(self, guardian_id: str, user_id: str, 
+                        resource_type: ResourceType, action: Action,
+                        context: Dict[str, Any] = None) -> bool:
+        """[UNICODE_6A29]"""
+        if guardian_id not in self.guardian_roles:
+            return False
+        
+        for user_role in self.guardian_roles[guardian_id]:
+            if user_role.user_id == user_id and user_role.is_valid():
+                return user_role.role.has_permission(resource_type, action, context)
+        
+        return False
+    
+    def get_user_guardians(self, user_id: str) -> List[Dict[str, Any]]:
+        """[UNICODE_30E6]"""
+        if user_id not in self.user_roles:
+            return []
+        
+        guardians = []
+        for user_role in self.user_roles[user_id]:
+            if user_role.is_valid():
+                guardians.append({
+                    "guardian_id": user_role.guardian_id,
+                    "permission_level": user_role.role.permission_level.value,
+                    "role_name": user_role.role.name,
+                    "granted_at": user_role.granted_at.isoformat(),
+                    "expires_at": user_role.expires_at.isoformat() if user_role.expires_at else None
+                })
+        
+        return guardians
+    
+    def get_guardian_users(self, guardian_id: str) -> List[Dict[str, Any]]:
+        """[UNICODE_4FDD]"""
+        if guardian_id not in self.guardian_roles:
+            return []
+        
+        users = []
+        for user_role in self.guardian_roles[guardian_id]:
+            if user_role.is_valid():
+                users.append({
+                    "user_id": user_role.user_id,
+                    "permission_level": user_role.role.permission_level.value,
+                    "role_name": user_role.role.name,
+                    "granted_at": user_role.granted_at.isoformat(),
+                    "expires_at": user_role.expires_at.isoformat() if user_role.expires_at else None,
+                    "allowed_actions": {
+                        resource_type.value: list(actions) 
+                        for resource_type in ResourceType
+                        for actions in [user_role.role.get_allowed_actions(resource_type)]
+                        if actions
+                    }
+                })
+        
+        return users
+    
+    def get_user_permissions(self, guardian_id: str, user_id: str) -> Dict[str, Any]:
+        """[UNICODE_30E6]"""
+        if guardian_id not in self.guardian_roles:
+            return {}
+        
+        for user_role in self.guardian_roles[guardian_id]:
+            if user_role.user_id == user_id and user_role.is_valid():
+                return {
+                    resource_type.value: [action.value for action in user_role.role.get_allowed_actions(resource_type)]
+                    for resource_type in ResourceType
+                    if user_role.role.get_allowed_actions(resource_type)
+                }
+        
+        return {}
+    
+    def get_permission_summary(self, guardian_id: str, user_id: str) -> Dict[str, Any]:
+        """[UNICODE_6A29]"""
+        if guardian_id not in self.guardian_roles:
+            return {"has_access": False}
+        
+        for user_role in self.guardian_roles[guardian_id]:
+            if user_role.user_id == user_id and user_role.is_valid():
+                return {
+                    "has_access": True,
+                    "permission_level": user_role.role.permission_level.value,
+                    "role_name": user_role.role.name,
+                    "permissions": {
+                        resource_type.value: {
+                            "allowed_actions": [action.value for action in user_role.role.get_allowed_actions(resource_type)],
+                            "can_read": user_role.role.has_permission(resource_type, Action.READ),
+                            "can_write": user_role.role.has_permission(resource_type, Action.WRITE),
+                            "can_delete": user_role.role.has_permission(resource_type, Action.DELETE),
+                            "can_execute": user_role.role.has_permission(resource_type, Action.EXECUTE)
+                        }
+                        for resource_type in ResourceType
+                    }
+                }
+        
+        return {"has_access": False}
+    
+    def cleanup_expired_roles(self) -> int:
+        """[UNICODE_671F]"""
+        cleaned_count = 0
+        
+        # [UNICODE_30E6]
+        for user_id in list(self.user_roles.keys()):
+            original_count = len(self.user_roles[user_id])
+            self.user_roles[user_id] = [
+                ur for ur in self.user_roles[user_id] if ur.is_valid()
+            ]
+            cleaned_count += original_count - len(self.user_roles[user_id])
+            
+            if not self.user_roles[user_id]:
+                del self.user_roles[user_id]
+        
+        # [UNICODE_4FDD]
+        for guardian_id in list(self.guardian_roles.keys()):
+            self.guardian_roles[guardian_id] = [
+                ur for ur in self.guardian_roles[guardian_id] if ur.is_valid()
+            ]
+            
+            if not self.guardian_roles[guardian_id]:
+                del self.guardian_roles[guardian_id]
+        
+        return cleaned_count
+    
+    def export_roles_data(self) -> Dict[str, Any]:
+        """[UNICODE_30ED]"""
+        return {
+            "roles": {
+                role_key: {
+                    "name": role.name,
+                    "permission_level": role.permission_level.value,
+                    "description": role.description,
+                    "is_active": role.is_active,
+                    "permissions": [
+                        {
+                            "resource_type": perm.resource_type.value,
+                            "actions": [action.value for action in perm.actions],
+                            "conditions": perm.conditions
+                        }
+                        for perm in role.permissions
+                    ]
+                }
+                for role_key, role in self.roles.items()
+            },
+            "user_roles_count": len(self.user_roles),
+            "guardian_roles_count": len(self.guardian_roles),
+            "total_active_assignments": sum(
+                len([ur for ur in user_roles if ur.is_valid()])
+                for user_roles in self.user_roles.values()
+            )
+        }
+
+
+class RBACMiddleware:
+    """RBAC[UNICODE_6A29]"""
+    
+    def __init__(self, rbac_system: RBACSystem):
+        self.rbac_system = rbac_system
+    
+    def check_guardian_access(self, guardian_id: str, user_id: str, 
+                            resource_type: ResourceType, action: Action,
+                            context: Dict[str, Any] = None) -> Dict[str, Any]:
+        """[UNICODE_4FDD]"""
+        has_permission = self.rbac_system.check_permission(
+            guardian_id, user_id, resource_type, action, context
+        )
+        
+        if has_permission:
+            return {
+                "allowed": True,
+                "guardian_id": guardian_id,
+                "user_id": user_id,
+                "resource_type": resource_type.value,
+                "action": action.value
+            }
+        else:
+            return {
+                "allowed": False,
+                "error": "Access denied",
+                "guardian_id": guardian_id,
+                "user_id": user_id,
+                "resource_type": resource_type.value,
+                "action": action.value
+            }
+    
+    def require_permission(self, guardian_id: str, user_id: str,
+                          resource_type: ResourceType, action: Action):
+        """[UNICODE_6A29]"""
+        def decorator(func):
+            def wrapper(*args, **kwargs):
+                access_result = self.check_guardian_access(
+                    guardian_id, user_id, resource_type, action
+                )
+                if not access_result["allowed"]:
+                    raise PermissionError(f"Access denied: {access_result['error']}")
+                return func(*args, **kwargs)
+            return wrapper
+        return decorator
+
+
+class RBACMiddleware:
+    """RBAC[UNICODE_6A29]"""
+    
+    def __init__(self, rbac_system: RBACSystem):
+        self.rbac_system = rbac_system
+    
+    def check_guardian_access(self, guardian_id: str, user_id: str, 
+                            resource_type: ResourceType, action: Action,
+                            context: Dict[str, Any] = None) -> Dict[str, Any]:
+        """[UNICODE_4FDD]"""
+        has_permission = self.rbac_system.check_permission(
+            guardian_id, user_id, resource_type, action, context
+        )
+        
+        if has_permission:
+            return {
+                "allowed": True,
+                "guardian_id": guardian_id,
+                "user_id": user_id,
+                "resource_type": resource_type.value,
+                "action": action.value
+            }
+        else:
+            return {
+                "allowed": False,
+                "error": "Access denied",
+                "guardian_id": guardian_id,
+                "user_id": user_id,
+                "resource_type": resource_type.value,
+                "action": action.value
+            }
+    
+    def require_permission(self, guardian_id: str, user_id: str,
+                          resource_type: ResourceType, action: Action):
+        """[UNICODE_6A29]"""
+        def decorator(func):
+            def wrapper(*args, **kwargs):
+                access_result = self.check_guardian_access(
+                    guardian_id, user_id, resource_type, action
+                )
+                if not access_result["allowed"]:
+                    raise PermissionError(f"Access denied: {access_result['error']}")
+                return func(*args, **kwargs)
+            return wrapper
+        return decorator
+
+
+# [UNICODE_30B0]RBAC[UNICODE_30B7]
+rbac_system = RBACSystem()
+rbac_middleware = RBACMiddleware(rbac_system)
+rbac_middleware = RBACMiddleware(rbac_system)

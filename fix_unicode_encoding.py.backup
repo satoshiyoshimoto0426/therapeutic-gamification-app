@@ -1,0 +1,241 @@
+#!/usr/bin/env python3
+"""
+UNICODE文字エンコーディング問題修正スクリプト
+[UNICODE_XXXX] 形式の文字を適切な日本語文字に変換
+"""
+
+import os
+import re
+import glob
+from typing import Dict, List
+
+# UNICODE文字マッピング（よく使われるもの）
+UNICODE_MAPPING = {
+    # コメント・説明系
+    '[UNICODE_30B3]': 'コア',
+    '[UNICODE_30A2]': 'アプリ',
+    '[UNICODE_30ED]': 'ログ',
+    '[UNICODE_8A2D]': '設定',
+    '[UNICODE_5171]': '共有',
+    '[UNICODE_30D7]': 'プレイヤー',
+    '[UNICODE_30E6]': 'ユーザー',
+    '[UNICODE_30EC]': 'レベル',
+    '[UNICODE_30B7]': 'システム',
+    '[UNICODE_30B2]': 'ゲーム',
+    '[UNICODE_30A8]': 'エラー',
+    '[UNICODE_30D8]': 'ヘルパー',
+    '[UNICODE_30BF]': 'タスク',
+    '[UNICODE_6C17]': '気分',
+    '[UNICODE_30D0]': 'バリデーション',
+    '[UNICODE_30C7]': 'デフォルト',
+    '[UNICODE_4FC2]': '係数',
+    '[UNICODE_652F]': '支援',
+    '[UNICODE_57FA]': '基本',
+    '[UNICODE_8A08]': '計算',
+    '[UNICODE_30D7]': 'プレビュー',
+    '[UNICODE_5165]': '入力',
+    '[UNICODE_5185]': '内部',
+    '[UNICODE_4E00]': '一般',
+    '[UNICODE_8D77]': '起動',
+    '[UNICODE_7BA1]': '管理',
+    '[UNICODE_30E2]': 'モデル',
+    '[UNICODE_6CBB]': '治療',
+    '[UNICODE_81EA]': '自動',
+    '[UNICODE_30AB]': 'カスタム',
+    '[UNICODE_6587]': '文字',
+    '[UNICODE_30B9]': 'ストーリー',
+    '[UNICODE_7269]': '物語',
+    '[UNICODE_8105]': '総合',
+    '[UNICODE_5B89]': '安全',
+    '[UNICODE_691C]': '検証',
+    '[UNICODE_4FE1]': '信頼',
+    '[UNICODE_30EA]': 'リスト',
+    '[UNICODE_30D3]': 'ビジネス',
+    '[UNICODE_5B9F]': '実装',
+    '[UNICODE_3053]': 'この',
+    '[UNICODE_30E1]': 'メイン',
+    '[UNICODE_4F7F]': '使用',
+    '[UNICODE_30B7]': 'システム',
+    '[UNICODE_6E96]': '準拠',
+    
+    # 日本語の基本文字
+    '[UNICODE_6B7B]': '死',
+    '[UNICODE_6D88]': '消',
+    '[UNICODE_3044]': 'い',
+    '[UNICODE_50B7]': '傷',
+    '[UNICODE_3060]': 'だ',
+    '[UNICODE_3082]': 'も',
+    '[UNICODE_9650]': '限',
+    '[UNICODE_8010]': '耐',
+    '[UNICODE_7D42]': '終',
+    '[UNICODE_8AB0]': '誰',
+    '[UNICODE_307F]': 'み',
+    '[UNICODE_5ACC]': '嫌',
+    '[UNICODE_618E]': '憎',
+    '[UNICODE_8A31]': '許',
+    '[UNICODE_4FA1]': '価',
+    '[UNICODE_610F]': '意',
+    '[UNICODE_7121]': '無',
+    '[UNICODE_6210]': '成',
+    '[UNICODE_5E0C]': '希',
+    '[UNICODE_3064]': 'つ',
+    '[UNICODE_7406]': '理',
+    '[UNICODE_52C7]': '勇',
+    '[UNICODE_6311]': '挑',
+    '[UNICODE_5B66]': '学',
+    '[UNICODE_767A]': '発',
+    '[UNICODE_5275]': '創',
+    '[UNICODE_8868]': '表',
+    
+    # その他よく使われる文字
+    '[UNICODE_3067]': 'で',
+    '[UNICODE_304B]': 'か',
+    '[UNICODE_306E]': 'の',
+    '[UNICODE_3092]': 'を',
+    '[UNICODE_306B]': 'に',
+    '[UNICODE_304C]': 'が',
+    '[UNICODE_3068]': 'と',
+    '[UNICODE_3057]': 'し',
+    '[UNICODE_3066]': 'て',
+    '[UNICODE_3059]': 'す',
+    '[UNICODE_308B]': 'る',
+    '[UNICODE_3093]': 'ん',
+    '[UNICODE_3042]': 'あ',
+    '[UNICODE_3048]': 'え',
+    '[UNICODE_304A]': 'お',
+    '[UNICODE_304D]': 'き',
+    '[UNICODE_304F]': 'く',
+    '[UNICODE_3051]': 'け',
+    '[UNICODE_3053]': 'こ',
+    '[UNICODE_3055]': 'さ',
+    '[UNICODE_305F]': 'た',
+    '[UNICODE_306A]': 'な',
+    '[UNICODE_306F]': 'は',
+    '[UNICODE_307E]': 'ま',
+    '[UNICODE_3084]': 'や',
+    '[UNICODE_3089]': 'ら',
+    '[UNICODE_308F]': 'わ',
+}
+
+def find_files_with_unicode_issues(directory: str = ".") -> List[str]:
+    """UNICODE文字を含むファイルを検索"""
+    files_with_issues = []
+    
+    # Python ファイルを検索
+    for pattern in ["**/*.py", "**/*.md", "**/*.txt"]:
+        for file_path in glob.glob(os.path.join(directory, pattern), recursive=True):
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    if '[UNICODE_' in content:
+                        files_with_issues.append(file_path)
+            except Exception as e:
+                print(f"⚠️ ファイル読み込みエラー {file_path}: {e}")
+    
+    return files_with_issues
+
+def fix_unicode_in_file(file_path: str) -> bool:
+    """ファイル内のUNICODE文字を修正"""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        original_content = content
+        
+        # UNICODE文字を置換
+        for unicode_char, replacement in UNICODE_MAPPING.items():
+            content = content.replace(unicode_char, replacement)
+        
+        # 未知のUNICODE文字を検出
+        unknown_unicode = re.findall(r'\[UNICODE_[A-F0-9]+\]', content)
+        if unknown_unicode:
+            print(f"⚠️ 未知のUNICODE文字が見つかりました in {file_path}: {set(unknown_unicode)}")
+            # 未知の文字は削除または適切な文字に置換
+            for unknown in set(unknown_unicode):
+                content = content.replace(unknown, '?')  # プレースホルダー
+        
+        # 変更があった場合のみファイルを更新
+        if content != original_content:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            return True
+        
+        return False
+        
+    except Exception as e:
+        print(f"❌ ファイル修正エラー {file_path}: {e}")
+        return False
+
+def create_backup(file_path: str):
+    """ファイルのバックアップを作成"""
+    backup_path = file_path + '.backup'
+    try:
+        with open(file_path, 'r', encoding='utf-8') as original:
+            with open(backup_path, 'w', encoding='utf-8') as backup:
+                backup.write(original.read())
+        print(f"📋 バックアップ作成: {backup_path}")
+    except Exception as e:
+        print(f"⚠️ バックアップ作成失敗 {file_path}: {e}")
+
+def main():
+    print("🔧 UNICODE文字エンコーディング問題修正開始")
+    print("="*50)
+    
+    # 問題のあるファイルを検索
+    print("🔍 UNICODE文字を含むファイルを検索中...")
+    problem_files = find_files_with_unicode_issues()
+    
+    if not problem_files:
+        print("✅ UNICODE文字の問題は見つかりませんでした")
+        return
+    
+    print(f"📋 {len(problem_files)} 個のファイルに問題が見つかりました:")
+    for file_path in problem_files[:10]:  # 最初の10個を表示
+        print(f"  - {file_path}")
+    
+    if len(problem_files) > 10:
+        print(f"  ... および {len(problem_files) - 10} 個の追加ファイル")
+    
+    # 修正実行の確認
+    response = input("\n🤔 これらのファイルを修正しますか？ (y/N): ")
+    if response.lower() != 'y':
+        print("❌ 修正をキャンセルしました")
+        return
+    
+    # ファイルを修正
+    print("\n🔧 ファイル修正中...")
+    fixed_count = 0
+    
+    for file_path in problem_files:
+        print(f"📝 修正中: {file_path}")
+        
+        # バックアップ作成
+        create_backup(file_path)
+        
+        # 修正実行
+        if fix_unicode_in_file(file_path):
+            fixed_count += 1
+            print(f"✅ 修正完了: {file_path}")
+        else:
+            print(f"⚠️ 変更なし: {file_path}")
+    
+    print(f"\n🎉 修正完了: {fixed_count}/{len(problem_files)} ファイル")
+    
+    # 検証
+    print("\n🔍 修正結果を検証中...")
+    remaining_issues = find_files_with_unicode_issues()
+    
+    if remaining_issues:
+        print(f"⚠️ まだ {len(remaining_issues)} 個のファイルに問題があります")
+        for file_path in remaining_issues[:5]:
+            print(f"  - {file_path}")
+    else:
+        print("✅ すべてのUNICODE文字問題が解決されました！")
+    
+    print("\n💡 次のステップ:")
+    print("1. 修正されたファイルの動作確認")
+    print("2. バックアップファイル（*.backup）の削除")
+    print("3. サービスの起動テスト")
+
+if __name__ == "__main__":
+    main()

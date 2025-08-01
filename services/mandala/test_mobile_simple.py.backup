@@ -1,0 +1,205 @@
+"""
+Simple Mobile Mandala System Test
+
+[UNICODE_30E2]Mandala[UNICODE_30B7]
+"""
+
+import sys
+import os
+from unittest.mock import Mock
+
+# Add project root to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+from services.mandala.mobile_mandala_system import MobileMandalaSystem
+from shared.interfaces.mobile_types import (
+    DeviceType, ScreenOrientation, TouchEventType,
+    MobileViewport, TouchEvent
+)
+from shared.interfaces.mandala_system import MandalaSystemInterface
+
+
+def test_basic_mobile_mandala_functionality():
+    """[UNICODE_57FA]Mandala[UNICODE_6A5F]"""
+    print("[UNICODE_1F9EA] [UNICODE_30E2]Mandala[UNICODE_30B7]")
+    
+    # [UNICODE_30E2]
+    mock_mandala_interface = Mock(spec=MandalaSystemInterface)
+    mock_mandala_interface.get_grid_api_response.return_value = {
+        "uid": "test_user",
+        "grid": [[None for _ in range(9)] for _ in range(9)],
+        "unlocked_count": 5,
+        "total_cells": 81
+    }
+    
+    # [UNICODE_30E2]
+    mobile_system = MobileMandalaSystem(mock_mandala_interface)
+    
+    # [UNICODE_30C6]
+    mobile_viewport = MobileViewport(
+        width=375,
+        height=667,
+        orientation=ScreenOrientation.PORTRAIT,
+        device_pixel_ratio=2.0,
+        safe_area_insets={"top": 44, "bottom": 34, "left": 0, "right": 0}
+    )
+    
+    print("[UNICODE_1F4F1] [UNICODE_30E2]")
+    
+    # [UNICODE_753B]
+    config = mobile_system.calculate_grid_size_for_screen(mobile_viewport)
+    print(f"[UNICODE_1F4D0] [UNICODE_30B0]: [UNICODE_30C7]={config.device_type}, [UNICODE_30BB]={config.cell_size}px")
+    
+    assert config.device_type == DeviceType.MOBILE_STANDARD
+    assert config.cell_size > 0
+    assert config.zoom_enabled == True
+    
+    # [UNICODE_30B0]
+    uid = "test_user"
+    layout = mobile_system.create_mobile_grid_layout(uid, mobile_viewport)
+    print(f"[UNICODE_1F3AF] [UNICODE_30EC]: [UNICODE_5E45]={layout.total_width}px, [UNICODE_9AD8]={layout.total_height}px")
+    
+    assert layout.cell_size > 0
+    assert layout.total_width > 0
+    assert len(layout.visible_cells) == 9  # [UNICODE_30E2]3x3[UNICODE_4E2D]
+    
+    # [UNICODE_30BF]
+    touch_event = TouchEvent(
+        event_type=TouchEventType.TAP,
+        x=100.0,
+        y=100.0,
+        timestamp=1234567890
+    )
+    
+    # [UNICODE_30E2]
+    mock_grid = Mock()
+    mock_grid.get_cell.return_value = None
+    mock_grid.can_unlock.return_value = False
+    mock_mandala_interface.get_or_create_grid.return_value = mock_grid
+    
+    response = mobile_system.handle_touch_event(uid, touch_event)
+    print(f"[UNICODE_1F446] [UNICODE_30BF]: [UNICODE_6210]={response.success}")
+    
+    # [UNICODE_30E2]
+    optimized_data = mobile_system.get_mobile_optimized_grid_data(uid, mobile_viewport)
+    print(f"[UNICODE_1F4CA] [UNICODE_6700]: [UNICODE_8A2D]={len(optimized_data.mobile_config)}")
+    
+    assert optimized_data.data is not None
+    assert optimized_data.mobile_config is not None
+    assert optimized_data.performance_hints is not None
+    assert optimized_data.accessibility_metadata is not None
+    
+    print("[UNICODE_2705] [UNICODE_30E2]Mandala[UNICODE_30B7]")
+    return True
+
+
+def test_tablet_vs_mobile_differences():
+    """[UNICODE_30BF]"""
+    print("\n[UNICODE_1F4F1] [UNICODE_30BF] vs [UNICODE_30E2]")
+    
+    mock_mandala_interface = Mock(spec=MandalaSystemInterface)
+    mock_mandala_interface.get_grid_api_response.return_value = {
+        "uid": "test_user",
+        "grid": [[None for _ in range(9)] for _ in range(9)],
+        "unlocked_count": 5,
+        "total_cells": 81
+    }
+    
+    mobile_system = MobileMandalaSystem(mock_mandala_interface)
+    
+    # [UNICODE_30E2]
+    mobile_viewport = MobileViewport(
+        width=375,
+        height=667,
+        orientation=ScreenOrientation.PORTRAIT,
+        device_pixel_ratio=2.0,
+        safe_area_insets={"top": 44, "bottom": 34, "left": 0, "right": 0}
+    )
+    
+    # [UNICODE_30BF]
+    tablet_viewport = MobileViewport(
+        width=768,
+        height=1024,
+        orientation=ScreenOrientation.PORTRAIT,
+        device_pixel_ratio=2.0,
+        safe_area_insets={"top": 20, "bottom": 0, "left": 0, "right": 0}
+    )
+    
+    # [UNICODE_8A2D]
+    mobile_config = mobile_system.calculate_grid_size_for_screen(mobile_viewport)
+    tablet_config = mobile_system.calculate_grid_size_for_screen(tablet_viewport)
+    
+    print(f"[UNICODE_1F4F1] [UNICODE_30E2]: [UNICODE_30C7]={mobile_config.device_type}, [UNICODE_30BA]={mobile_config.zoom_enabled}")
+    print(f"[UNICODE_1F4DF] [UNICODE_30BF]: [UNICODE_30C7]={tablet_config.device_type}, [UNICODE_30BA]={tablet_config.zoom_enabled}")
+    
+    assert mobile_config.device_type == DeviceType.MOBILE_STANDARD
+    assert tablet_config.device_type == DeviceType.TABLET_PORTRAIT
+    assert mobile_config.zoom_enabled == True
+    assert tablet_config.zoom_enabled == False
+    
+    # [UNICODE_30EC]
+    mobile_layout = mobile_system.create_mobile_grid_layout("mobile_user", mobile_viewport)
+    tablet_layout = mobile_system.create_mobile_grid_layout("tablet_user", tablet_viewport)
+    
+    print(f"[UNICODE_1F4F1] [UNICODE_30E2]: {len(mobile_layout.visible_cells)}")
+    print(f"[UNICODE_1F4DF] [UNICODE_30BF]: {len(tablet_layout.visible_cells)}")
+    
+    assert len(mobile_layout.visible_cells) == 9  # 3x3[UNICODE_4E2D]
+    assert len(tablet_layout.visible_cells) == 81  # 9x9[UNICODE_5168]
+    
+    print("[UNICODE_2705] [UNICODE_30BF] vs [UNICODE_30E2]")
+    return True
+
+
+def test_adhd_focus_mode():
+    """ADHD[UNICODE_96C6]"""
+    print("\n[UNICODE_1F9E0] ADHD[UNICODE_96C6]")
+    
+    mock_mandala_interface = Mock(spec=MandalaSystemInterface)
+    mobile_system = MobileMandalaSystem(mock_mandala_interface)
+    
+    mobile_viewport = MobileViewport(
+        width=375,
+        height=667,
+        orientation=ScreenOrientation.PORTRAIT,
+        device_pixel_ratio=2.0,
+        safe_area_insets={"top": 44, "bottom": 34, "left": 0, "right": 0}
+    )
+    
+    uid = "adhd_user"
+    normal_layout = mobile_system.create_mobile_grid_layout(uid, mobile_viewport)
+    
+    # ADHD[UNICODE_8A2D]
+    from shared.interfaces.mobile_types import ADHDMobileSettings
+    adhd_settings = ADHDMobileSettings(
+        large_touch_targets=True,
+        reduced_animations=True,
+        focus_mode_available=True
+    )
+    
+    mobile_system.update_adhd_settings(uid, adhd_settings)
+    focus_layout = mobile_system.get_focus_mode_layout(uid)
+    
+    print(f"[UNICODE_1F3AF] [UNICODE_901A]: {len(normal_layout.visible_cells)}")
+    print(f"[UNICODE_1F9E0] [UNICODE_96C6]: {len(focus_layout.visible_cells)}")
+    print(f"[UNICODE_1F4CF] [UNICODE_901A]: {normal_layout.cell_size}px")
+    print(f"[UNICODE_1F4CF] [UNICODE_96C6]: {focus_layout.cell_size}px")
+    
+    assert focus_layout is not None
+    assert len(focus_layout.visible_cells) <= 3  # [UNICODE_6700]3[UNICODE_30BB]
+    assert focus_layout.cell_size > normal_layout.cell_size  # [UNICODE_30BB]
+    assert focus_layout.zoom_level == 1.2  # [UNICODE_5C11]
+    
+    print("[UNICODE_2705] ADHD[UNICODE_96C6]")
+    return True
+
+
+if __name__ == "__main__":
+    try:
+        test_basic_mobile_mandala_functionality()
+        test_tablet_vs_mobile_differences()
+        test_adhd_focus_mode()
+        print("\n[UNICODE_1F389] [UNICODE_5168]")
+    except Exception as e:
+        print(f"\n[UNICODE_274C] [UNICODE_30C6]: {e}")
+        raise

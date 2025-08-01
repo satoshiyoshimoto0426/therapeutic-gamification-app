@@ -1,0 +1,399 @@
+{
+  "displayName": "Therapeutic Gamification App Dashboard",
+  "mosaicLayout": {
+    "tiles": [
+      {
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "API応答時間 (P95)",
+          "xyChart": {
+            "dataSets": [
+              {
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "resource.type=\"cloud_run_revision\" resource.labels.service_name=\"therapeutic-gamification-app\" metric.type=\"run.googleapis.com/request_latencies\"",
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "perSeriesAligner": "ALIGN_DELTA",
+                      "crossSeriesReducer": "REDUCE_PERCENTILE_95",
+                      "groupByFields": ["resource.labels.service_name"]
+                    }
+                  }
+                },
+                "plotType": "LINE",
+                "targetAxis": "Y1"
+              }
+            ],
+            "timeshiftDuration": "0s",
+            "yAxis": {
+              "label": "レイテンシ (ms)",
+              "scale": "LINEAR"
+            },
+            "chartOptions": {
+              "mode": "COLOR"
+            }
+          }
+        }
+      },
+      {
+        "xPos": 6,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "エラー率",
+          "xyChart": {
+            "dataSets": [
+              {
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "resource.type=\"cloud_run_revision\" resource.labels.service_name=\"therapeutic-gamification-app\" metric.type=\"run.googleapis.com/request_count\" metric.labels.response_code_class!=\"2xx\"",
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "perSeriesAligner": "ALIGN_RATE",
+                      "crossSeriesReducer": "REDUCE_SUM"
+                    }
+                  }
+                },
+                "plotType": "LINE",
+                "targetAxis": "Y1"
+              }
+            ],
+            "yAxis": {
+              "label": "エラー率 (%)",
+              "scale": "LINEAR"
+            }
+          }
+        }
+      },
+      {
+        "yPos": 4,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "治療安全性 F1スコア",
+          "xyChart": {
+            "dataSets": [
+              {
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "resource.type=\"global\" metric.type=\"custom.googleapis.com/therapeutic/safety/f1_score\"",
+                    "aggregation": {
+                      "alignmentPeriod": "300s",
+                      "perSeriesAligner": "ALIGN_MEAN",
+                      "crossSeriesReducer": "REDUCE_MEAN"
+                    }
+                  }
+                },
+                "plotType": "LINE",
+                "targetAxis": "Y1"
+              }
+            ],
+            "yAxis": {
+              "label": "F1スコア",
+              "scale": "LINEAR"
+            },
+            "thresholds": [
+              {
+                "value": 0.98,
+                "color": "RED",
+                "direction": "BELOW",
+                "label": "目標値 (98%)"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "xPos": 6,
+        "yPos": 4,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "同時接続ユーザー数",
+          "xyChart": {
+            "dataSets": [
+              {
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "resource.type=\"cloud_run_revision\" resource.labels.service_name=\"therapeutic-gamification-app\" metric.type=\"run.googleapis.com/container/instance_count\"",
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "perSeriesAligner": "ALIGN_MEAN",
+                      "crossSeriesReducer": "REDUCE_SUM"
+                    }
+                  }
+                },
+                "plotType": "LINE",
+                "targetAxis": "Y1"
+              }
+            ],
+            "yAxis": {
+              "label": "ユーザー数",
+              "scale": "LINEAR"
+            },
+            "thresholds": [
+              {
+                "value": 20000,
+                "color": "YELLOW",
+                "direction": "ABOVE",
+                "label": "目標値 (20,000)"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "yPos": 8,
+        "width": 4,
+        "height": 4,
+        "widget": {
+          "title": "メモリ使用率",
+          "xyChart": {
+            "dataSets": [
+              {
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "resource.type=\"cloud_run_revision\" resource.labels.service_name=\"therapeutic-gamification-app\" metric.type=\"run.googleapis.com/container/memory/utilizations\"",
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "perSeriesAligner": "ALIGN_MEAN",
+                      "crossSeriesReducer": "REDUCE_MEAN"
+                    }
+                  }
+                },
+                "plotType": "LINE",
+                "targetAxis": "Y1"
+              }
+            ],
+            "yAxis": {
+              "label": "使用率 (%)",
+              "scale": "LINEAR"
+            },
+            "thresholds": [
+              {
+                "value": 0.8,
+                "color": "RED",
+                "direction": "ABOVE",
+                "label": "警告値 (80%)"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "xPos": 4,
+        "yPos": 8,
+        "width": 4,
+        "height": 4,
+        "widget": {
+          "title": "CPU使用率",
+          "xyChart": {
+            "dataSets": [
+              {
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "resource.type=\"cloud_run_revision\" resource.labels.service_name=\"therapeutic-gamification-app\" metric.type=\"run.googleapis.com/container/cpu/utilizations\"",
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "perSeriesAligner": "ALIGN_MEAN",
+                      "crossSeriesReducer": "REDUCE_MEAN"
+                    }
+                  }
+                },
+                "plotType": "LINE",
+                "targetAxis": "Y1"
+              }
+            ],
+            "yAxis": {
+              "label": "使用率 (%)",
+              "scale": "LINEAR"
+            },
+            "thresholds": [
+              {
+                "value": 0.7,
+                "color": "RED",
+                "direction": "ABOVE",
+                "label": "警告値 (70%)"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "xPos": 8,
+        "yPos": 8,
+        "width": 4,
+        "height": 4,
+        "widget": {
+          "title": "ユーザーエンゲージメントスコア",
+          "xyChart": {
+            "dataSets": [
+              {
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "resource.type=\"global\" metric.type=\"custom.googleapis.com/therapeutic/user/engagement_score\"",
+                    "aggregation": {
+                      "alignmentPeriod": "300s",
+                      "perSeriesAligner": "ALIGN_MEAN",
+                      "crossSeriesReducer": "REDUCE_MEAN",
+                      "groupByFields": ["metric.labels.user_state"]
+                    }
+                  }
+                },
+                "plotType": "STACKED_AREA",
+                "targetAxis": "Y1"
+              }
+            ],
+            "yAxis": {
+              "label": "エンゲージメントスコア",
+              "scale": "LINEAR"
+            }
+          }
+        }
+      },
+      {
+        "yPos": 12,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "タスク完了率（タイプ別）",
+          "xyChart": {
+            "dataSets": [
+              {
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "resource.type=\"global\" metric.type=\"custom.googleapis.com/therapeutic/task/completion_rate\"",
+                    "aggregation": {
+                      "alignmentPeriod": "300s",
+                      "perSeriesAligner": "ALIGN_MEAN",
+                      "crossSeriesReducer": "REDUCE_MEAN",
+                      "groupByFields": ["metric.labels.task_type"]
+                    }
+                  }
+                },
+                "plotType": "LINE",
+                "targetAxis": "Y1"
+              }
+            ],
+            "yAxis": {
+              "label": "完了率 (%)",
+              "scale": "LINEAR"
+            }
+          }
+        }
+      },
+      {
+        "xPos": 6,
+        "yPos": 12,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "ユーザー状態分布",
+          "xyChart": {
+            "dataSets": [
+              {
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "resource.type=\"global\" metric.type=\"custom.googleapis.com/therapeutic/user/engagement_score\"",
+                    "aggregation": {
+                      "alignmentPeriod": "600s",
+                      "perSeriesAligner": "ALIGN_MEAN",
+                      "crossSeriesReducer": "REDUCE_COUNT",
+                      "groupByFields": ["metric.labels.user_state"]
+                    }
+                  }
+                },
+                "plotType": "STACKED_BAR",
+                "targetAxis": "Y1"
+              }
+            ],
+            "yAxis": {
+              "label": "ユーザー数",
+              "scale": "LINEAR"
+            }
+          }
+        }
+      },
+      {
+        "yPos": 16,
+        "width": 12,
+        "height": 3,
+        "widget": {
+          "title": "システムアラート状況",
+          "alertChart": {
+            "name": "projects/PROJECT_ID/alertPolicies/therapeutic-app-performance-alerts"
+          }
+        }
+      },
+      {
+        "yPos": 19,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "安全性違反検出数",
+          "xyChart": {
+            "dataSets": [
+              {
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "resource.type=\"global\" metric.type=\"custom.googleapis.com/therapeutic/safety/detection_failures\"",
+                    "aggregation": {
+                      "alignmentPeriod": "300s",
+                      "perSeriesAligner": "ALIGN_RATE",
+                      "crossSeriesReducer": "REDUCE_SUM"
+                    }
+                  }
+                },
+                "plotType": "LINE",
+                "targetAxis": "Y1"
+              }
+            ],
+            "yAxis": {
+              "label": "検出数/分",
+              "scale": "LINEAR"
+            }
+          }
+        }
+      },
+      {
+        "xPos": 6,
+        "yPos": 19,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "CBT介入実行数",
+          "xyChart": {
+            "dataSets": [
+              {
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "resource.type=\"global\" metric.type=\"custom.googleapis.com/therapeutic/safety/cbt_interventions\"",
+                    "aggregation": {
+                      "alignmentPeriod": "300s",
+                      "perSeriesAligner": "ALIGN_RATE",
+                      "crossSeriesReducer": "REDUCE_SUM"
+                    }
+                  }
+                },
+                "plotType": "LINE",
+                "targetAxis": "Y1"
+              }
+            ],
+            "yAxis": {
+              "label": "介入数/分",
+              "scale": "LINEAR"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "dashboardFilters": [
+    {
+      "filterType": "RESOURCE_LABEL",
+      "labelKey": "service_name",
+      "stringValue": "therapeutic-gamification-app"
+    }
+  ]
+}

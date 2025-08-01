@@ -1,0 +1,400 @@
+"""
+Micro Rewards Service [UNICODE_30C6]
+
+[UNICODE_30D6]
+- 3[UNICODE_30BF]3[UNICODE_5206]
+- 1.2[UNICODE_79D2]
+- [UNICODE_30EA]
+"""
+
+import pytest
+import asyncio
+from fastapi.testclient import TestClient
+from datetime import datetime, timedelta
+import json
+import time
+
+# [UNICODE_30C6]
+from main import app, micro_rewards_engine, UserAction, RewardType
+
+client = TestClient(app)
+
+class TestMicroRewardsEngine:
+    """Micro Rewards [UNICODE_30A8]"""
+    
+    async def test_instant_login_reward(self):
+        """[UNICODE_5373]"""
+        action = UserAction(
+            user_id="instant_test_user",
+            action_type="login",
+            timestamp=datetime.now(),
+            context={}
+        )
+        
+        start_time = time.time()
+        response = await micro_rewards_engine.process_user_action(action)
+        execution_time = (time.time() - start_time) * 1000
+        
+        assert response.success is True
+        assert len(response.rewards) > 0
+        assert response.total_xp > 0
+        assert execution_time < 1200  # 1.2[UNICODE_79D2]
+        assert "[UNICODE_304A]" in response.celebration_message or "[UNICODE_30ED]" in response.celebration_message
+        
+        print(f"[UNICODE_2713] [UNICODE_5373]: {execution_time:.1f}ms")
+    
+    async def test_task_completion_reward(self):
+        """[UNICODE_30BF]"""
+        action = UserAction(
+            user_id="task_test_user",
+            action_type="task_complete",
+            timestamp=datetime.now(),
+            context={"task_id": "test_task_001"}
+        )
+        
+        start_time = time.time()
+        response = await micro_rewards_engine.process_user_action(action)
+        execution_time = (time.time() - start_time) * 1000
+        
+        assert response.success is True
+        assert any(reward.reward_type == RewardType.ACHIEVEMENT_BADGE for reward in response.rewards)
+        assert response.total_xp >= 15  # [UNICODE_30BF]XP
+        assert execution_time < 1200
+        
+        print(f"[UNICODE_2713] [UNICODE_30BF]: {execution_time:.1f}ms")
+    
+    async def test_three_tap_efficiency_bonus(self):
+        """3[UNICODE_30BF]"""
+        action = UserAction(
+            user_id="efficiency_test_user",
+            action_type="task_complete",
+            timestamp=datetime.now(),
+            context={
+                "tap_count": 2,  # 3[UNICODE_30BF]
+                "task_id": "efficiency_task"
+            }
+        )
+        
+        response = await micro_rewards_engine.process_user_action(action)
+        
+        # [UNICODE_52B9]
+        efficiency_rewards = [r for r in response.rewards if "[UNICODE_52B9]" in r.title or "efficiency" in r.reward_id]
+        assert len(efficiency_rewards) > 0
+        
+        print("[UNICODE_2713] 3[UNICODE_30BF]")
+    
+    async def test_three_minute_speed_bonus(self):
+        """3[UNICODE_5206]"""
+        action = UserAction(
+            user_id="speed_test_user",
+            action_type="task_complete",
+            timestamp=datetime.now(),
+            context={
+                "duration_seconds": 120,  # 2[UNICODE_5206] = 120[UNICODE_79D2]3[UNICODE_5206]
+                "task_id": "speed_task"
+            }
+        )
+        
+        response = await micro_rewards_engine.process_user_action(action)
+        
+        # [UNICODE_30B9]
+        speed_rewards = [r for r in response.rewards if "[UNICODE_30B9]" in r.title or "speed" in r.reward_id]
+        assert len(speed_rewards) > 0
+        
+        print("[UNICODE_2713] 3[UNICODE_5206]")
+    
+    async def test_recovery_boost_system(self):
+        """[UNICODE_30EA]"""
+        user_id = "recovery_test_user"
+        
+        # [UNICODE_30E6]2[UNICODE_65E5]
+        user_state = await micro_rewards_engine._get_or_create_user_state(user_id)
+        user_state.last_login = datetime.now() - timedelta(days=3)
+        user_state.missed_days = 3
+        
+        # [UNICODE_30ED]
+        action = UserAction(
+            user_id=user_id,
+            action_type="login",
+            timestamp=datetime.now(),
+            context={}
+        )
+        
+        response = await micro_rewards_engine.process_user_action(action)
+        
+        # [UNICODE_30EA]
+        recovery_rewards = [r for r in response.rewards if "recovery" in r.reward_id or "[UNICODE_30D6]" in r.title]
+        assert len(recovery_rewards) > 0
+        assert "[UNICODE_304A]" in response.celebration_message
+        
+        print("[UNICODE_2713] [UNICODE_30EA]")
+    
+    async def test_consecutive_login_streak(self):
+        """[UNICODE_9023]"""
+        user_id = "streak_test_user"
+        
+        # 5[UNICODE_65E5]
+        for day in range(1, 6):
+            user_state = await micro_rewards_engine._get_or_create_user_state(user_id)
+            user_state.consecutive_days = day
+            user_state.last_login = datetime.now() - timedelta(days=1)
+            
+            action = UserAction(
+                user_id=user_id,
+                action_type="login",
+                timestamp=datetime.now(),
+                context={}
+            )
+            
+            response = await micro_rewards_engine.process_user_action(action)
+            
+            if day == 5:  # 5[UNICODE_65E5]5[UNICODE_306E]
+                streak_rewards = [r for r in response.rewards if "streak" in r.reward_id or "[UNICODE_9023]" in r.title]
+                assert len(streak_rewards) > 0
+                print(f"[UNICODE_2713] 5[UNICODE_65E5]")
+        
+        print("[UNICODE_2713] [UNICODE_9023]")
+    
+    async def test_performance_guarantee(self):
+        """[UNICODE_30D1]"""
+        user_id = "performance_test_user"
+        response_times = []
+        
+        # 10[UNICODE_56DE]
+        for i in range(10):
+            action = UserAction(
+                user_id=user_id,
+                action_type="task_complete",
+                timestamp=datetime.now(),
+                context={"task_id": f"perf_task_{i}"}
+            )
+            
+            start_time = time.time()
+            response = await micro_rewards_engine.process_user_action(action)
+            execution_time = (time.time() - start_time) * 1000
+            
+            response_times.append(execution_time)
+            assert execution_time < 1200  # 1.2[UNICODE_79D2]
+        
+        average_time = sum(response_times) / len(response_times)
+        max_time = max(response_times)
+        
+        print(f"[UNICODE_2713] [UNICODE_30D1]:")
+        print(f"  - [UNICODE_5E73]: {average_time:.1f}ms")
+        print(f"  - [UNICODE_6700]: {max_time:.1f}ms")
+        print(f"  - [UNICODE_5168]1.2[UNICODE_79D2]: {'[UNICODE_2713]' if max_time < 1200 else '[UNICODE_2717]'}")
+
+class TestADHDOptimization:
+    """ADHD[UNICODE_6700]"""
+    
+    async def test_immediate_feedback_loop(self):
+        """[UNICODE_5373]"""
+        user_id = "adhd_test_user"
+        
+        # [UNICODE_30ED] [UNICODE_2192] [UNICODE_30BF] [UNICODE_2192] [UNICODE_30BF]3[UNICODE_30B9]
+        steps = [
+            ("login", {}),
+            ("task_start", {"task_id": "adhd_task"}),
+            ("task_complete", {"task_id": "adhd_task", "tap_count": 3, "duration_seconds": 150})
+        ]
+        
+        total_xp = 0
+        total_time = 0
+        
+        for step_type, context in steps:
+            action = UserAction(
+                user_id=user_id,
+                action_type=step_type,
+                timestamp=datetime.now(),
+                context=context
+            )
+            
+            start_time = time.time()
+            response = await micro_rewards_engine.process_user_action(action)
+            execution_time = (time.time() - start_time) * 1000
+            
+            total_xp += response.total_xp
+            total_time += execution_time
+            
+            # [UNICODE_5404]
+            assert len(response.rewards) > 0
+            assert response.total_xp > 0
+            assert len(response.celebration_message) > 0
+        
+        print(f"[UNICODE_2713] [UNICODE_5373]:")
+        print(f"  - 3[UNICODE_30B9]XP: {total_xp}")
+        print(f"  - 3[UNICODE_30B9]: {total_time:.1f}ms")
+        print(f"  - [UNICODE_5E73]: {total_time/3:.1f}ms")
+    
+    async def test_reward_variety_and_engagement(self):
+        """[UNICODE_30EA]"""
+        user_id = "variety_test_user"
+        reward_types_seen = set()
+        
+        # [UNICODE_69D8]
+        actions = [
+            ("login", {}),
+            ("task_start", {}),
+            ("task_complete", {"duration_seconds": 60}),  # 1[UNICODE_5206]
+            ("task_complete", {"tap_count": 2}),  # 2[UNICODE_30BF]
+            ("progress_check", {}),
+        ]
+        
+        for action_type, context in actions:
+            action = UserAction(
+                user_id=user_id,
+                action_type=action_type,
+                timestamp=datetime.now(),
+                context=context
+            )
+            
+            response = await micro_rewards_engine.process_user_action(action)
+            
+            for reward in response.rewards:
+                reward_types_seen.add(reward.reward_type.value)
+        
+        # [UNICODE_8907]
+        assert len(reward_types_seen) >= 3
+        
+        print(f"[UNICODE_2713] [UNICODE_30EA]: {len(reward_types_seen)}[UNICODE_7A2E]")
+    
+    def test_reward_template_adhd_compliance(self):
+        """[UNICODE_30EA]ADHD[UNICODE_6E96]"""
+        templates = micro_rewards_engine.reward_templates
+        
+        for template in templates:
+            # [UNICODE_5168]1.5[UNICODE_79D2]
+            assert template.duration_ms <= 1500
+            
+            # [UNICODE_5168]
+            assert len(template.visual_effect) > 0
+            assert len(template.sound_effect) > 0
+            
+            # [UNICODE_5168]
+            assert len(template.celebration_message) > 0
+        
+        print(f"[UNICODE_2713] [UNICODE_30EA]ADHD[UNICODE_6E96]: {len(templates)}[UNICODE_500B]")
+
+class TestAPIEndpoints:
+    """API[UNICODE_30A8]"""
+    
+    def test_process_action_endpoint(self):
+        """[UNICODE_30A2]"""
+        action_data = {
+            "user_id": "api_test_user",
+            "action_type": "login",
+            "timestamp": datetime.now().isoformat(),
+            "context": {}
+        }
+        
+        response = client.post("/micro-rewards/action", json=action_data)
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data["success"] is True
+        assert "rewards" in data
+        assert "total_xp" in data
+        assert "execution_time_ms" in data
+        
+        print("[UNICODE_2713] [UNICODE_30A2]")
+    
+    def test_engagement_stats_endpoint(self):
+        """[UNICODE_30A8]"""
+        response = client.get("/micro-rewards/api_stats_user/stats")
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert "consecutive_days" in data
+        assert "daily_actions" in data
+        assert "performance_metrics" in data
+        
+        print("[UNICODE_2713] [UNICODE_30A8]")
+    
+    def test_reward_templates_endpoint(self):
+        """[UNICODE_30EA]"""
+        response = client.get("/micro-rewards/templates")
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert "templates" in data
+        assert "performance_targets" in data
+        assert len(data["templates"]) > 0
+        
+        # [UNICODE_30D1]
+        targets = data["performance_targets"]
+        assert targets["max_response_time_ms"] == 1200
+        assert targets["recovery_boost_threshold_days"] == 2
+        
+        print("[UNICODE_2713] [UNICODE_30EA]")
+    
+    def test_quick_action_endpoint(self):
+        """[UNICODE_8D85]"""
+        response = client.post("/micro-rewards/quick-action", params={
+            "user_id": "quick_test_user",
+            "action_type": "task_complete",
+            "tap_count": 2,
+            "duration_seconds": 90
+        })
+        
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data["success"] is True
+        assert data["execution_time_ms"] < 1200
+        
+        # 3[UNICODE_30BF]3[UNICODE_5206]
+        rewards = data["rewards"]
+        bonus_rewards = [r for r in rewards if "[UNICODE_52B9]" in r["title"] or "[UNICODE_30B9]" in r["title"]]
+        assert len(bonus_rewards) > 0
+        
+        print("[UNICODE_2713] [UNICODE_8D85]")
+
+def run_all_tests():
+    """[UNICODE_5168]"""
+    print("Micro Rewards Service [UNICODE_30C6]")
+    print("=" * 50)
+    
+    # [UNICODE_57FA]
+    engine_tests = TestMicroRewardsEngine()
+    
+    async def run_async_engine_tests():
+        await engine_tests.test_instant_login_reward()
+        await engine_tests.test_task_completion_reward()
+        await engine_tests.test_three_tap_efficiency_bonus()
+        await engine_tests.test_three_minute_speed_bonus()
+        await engine_tests.test_recovery_boost_system()
+        await engine_tests.test_consecutive_login_streak()
+        await engine_tests.test_performance_guarantee()
+    
+    asyncio.run(run_async_engine_tests())
+    
+    # ADHD[UNICODE_6700]
+    adhd_tests = TestADHDOptimization()
+    
+    async def run_async_adhd_tests():
+        await adhd_tests.test_immediate_feedback_loop()
+        await adhd_tests.test_reward_variety_and_engagement()
+    
+    asyncio.run(run_async_adhd_tests())
+    
+    adhd_tests.test_reward_template_adhd_compliance()
+    
+    # API[UNICODE_30A8]
+    api_tests = TestAPIEndpoints()
+    api_tests.test_process_action_endpoint()
+    api_tests.test_engagement_stats_endpoint()
+    api_tests.test_reward_templates_endpoint()
+    api_tests.test_quick_action_endpoint()
+    
+    print("\n" + "=" * 50)
+    print("[UNICODE_2713] Micro Rewards Service [UNICODE_5168]")
+    print("\n[UNICODE_30D6]:")
+    print("- 3[UNICODE_30BF]3[UNICODE_5206] [UNICODE_2713]")
+    print("- 1.2[UNICODE_79D2] [UNICODE_2713]")
+    print("- ADHD[UNICODE_306E] [UNICODE_2713]")
+    print("- [UNICODE_30EA] [UNICODE_2713]")
+    print("- [UNICODE_5373] [UNICODE_2713]")
+    print("- [UNICODE_591A] [UNICODE_2713]")
+
+if __name__ == "__main__":
+    run_all_tests()

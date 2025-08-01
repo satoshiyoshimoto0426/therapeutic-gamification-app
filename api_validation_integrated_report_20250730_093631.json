@@ -1,0 +1,113 @@
+{
+  "suite_start_time": "2025-07-30T09:36:24.812339",
+  "suite_end_time": null,
+  "total_duration": 0,
+  "service_availability": {
+    "Core Game Engine": {
+      "available": true,
+      "status": "利用可能",
+      "response_time_ms": 325.8090019226074,
+      "port": 8001
+    },
+    "Auth Service": {
+      "available": true,
+      "status": "利用可能",
+      "response_time_ms": 255.22184371948242,
+      "port": 8002
+    },
+    "Task Management": {
+      "available": true,
+      "status": "利用可能",
+      "response_time_ms": 258.716344833374,
+      "port": 8003
+    }
+  },
+  "validation_results": {
+    "基本API連携テスト": {
+      "script": "test_api_integration.py",
+      "success": false,
+      "duration": 0.6375277042388916,
+      "return_code": 1,
+      "stdout_lines": 4,
+      "stderr_lines": 15,
+      "last_stdout": "1. 共有インターフェースのインポートテスト",
+      "last_stderr": "UnicodeEncodeError: 'cp932' codec can't encode character '\\u2713' in position 3: illegal multibyte sequence",
+      "report_files": [
+        "api_integration_validation_report.json",
+        "api_integration_validation_report.json"
+      ]
+    },
+    "包括的エンドポイント検証": {
+      "script": "test_api_endpoint_validation.py",
+      "success": false,
+      "duration": 0.9356234073638916,
+      "return_code": 1,
+      "stdout_lines": 6,
+      "stderr_lines": 0,
+      "last_stdout": "検証中にエラーが発生しました: 'cp932' codec can't encode character '\\u2717' in position 3: illegal multibyte sequence",
+      "last_stderr": "",
+      "report_files": [
+        "api_integration_validation_report.json",
+        "api_integration_validation_report.json"
+      ]
+    },
+    "サービス間通信詳細検証": {
+      "script": "test_service_communication.py",
+      "success": false,
+      "duration": 1.054755449295044,
+      "return_code": 1,
+      "stdout_lines": 5,
+      "stderr_lines": 28,
+      "last_stdout": "   ユーザー認証→タスク作成→XP追加:",
+      "last_stderr": "UnicodeEncodeError: 'cp932' codec can't encode character '\\u2717' in position 5: illegal multibyte sequence",
+      "report_files": [
+        "api_integration_validation_report.json",
+        "api_integration_validation_report.json"
+      ]
+    },
+    "CORS設定詳細検証": {
+      "script": "test_cors_advanced_validation.py",
+      "success": false,
+      "duration": 1.277909517288208,
+      "return_code": 1,
+      "stdout_lines": 7,
+      "stderr_lines": 36,
+      "last_stdout": "検証中にエラーが発生しました: 'cp932' codec can't encode character '\\u2717' in position 5: illegal multibyte sequence",
+      "last_stderr": "NameError: name 'sys' is not defined. Did you forget to import 'sys'?",
+      "report_files": [
+        "api_integration_validation_report.json",
+        "api_integration_validation_report.json"
+      ]
+    },
+    "エラーハンドリング統一性検証": {
+      "script": "test_error_handling.py",
+      "success": false,
+      "duration": 1.056645154953003,
+      "return_code": 1,
+      "stdout_lines": 7,
+      "stderr_lines": 36,
+      "last_stdout": "検証中にエラーが発生しました: 'cp932' codec can't encode character '\\u2717' in position 5: illegal multibyte sequence",
+      "last_stderr": "NameError: name 'sys' is not defined. Did you forget to import 'sys'?",
+      "report_files": [
+        "api_integration_validation_report.json",
+        "api_integration_validation_report.json"
+      ]
+    }
+  },
+  "overall_success": false,
+  "summary": {
+    "total_modules": 5,
+    "successful_modules": 0,
+    "failed_modules": 5,
+    "module_success_rate": 0.0,
+    "available_services": 3,
+    "total_services": 3,
+    "service_availability_rate": 100.0,
+    "service_availability_ok": true,
+    "module_success_ok": false
+  },
+  "recommendations": [
+    "以下の検証モジュールが失敗しました: 基本API連携テスト, 包括的エンドポイント検証, サービス間通信詳細検証, CORS設定詳細検証, エラーハンドリング統一性検証",
+    "個別にスクリプトを実行して詳細なエラー情報を確認してください"
+  ]
+}

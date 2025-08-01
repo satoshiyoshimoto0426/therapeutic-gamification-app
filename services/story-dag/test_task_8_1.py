@@ -1,0 +1,363 @@
+#!/usr/bin/env python3
+"""
+Test script for Task 8.1: ストーリーDAG?
+Tests CHAPTER > NODE > EDGE hierarchy, DAG validation, isolated node detection and auto-merge
+"""
+
+import sys
+import os
+import asyncio
+from datetime import datetime
+
+# Add shared modules to path
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'shared'))
+
+async def test_chapter_node_edge_hierarchy():
+    """Test CHAPTER > NODE > EDGE hierarchy structure"""
+    print("? Testing CHAPTER > NODE > EDGE hierarchy...")
+    
+    from main import db, StoryDatabase
+    import main
+    from interfaces.core_types import ChapterType, NodeType
+    
+    # Reset database
+    db.__dict__.update(StoryDatabase().__dict__)
+    
+    mock_user = {"uid": "test_user_123", "email": "test@example.com"}
+    
+    # Test chapter creation
+    chapter_data = {
+        "chapter_type": "courage",
+        "title": "勇",
+        "description": "?",
+        "unlock_conditions": [],
+        "estimated_completion_time": 45,
+        "therapeutic_focus": ["fear_management", "confidence_building"]
+    }
+    
+    chapter_result = await main.create_story_chapter(chapter_data=chapter_data, current_user=mock_user)
+    chapter_id = chapter_result["chapter_id"]
+    
+    # Test node creation within chapter
+    node_data = {
+        "chapter_id": chapter_id,
+        "node_type": "opening",
+        "title": "勇",
+        "content": "?",
+        "therapeutic_tags": ["courage", "preparation"]
+    }
+    
+    node_result = await main.create_story_node(node_data=node_data, current_user=mock_user)
+    node_id = node_result["node_id"]
+    
+    # Verify hierarchy
+    assert chapter_id in db.chapters
+    assert node_id in db.nodes
+    assert db.nodes[node_id].chapter_id == chapter_id
+    
+    print("? CHAPTER > NODE hierarchy working correctly")
+    
+    # Test edge creation within hierarchy
+    node2_data = {
+        "chapter_id": chapter_id,
+        "node_type": "challenge",
+        "title": "?",
+        "content": "あ"
+    }
+    
+    node2_result = await main.create_story_node(node_data=node2_data, current_user=mock_user)
+    node2_id = node2_result["node_id"]
+    
+    edge_data = {
+        "from_node_id": node_id,
+        "to_node_id": node2_id,
+        "choice_text": "?",
+        "therapeutic_weight": 1.5
+    }
+    
+    edge_result = await main.create_story_edge(edge_data=edge_data, current_user=mock_user)
+    edge_id = edge_result["edge_id"]
+    
+    # Verify complete hierarchy
+    assert edge_id in db.edges
+    edge = db.edges[edge_id]
+    assert edge.from_node_id == node_id
+    assert edge.to_node_id == node2_id
+    
+    print("? CHAPTER > NODE > EDGE complete hierarchy working correctly")
+    return True
+
+async def test_dag_validation():
+    """Test DAG structure validation"""
+    print("? Testing DAG validation...")
+    
+    from main import db, StoryDatabase
+    import main
+    
+    # Reset database
+    db.__dict__.update(StoryDatabase().__dict__)
+    
+    mock_user = {"uid": "test_user_123", "email": "test@example.com"}
+    
+    # Get existing chapter
+    chapter_id = list(db.chapters.keys())[0]
+    
+    # Create valid DAG structure
+    nodes_data = [
+        {"chapter_id": chapter_id, "node_type": "opening", "title": "Start", "content": "Beginning"},
+        {"chapter_id": chapter_id, "node_type": "choice", "title": "Decision", "content": "Choose"},
+        {"chapter_id": chapter_id, "node_type": "resolution", "title": "Result", "content": "Outcome"},
+        {"chapter_id": chapter_id, "node_type": "ending", "title": "End", "content": "Conclusion"}
+    ]
+    
+    node_ids = []
+    for node_data in nodes_data:
+        result = await main.create_story_node(node_data=node_data, current_user=mock_user)
+        node_ids.append(result["node_id"])
+    
+    # Create valid edges (linear progression)
+    edges_data = [
+        {"from_node_id": node_ids[0], "to_node_id": node_ids[1], "choice_text": "Continue"},
+        {"from_node_id": node_ids[1], "to_node_id": node_ids[2], "choice_text": "Decide"},
+        {"from_node_id": node_ids[2], "to_node_id": node_ids[3], "choice_text": "Finish"}
+    ]
+    
+    for edge_data in edges_data:
+        await main.create_story_edge(edge_data=edge_data, current_user=mock_user)
+    
+    # Test validation
+    validation = await main.validate_dag(current_user=mock_user)
+    assert validation["is_valid"] == True
+    assert validation["has_cycles"] == False
+    
+    print("? DAG validation working correctly")
+    
+    # Test cycle prevention
+    try:
+        await main.create_story_edge({
+            "from_node_id": node_ids[3],
+            "to_node_id": node_ids[0],
+            "choice_text": "Loop back"
+        }, current_user=mock_user)
+        assert False, "Should have prevented cycle"
+    except Exception as e:
+        assert "cycle" in str(e).lower()
+    
+    print("? Cycle prevention working correctly")
+    return True
+
+async def test_isolated_node_detection():
+    """Test isolated node detection"""
+    print("? Testing isolated node detection...")
+    
+    from main import db, StoryDatabase
+    import main
+    
+    # Reset database
+    db.__dict__.update(StoryDatabase().__dict__)
+    
+    mock_user = {"uid": "test_user_123", "email": "test@example.com"}
+    
+    # Get existing chapter
+    chapter_id = list(db.chapters.keys())[0]
+    
+    # Create isolated node
+    isolated_node_data = {
+        "chapter_id": chapter_id,
+        "node_type": "opening",
+        "title": "Isolated Node",
+        "content": "This node has no connections"
+    }
+    
+    isolated_result = await main.create_story_node(node_data=isolated_node_data, current_user=mock_user)
+    isolated_node_id = isolated_result["node_id"]
+    
+    # Test detection
+    isolated_nodes = main.find_isolated_nodes(chapter_id)
+    assert isolated_node_id in isolated_nodes
+    
+    validation = await main.validate_dag(current_user=mock_user)
+    assert isolated_node_id in validation["isolated_nodes"]
+    
+    print("? Isolated node detection working correctly")
+    return True
+
+async def test_auto_merge_functionality():
+    """Test automatic merging of isolated nodes"""
+    print("? Testing auto-merge functionality...")
+    
+    from main import db, StoryDatabase
+    import main
+    
+    # Reset database
+    db.__dict__.update(StoryDatabase().__dict__)
+    
+    mock_user = {"uid": "test_user_123", "email": "test@example.com"}
+    
+    # Get existing chapter
+    chapter_id = list(db.chapters.keys())[0]
+    
+    # Create a connected node that can serve as connection point
+    connected_node_data = {
+        "chapter_id": chapter_id,
+        "node_type": "choice",
+        "title": "Connected Choice",
+        "content": "This node will connect to others",
+        "therapeutic_tags": ["exploration", "discovery"]
+    }
+    
+    connected_result = await main.create_story_node(node_data=connected_node_data, current_user=mock_user)
+    connected_node_id = connected_result["node_id"]
+    
+    # Create isolated node with similar therapeutic tags
+    isolated_node_data = {
+        "chapter_id": chapter_id,
+        "node_type": "opening",
+        "title": "Isolated Discovery",
+        "content": "This node was isolated but will be rescued",
+        "therapeutic_tags": ["discovery", "growth"]
+    }
+    
+    isolated_result = await main.create_story_node(node_data=isolated_node_data, current_user=mock_user)
+    isolated_node_id = isolated_result["node_id"]
+    
+    # Verify node is isolated
+    validation_before = await main.validate_dag(current_user=mock_user)
+    assert isolated_node_id in validation_before["isolated_nodes"]
+    
+    # Auto-merge isolated nodes
+    merge_result = await main.auto_merge_dag_nodes(chapter_id=chapter_id, current_user=mock_user)
+    
+    assert merge_result["merge_result"]["merged_count"] >= 1
+    
+    # Verify node is no longer isolated
+    validation_after = await main.validate_dag(current_user=mock_user)
+    assert isolated_node_id not in validation_after["isolated_nodes"]
+    
+    # Verify rescue edge was created
+    merge_details = merge_result["merge_result"]["merge_details"]
+    rescue_detail = next((d for d in merge_details if d["isolated_node"] == isolated_node_id), None)
+    assert rescue_detail is not None
+    assert rescue_detail["method"] == "auto_rescue_path"
+    assert rescue_detail["rescue_edge"] in db.edges
+    
+    # Verify rescue edge properties
+    rescue_edge = db.edges[rescue_detail["rescue_edge"]]
+    assert rescue_edge.to_node_id == isolated_node_id
+    assert rescue_edge.habit_tag == "exploration"
+    assert "?" in rescue_edge.choice_text
+    
+    print("? Auto-merge functionality working correctly")
+    return True
+
+async def test_story_state_management():
+    """Test story state management and navigation"""
+    print("? Testing story state management...")
+    
+    from main import db, StoryDatabase
+    import main
+    
+    # Reset database
+    db.__dict__.update(StoryDatabase().__dict__)
+    
+    mock_user = {"uid": "test_user_123", "email": "test@example.com"}
+    
+    # Get existing chapter
+    chapter_id = list(db.chapters.keys())[0]
+    
+    # Create story structure for navigation
+    start_node = await main.create_story_node({
+        "chapter_id": chapter_id,
+        "node_type": "opening",
+        "title": "Story Beginning",
+        "content": "Your adventure begins here"
+    }, current_user=mock_user)
+    
+    choice_node = await main.create_story_node({
+        "chapter_id": chapter_id,
+        "node_type": "choice",
+        "title": "Important Choice",
+        "content": "What will you do?"
+    }, current_user=mock_user)
+    
+    # Create edge
+    edge_result = await main.create_story_edge({
+        "from_node_id": start_node["node_id"],
+        "to_node_id": choice_node["node_id"],
+        "choice_text": "Move forward bravely"
+    }, current_user=mock_user)
+    
+    # Test user state initialization
+    user_state = await main.get_user_story_state(uid="test_user_123", current_user=mock_user)
+    assert user_state.uid == "test_user_123"
+    
+    # Set starting position
+    user_state.current_node_id = start_node["node_id"]
+    db.user_states["test_user_123"] = user_state
+    
+    # Test available choices
+    choices = await main.get_available_choices(uid="test_user_123", current_user=mock_user)
+    assert len(choices["choices"]) >= 1
+    assert choices["current_node"]["title"] == "Story Beginning"
+    
+    # Test story progression
+    progress_result = await main.progress_story(
+        uid="test_user_123",
+        progress_data={"edge_id": edge_result["edge_id"]},
+        current_user=mock_user
+    )
+    
+    assert progress_result["message"] == "Story progressed successfully"
+    
+    # Verify state update
+    updated_state = db.user_states["test_user_123"]
+    assert updated_state.current_node_id == choice_node["node_id"]
+    assert len(updated_state.choice_history) == 1
+    
+    print("? Story state management and navigation working correctly")
+    return True
+
+async def main():
+    """Main test function"""
+    print("? Testing Task 8.1: ストーリーDAG?")
+    print("=" * 80)
+    
+    all_passed = True
+    
+    tests = [
+        ("CHAPTER > NODE > EDGE Hierarchy", test_chapter_node_edge_hierarchy),
+        ("DAG Validation", test_dag_validation),
+        ("Isolated Node Detection", test_isolated_node_detection),
+        ("Auto-Merge Functionality", test_auto_merge_functionality),
+        ("Story State Management", test_story_state_management)
+    ]
+    
+    for test_name, test_func in tests:
+        try:
+            print(f"\n--- {test_name} ---")
+            result = await test_func()
+            if not result:
+                all_passed = False
+        except Exception as e:
+            print(f"? {test_name} failed with error: {e}")
+            import traceback
+            traceback.print_exc()
+            all_passed = False
+    
+    print("\n" + "=" * 80)
+    if all_passed:
+        print("? ALL TESTS PASSED!")
+        print("? Task 8.1 has been successfully implemented:")
+        print("   ? CHAPTER > NODE > EDGE?")
+        print("   ? ストーリー")
+        print("   ? ?")
+        print("   ? ストーリーDAGの")
+        print("   ? ? 2.3, 2.4 を")
+        return True
+    else:
+        print("? Some tests failed. Please check the implementation.")
+        return False
+
+if __name__ == "__main__":
+    success = asyncio.run(main())
+    sys.exit(0 if success else 1)

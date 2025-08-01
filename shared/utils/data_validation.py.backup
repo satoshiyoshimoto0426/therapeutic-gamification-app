@@ -1,0 +1,523 @@
+"""
+[UNICODE_30C7]
+
+[UNICODE_3053]
+[UNICODE_30B3]
+"""
+
+from typing import Dict, List, Optional, Union, Any, Tuple
+from datetime import datetime, timedelta
+import re
+from enum import Enum
+
+from ..interfaces.core_types import (
+    UserProfile, StoryState, TaskRecord, TaskType, TaskStatus,
+    CrystalAttribute, ChapterType, CellStatus, GuardianPermission,
+    NodeType, UnlockConditionType, ItemRarity, ItemType, JobClass, DemonType
+)
+
+
+class ValidationError(Exception):
+    """[UNICODE_30D0]"""
+    def __init__(self, field: str, message: str, value: Any = None):
+        self.field = field
+        self.message = message
+        self.value = value
+        super().__init__(f"{field}: {message}")
+
+
+class ValidationResult:
+    """[UNICODE_30D0]"""
+    def __init__(self):
+        self.is_valid = True
+        self.errors: List[str] = []
+        self.warnings: List[str] = []
+    
+    def add_error(self, field: str, message: str, value: Any = None):
+        """[UNICODE_30A8]"""
+        self.is_valid = False
+        error_msg = f"{field}: {message}"
+        if value is not None:
+            error_msg += f" ([UNICODE_5024]: {value})"
+        self.errors.append(error_msg)
+    
+    def add_warning(self, field: str, message: str, value: Any = None):
+        """[UNICODE_8B66]"""
+        warning_msg = f"{field}: {message}"
+        if value is not None:
+            warning_msg += f" ([UNICODE_5024]: {value})"
+        self.warnings.append(warning_msg)
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """[UNICODE_8F9E]"""
+        return {
+            "is_valid": self.is_valid,
+            "errors": self.errors,
+            "warnings": self.warnings
+        }
+
+
+class DataValidator:
+    """[UNICODE_30C7]"""
+    
+    # [UNICODE_5B9A]
+    EMAIL_PATTERN = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+    UID_PATTERN = re.compile(r'^[a-zA-Z0-9_-]{8,64}$')
+    TASK_ID_PATTERN = re.compile(r'^task_[a-zA-Z0-9_-]{8,32}$')
+    NODE_ID_PATTERN = re.compile(r'^node_[a-zA-Z0-9_-]{8,32}$')
+    
+    # [UNICODE_5236]
+    MIN_LEVEL = 1
+    MAX_LEVEL = 100
+    MIN_XP = 0
+    MAX_XP = 1000000
+    MIN_CRYSTAL_VALUE = 0
+    MAX_CRYSTAL_VALUE = 100
+    MIN_MOOD_SCORE = 1
+    MAX_MOOD_SCORE = 5
+    MIN_DIFFICULTY = 1
+    MAX_DIFFICULTY = 5
+    MAX_DAILY_TASKS = 16
+    MIN_CARE_POINTS = 0
+    MAX_CARE_POINTS = 100000
+    
+    @classmethod
+    def validate_user_profile(cls, profile: UserProfile) -> ValidationResult:
+        """UserProfile[UNICODE_306E]"""
+        result = ValidationResult()
+        
+        # UID[UNICODE_691C]
+        if not cls.UID_PATTERN.match(profile.uid):
+            result.add_error("uid", "[UNICODE_7121]UID[UNICODE_5F62]", profile.uid)
+        
+        # [UNICODE_30E1]
+        if not cls.EMAIL_PATTERN.match(profile.email):
+            result.add_error("email", "[UNICODE_7121]", profile.email)
+        
+        # [UNICODE_8868]
+        if not profile.display_name or len(profile.display_name.strip()) == 0:
+            result.add_error("display_name", "[UNICODE_8868]")
+        elif len(profile.display_name) > 50:
+            result.add_error("display_name", "[UNICODE_8868]50[UNICODE_6587]", len(profile.display_name))
+        
+        # [UNICODE_30EC]
+        if not (cls.MIN_LEVEL <= profile.player_level <= cls.MAX_LEVEL):
+            result.add_error("player_level", f"[UNICODE_30D7]{cls.MIN_LEVEL}-{cls.MAX_LEVEL}[UNICODE_306E]", profile.player_level)
+        
+        if not (cls.MIN_LEVEL <= profile.yu_level <= cls.MAX_LEVEL):
+            result.add_error("yu_level", f"[UNICODE_30E6]{cls.MIN_LEVEL}-{cls.MAX_LEVEL}[UNICODE_306E]", profile.yu_level)
+        
+        # XP[UNICODE_691C]
+        if not (cls.MIN_XP <= profile.total_xp <= cls.MAX_XP):
+            result.add_error("total_xp", f"[UNICODE_7DCF]XP[UNICODE_306F]{cls.MIN_XP}-{cls.MAX_XP}[UNICODE_306E]", profile.total_xp)
+        
+        # [UNICODE_30AF]
+        cls._validate_crystal_gauges(profile.crystal_gauges, result)
+        
+        # [UNICODE_30C1]
+        if profile.current_chapter not in [chapter.value for chapter in ChapterType]:
+            result.add_error("current_chapter", "[UNICODE_7121]", profile.current_chapter)
+        
+        # [UNICODE_65E5]
+        if not (1 <= profile.daily_task_limit <= cls.MAX_DAILY_TASKS):
+            result.add_error("daily_task_limit", f"[UNICODE_65E5]1-{cls.MAX_DAILY_TASKS}[UNICODE_306E]", profile.daily_task_limit)
+        
+        # [UNICODE_30B1]
+        if not (cls.MIN_CARE_POINTS <= profile.care_points <= cls.MAX_CARE_POINTS):
+            result.add_error("care_points", f"[UNICODE_30B1]{cls.MIN_CARE_POINTS}-{cls.MAX_CARE_POINTS}[UNICODE_306E]", profile.care_points)
+        
+        # [UNICODE_4FDD]
+        valid_permissions = [perm.value for perm in GuardianPermission]
+        for perm in profile.guardian_permissions:
+            if perm not in valid_permissions:
+                result.add_error("guardian_permissions", f"[UNICODE_7121]: {perm}")
+        
+        # [UNICODE_65E5]
+        cls._validate_timestamps(profile.created_at, profile.last_active, result)
+        
+        return result
+    
+    @classmethod
+    def validate_story_state(cls, story_state: StoryState) -> ValidationResult:
+        """StoryState[UNICODE_306E]"""
+        result = ValidationResult()
+        
+        # UID[UNICODE_691C]
+        if not cls.UID_PATTERN.match(story_state.uid):
+            result.add_error("uid", "[UNICODE_7121]UID[UNICODE_5F62]", story_state.uid)
+        
+        # [UNICODE_30C1]
+        if story_state.current_chapter not in [chapter.value for chapter in ChapterType]:
+            result.add_error("current_chapter", "[UNICODE_7121]", story_state.current_chapter)
+        
+        # [UNICODE_30CE]ID[UNICODE_691C]
+        if not cls.NODE_ID_PATTERN.match(story_state.current_node):
+            result.add_error("current_node", "[UNICODE_7121]ID[UNICODE_5F62]", story_state.current_node)
+        
+        # [UNICODE_30A8]
+        for edge in story_state.available_edges:
+            if not isinstance(edge, str) or len(edge) == 0:
+                result.add_error("available_edges", "[UNICODE_7121]ID[UNICODE_3067]", edge)
+        
+        # [UNICODE_30A2]
+        valid_chapters = [chapter.value for chapter in ChapterType]
+        for chapter in story_state.unlocked_chapters:
+            if chapter not in valid_chapters:
+                result.add_error("unlocked_chapters", f"[UNICODE_7121]: {chapter}")
+        
+        # [UNICODE_30A2]
+        for node in story_state.unlocked_nodes:
+            if not cls.NODE_ID_PATTERN.match(node):
+                result.add_error("unlocked_nodes", f"[UNICODE_7121]ID[UNICODE_5F62]: {node}")
+        
+        # [UNICODE_5B8C]
+        for node in story_state.completed_nodes:
+            if not cls.NODE_ID_PATTERN.match(node):
+                result.add_error("completed_nodes", f"[UNICODE_7121]ID[UNICODE_5F62]: {node}")
+        
+        # [UNICODE_9078]
+        cls._validate_choice_history(story_state.choice_history, result)
+        
+        # [UNICODE_30B3]
+        cls._validate_companion_relationships(story_state.companion_relationships, result)
+        
+        # [UNICODE_30A8]
+        cls._validate_ending_scores(story_state.ending_scores, result)
+        
+        # [UNICODE_30B9]
+        cls._validate_story_flags(story_state.story_flags, result)
+        
+        # [UNICODE_6700]
+        if story_state.last_generation_time:
+            if story_state.last_generation_time > datetime.now():
+                result.add_error("last_generation_time", "[UNICODE_6700]", story_state.last_generation_time)
+        
+        # [UNICODE_6700]
+        if story_state.last_updated > datetime.now():
+            result.add_error("last_updated", "[UNICODE_6700]", story_state.last_updated)
+        
+        return result
+    
+    @classmethod
+    def validate_task_record(cls, task_record: TaskRecord) -> ValidationResult:
+        """TaskRecord[UNICODE_306E]"""
+        result = ValidationResult()
+        
+        # [UNICODE_30BF]ID[UNICODE_691C]
+        if not cls.TASK_ID_PATTERN.match(task_record.task_id):
+            result.add_error("task_id", "[UNICODE_7121]ID[UNICODE_5F62]", task_record.task_id)
+        
+        # UID[UNICODE_691C]
+        if not cls.UID_PATTERN.match(task_record.uid):
+            result.add_error("uid", "[UNICODE_7121]UID[UNICODE_5F62]", task_record.uid)
+        
+        # [UNICODE_30BF]
+        if task_record.task_type not in TaskType:
+            result.add_error("task_type", "[UNICODE_7121]", task_record.task_type)
+        
+        # [UNICODE_30BF]
+        if not task_record.title or len(task_record.title.strip()) == 0:
+            result.add_error("title", "[UNICODE_30BF]")
+        elif len(task_record.title) > 100:
+            result.add_error("title", "[UNICODE_30BF]100[UNICODE_6587]", len(task_record.title))
+        
+        # [UNICODE_8AAC]
+        if len(task_record.description) > 500:
+            result.add_error("description", "[UNICODE_8AAC]500[UNICODE_6587]", len(task_record.description))
+        
+        # [UNICODE_96E3]
+        if not (cls.MIN_DIFFICULTY <= task_record.difficulty <= cls.MAX_DIFFICULTY):
+            result.add_error("difficulty", f"[UNICODE_96E3]{cls.MIN_DIFFICULTY}-{cls.MAX_DIFFICULTY}[UNICODE_306E]", task_record.difficulty)
+        
+        # [UNICODE_30B9]
+        if task_record.status not in TaskStatus:
+            result.add_error("status", "[UNICODE_7121]", task_record.status)
+        
+        # XP[UNICODE_691C]
+        if task_record.xp_earned < 0:
+            result.add_error("xp_earned", "[UNICODE_7372]XP[UNICODE_306F]0[UNICODE_4EE5]", task_record.xp_earned)
+        
+        # [UNICODE_6C17]
+        if task_record.mood_at_completion is not None:
+            if not (cls.MIN_MOOD_SCORE <= task_record.mood_at_completion <= cls.MAX_MOOD_SCORE):
+                result.add_error("mood_at_completion", f"[UNICODE_6C17]{cls.MIN_MOOD_SCORE}-{cls.MAX_MOOD_SCORE}[UNICODE_306E]", task_record.mood_at_completion)
+        
+        # [UNICODE_671F]
+        if task_record.due_date:
+            if task_record.due_date < datetime.now() - timedelta(days=365):
+                result.add_warning("due_date", "[UNICODE_671F]1[UNICODE_5E74]", task_record.due_date)
+        
+        # [UNICODE_5B8C]
+        if task_record.completion_time:
+            if task_record.completion_time > datetime.now():
+                result.add_error("completion_time", "[UNICODE_5B8C]", task_record.completion_time)
+            if task_record.completion_time < task_record.created_at:
+                result.add_error("completion_time", "[UNICODE_5B8C]")
+        
+        # [UNICODE_30B9]
+        if task_record.status == TaskStatus.COMPLETED and not task_record.completion_time:
+            result.add_error("completion_time", "[UNICODE_5B8C]")
+        elif task_record.status != TaskStatus.COMPLETED and task_record.completion_time:
+            result.add_warning("completion_time", "[UNICODE_672A]")
+        
+        # ADHD[UNICODE_652F]
+        cls._validate_adhd_support(task_record.adhd_support, result)
+        
+        return result
+    
+    @classmethod
+    def validate_xp_calculation(cls, difficulty: int, mood_coefficient: float, 
+                               adhd_assist: float) -> ValidationResult:
+        """XP[UNICODE_8A08]"""
+        result = ValidationResult()
+        
+        # [UNICODE_96E3]
+        if not (cls.MIN_DIFFICULTY <= difficulty <= cls.MAX_DIFFICULTY):
+            result.add_error("difficulty", f"[UNICODE_96E3]{cls.MIN_DIFFICULTY}-{cls.MAX_DIFFICULTY}[UNICODE_306E]", difficulty)
+        
+        # [UNICODE_6C17]
+        if not (0.8 <= mood_coefficient <= 1.2):
+            result.add_error("mood_coefficient", "[UNICODE_6C17]0.8-1.2[UNICODE_306E]", mood_coefficient)
+        
+        # ADHD[UNICODE_652F]
+        if not (1.0 <= adhd_assist <= 1.3):
+            result.add_error("adhd_assist", "ADHD[UNICODE_652F]1.0-1.3[UNICODE_306E]", adhd_assist)
+        
+        return result
+    
+    @classmethod
+    def validate_crystal_growth(cls, attribute: str, growth_amount: int) -> ValidationResult:
+        """[UNICODE_30AF]"""
+        result = ValidationResult()
+        
+        # [UNICODE_5C5E]
+        if attribute not in [attr.value for attr in CrystalAttribute]:
+            result.add_error("attribute", "[UNICODE_7121]", attribute)
+        
+        # [UNICODE_6210]
+        if not (0 <= growth_amount <= 20):
+            result.add_error("growth_amount", "[UNICODE_6210]0-20[UNICODE_306E]", growth_amount)
+        
+        return result
+    
+    @classmethod
+    def validate_mandala_position(cls, row: int, col: int) -> ValidationResult:
+        """Mandala[UNICODE_4F4D]"""
+        result = ValidationResult()
+        
+        if not (0 <= row < 9):
+            result.add_error("row", "[UNICODE_884C]0-8[UNICODE_306E]", row)
+        
+        if not (0 <= col < 9):
+            result.add_error("col", "[UNICODE_5217]0-8[UNICODE_306E]", col)
+        
+        return result
+    
+    @classmethod
+    def _validate_crystal_gauges(cls, crystal_gauges: Dict[str, int], result: ValidationResult):
+        """[UNICODE_30AF]"""
+        expected_attributes = [attr.value for attr in CrystalAttribute]
+        
+        for attr_name, value in crystal_gauges.items():
+            if attr_name not in expected_attributes:
+                result.add_warning("crystal_gauges", f"[UNICODE_672A]: {attr_name}")
+            
+            if not (cls.MIN_CRYSTAL_VALUE <= value <= cls.MAX_CRYSTAL_VALUE):
+                result.add_error("crystal_gauges", f"[UNICODE_30AF]{cls.MIN_CRYSTAL_VALUE}-{cls.MAX_CRYSTAL_VALUE}[UNICODE_306E]", f"{attr_name}: {value}")
+        
+        # [UNICODE_5FC5]
+        for attr in expected_attributes:
+            if attr not in crystal_gauges:
+                result.add_warning("crystal_gauges", f"[UNICODE_30AF]: {attr}")
+    
+    @classmethod
+    def _validate_timestamps(cls, created_at: datetime, last_active: datetime, result: ValidationResult):
+        """[UNICODE_30BF]"""
+        now = datetime.now()
+        
+        if created_at > now:
+            result.add_error("created_at", "[UNICODE_4F5C]", created_at)
+        
+        if last_active > now:
+            result.add_error("last_active", "[UNICODE_6700]", last_active)
+        
+        if last_active < created_at:
+            result.add_error("last_active", "[UNICODE_6700]")
+    
+    @classmethod
+    def _validate_choice_history(cls, choice_history: List[Dict], result: ValidationResult):
+        """[UNICODE_9078]"""
+        for i, choice in enumerate(choice_history):
+            if not isinstance(choice, dict):
+                result.add_error("choice_history", f"[UNICODE_9078][{i}][UNICODE_306F]")
+                continue
+            
+            required_fields = ["node_id", "choice_text", "timestamp"]
+            for field in required_fields:
+                if field not in choice:
+                    result.add_error("choice_history", f"[UNICODE_9078][{i}][UNICODE_306B]'{field}'[UNICODE_304C]")
+    
+    @classmethod
+    def _validate_companion_relationships(cls, relationships: Dict[str, int], result: ValidationResult):
+        """[UNICODE_30B3]"""
+        for companion, level in relationships.items():
+            if not isinstance(companion, str) or len(companion) == 0:
+                result.add_error("companion_relationships", "[UNICODE_7121]", companion)
+            
+            if not (-100 <= level <= 100):
+                result.add_error("companion_relationships", f"[UNICODE_95A2]-100[UNICODE_304B]100[UNICODE_306E]", f"{companion}: {level}")
+    
+    @classmethod
+    def _validate_ending_scores(cls, ending_scores: Dict[str, float], result: ValidationResult):
+        """[UNICODE_30A8]"""
+        for ending, score in ending_scores.items():
+            if not isinstance(ending, str) or len(ending) == 0:
+                result.add_error("ending_scores", "[UNICODE_7121]", ending)
+            
+            if not (0.0 <= score <= 1.0):
+                result.add_error("ending_scores", f"[UNICODE_30A8]0.0-1.0[UNICODE_306E]", f"{ending}: {score}")
+    
+    @classmethod
+    def _validate_story_flags(cls, story_flags: Dict[str, Union[str, int, float, bool]], result: ValidationResult):
+        """[UNICODE_30B9]"""
+        for flag_name, flag_value in story_flags.items():
+            if not isinstance(flag_name, str) or len(flag_name) == 0:
+                result.add_error("story_flags", "[UNICODE_7121]", flag_name)
+            
+            if not isinstance(flag_value, (str, int, float, bool)):
+                result.add_error("story_flags", f"[UNICODE_30D5]", f"{flag_name}: {type(flag_value)}")
+    
+    @classmethod
+    def _validate_adhd_support(cls, adhd_support: Dict[str, Any], result: ValidationResult):
+        """ADHD[UNICODE_652F]"""
+        if "pomodoro_enabled" in adhd_support:
+            if not isinstance(adhd_support["pomodoro_enabled"], bool):
+                result.add_error("adhd_support.pomodoro_enabled", "[UNICODE_30DD]")
+        
+        if "work_duration" in adhd_support:
+            work_duration = adhd_support["work_duration"]
+            if not isinstance(work_duration, int) or not (5 <= work_duration <= 60):
+                result.add_error("adhd_support.work_duration", "[UNICODE_4F5C]5-60[UNICODE_5206]", work_duration)
+        
+        if "break_duration" in adhd_support:
+            break_duration = adhd_support["break_duration"]
+            if not isinstance(break_duration, int) or not (1 <= break_duration <= 30):
+                result.add_error("adhd_support.break_duration", "[UNICODE_4F11]1-30[UNICODE_5206]", break_duration)
+        
+        if "reminder_enabled" in adhd_support:
+            if not isinstance(adhd_support["reminder_enabled"], bool):
+                result.add_error("adhd_support.reminder_enabled", "[UNICODE_30EA]")
+
+
+# [UNICODE_30D0]
+def validate_user_profile(profile: UserProfile) -> ValidationResult:
+    """UserProfile[UNICODE_306E]"""
+    return DataValidator.validate_user_profile(profile)
+
+
+def validate_story_state(story_state: StoryState) -> ValidationResult:
+    """StoryState[UNICODE_306E]"""
+    return DataValidator.validate_story_state(story_state)
+
+
+def validate_task_record(task_record: TaskRecord) -> ValidationResult:
+    """TaskRecord[UNICODE_306E]"""
+    return DataValidator.validate_task_record(task_record)
+
+
+def validate_xp_calculation(difficulty: int, mood_coefficient: float, adhd_assist: float) -> ValidationResult:
+    """XP[UNICODE_8A08]"""
+    return DataValidator.validate_xp_calculation(difficulty, mood_coefficient, adhd_assist)
+
+
+def validate_crystal_growth(attribute: str, growth_amount: int) -> ValidationResult:
+    """[UNICODE_30AF]"""
+    return DataValidator.validate_crystal_growth(attribute, growth_amount)
+
+
+def validate_mandala_position(row: int, col: int) -> ValidationResult:
+    """Mandala[UNICODE_4F4D]"""
+    return DataValidator.validate_mandala_position(row, col)
+
+
+# [UNICODE_30D0]
+def validate_multiple_tasks(task_records: List[TaskRecord]) -> Dict[str, ValidationResult]:
+    """[UNICODE_8907]"""
+    results = {}
+    for task in task_records:
+        results[task.task_id] = validate_task_record(task)
+    return results
+
+
+def validate_user_data_consistency(profile: UserProfile, story_state: StoryState, 
+                                 task_records: List[TaskRecord]) -> ValidationResult:
+    """[UNICODE_30E6]"""
+    result = ValidationResult()
+    
+    # UID[UNICODE_6574]
+    if profile.uid != story_state.uid:
+        result.add_error("uid_consistency", "UserProfile[UNICODE_3068]StoryState[UNICODE_306E]UID[UNICODE_304C]")
+    
+    for task in task_records:
+        if task.uid != profile.uid:
+            result.add_error("uid_consistency", f"[UNICODE_30BF]{task.task_id}[UNICODE_306E]UID[UNICODE_304C]")
+    
+    # [UNICODE_30EC]XP[UNICODE_306E]
+    expected_level = calculate_level_from_xp(profile.total_xp)
+    if abs(profile.player_level - expected_level) > 1:
+        result.add_warning("level_xp_consistency", f"[UNICODE_30EC]({profile.player_level})[UNICODE_3068]XP({profile.total_xp})[UNICODE_306E]")
+    
+    # [UNICODE_30C1]
+    if profile.current_chapter != story_state.current_chapter:
+        result.add_error("chapter_consistency", "UserProfile[UNICODE_3068]StoryState[UNICODE_306E]")
+    
+    # [UNICODE_5B8C]XP[UNICODE_5408]
+    completed_tasks = [task for task in task_records if task.status == TaskStatus.COMPLETED]
+    total_task_xp = sum(task.xp_earned for task in completed_tasks)
+    
+    if abs(profile.total_xp - total_task_xp) > profile.total_xp * 0.1:  # 10%[UNICODE_306E]
+        result.add_warning("xp_consistency", f"[UNICODE_30D7]XP({profile.total_xp})[UNICODE_3068]XP[UNICODE_5408]({total_task_xp})[UNICODE_306B]")
+    
+    return result
+
+
+def calculate_level_from_xp(total_xp: int) -> int:
+    """XP[UNICODE_304B]"""
+    if total_xp < 0:
+        return 1
+    
+    # [UNICODE_6307]: level = floor(sqrt(total_xp / 100)) + 1
+    import math
+    level = int(math.sqrt(total_xp / 100)) + 1
+    return min(level, 100)  # [UNICODE_6700]100
+
+
+def is_valid_email(email: str) -> bool:
+    """[UNICODE_30E1]"""
+    return bool(DataValidator.EMAIL_PATTERN.match(email))
+
+
+def is_valid_uid(uid: str) -> bool:
+    """UID[UNICODE_306E]"""
+    return bool(DataValidator.UID_PATTERN.match(uid))
+
+
+def sanitize_user_input(text: str, max_length: int = 500) -> str:
+    """[UNICODE_30E6]"""
+    if not isinstance(text, str):
+        return ""
+    
+    # [UNICODE_6539]
+    text = text.replace('\r\n', '\n').replace('\r', '\n')
+    
+    # [UNICODE_5236]
+    text = ''.join(char for char in text if ord(char) >= 32 or char in '\n\t')
+    
+    # [UNICODE_9577]
+    if len(text) > max_length:
+        text = text[:max_length]
+    
+    # [UNICODE_524D]
+    text = text.strip()
+    
+    return text

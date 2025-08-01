@@ -1,0 +1,440 @@
+"""
+[UNICODE_5171]
+Resonance event system comprehensive tests
+Requirements: 4.4, 4.5
+"""
+
+import pytest
+from datetime import datetime, timedelta
+from shared.interfaces.resonance_system import (
+    ResonanceType, ResonanceIntensity, ResonanceEvent, ResonanceCondition,
+    ResonanceCalculator, ResonanceEventManager
+)
+from shared.interfaces.core_types import CrystalAttribute
+
+
+class TestResonanceCalculator:
+    """ResonanceCalculator[UNICODE_30AF]"""
+    
+    def test_resonance_intensity_calculation(self):
+        """[UNICODE_5171]"""
+        test_cases = [
+            (5, ResonanceIntensity.WEAK),
+            (7, ResonanceIntensity.WEAK),
+            (8, ResonanceIntensity.MODERATE),
+            (12, ResonanceIntensity.MODERATE),
+            (13, ResonanceIntensity.STRONG),
+            (20, ResonanceIntensity.STRONG),
+            (21, ResonanceIntensity.INTENSE),
+            (30, ResonanceIntensity.INTENSE)
+        ]
+        
+        for level_diff, expected_intensity in test_cases:
+            intensity = ResonanceCalculator.calculate_resonance_intensity(level_diff)
+            assert intensity == expected_intensity
+            print(f"[UNICODE_2713] Level difference {level_diff} [UNICODE_2192] {intensity.value}")
+    
+    def test_bonus_xp_calculation(self):
+        """[UNICODE_30DC]XP[UNICODE_8A08]"""
+        # [UNICODE_57FA]
+        bonus_xp = ResonanceCalculator.calculate_bonus_xp(
+            level_difference=5,
+            player_level=10,
+            resonance_type=ResonanceType.LEVEL_SYNC
+        )
+        
+        assert bonus_xp >= 100  # [UNICODE_6700]XP
+        print(f"[UNICODE_2713] Basic resonance bonus: {bonus_xp} XP")
+        
+        # [UNICODE_30EC]
+        high_diff_bonus = ResonanceCalculator.calculate_bonus_xp(
+            level_difference=15,
+            player_level=20,
+            resonance_type=ResonanceType.CRYSTAL_HARMONY
+        )
+        
+        assert high_diff_bonus > bonus_xp
+        print(f"[UNICODE_2713] High difference bonus: {high_diff_bonus} XP")
+        
+        # [UNICODE_7570]
+        type_bonuses = {}
+        for resonance_type in ResonanceType:
+            bonus = ResonanceCalculator.calculate_bonus_xp(
+                level_difference=10,
+                player_level=15,
+                resonance_type=resonance_type
+            )
+            type_bonuses[resonance_type.value] = bonus
+            print(f"[UNICODE_2713] {resonance_type.value}: {bonus} XP")
+        
+        # CRYSTAL_HARMONY[UNICODE_304C]
+        assert type_bonuses["crystal_harmony"] >= type_bonuses["level_sync"]
+    
+    def test_crystal_bonuses_calculation(self):
+        """[UNICODE_30AF]"""
+        bonuses = ResonanceCalculator.calculate_crystal_bonuses(
+            resonance_type=ResonanceType.CRYSTAL_HARMONY,
+            intensity=ResonanceIntensity.MODERATE,
+            player_level=15
+        )
+        
+        assert isinstance(bonuses, dict)
+        assert len(bonuses) > 0
+        
+        # CRYSTAL_HARMONY[UNICODE_306F]
+        assert CrystalAttribute.WISDOM in bonuses
+        assert CrystalAttribute.EMPATHY in bonuses
+        assert CrystalAttribute.RESILIENCE in bonuses
+        
+        print(f"[UNICODE_2713] Crystal harmony bonuses: {bonuses}")
+        
+        # [UNICODE_7570]
+        for resonance_type in ResonanceType:
+            type_bonuses = ResonanceCalculator.calculate_crystal_bonuses(
+                resonance_type=resonance_type,
+                intensity=ResonanceIntensity.STRONG,
+                player_level=20
+            )
+            print(f"[UNICODE_2713] {resonance_type.value} bonuses: {len(type_bonuses)} attributes")
+    
+    def test_therapeutic_message_generation(self):
+        """[UNICODE_6CBB]"""
+        message = ResonanceCalculator.generate_therapeutic_message(
+            resonance_type=ResonanceType.EMOTIONAL_BOND,
+            intensity=ResonanceIntensity.STRONG,
+            player_level=15,
+            yu_level=8
+        )
+        
+        assert isinstance(message, str)
+        assert len(message) > 0
+        assert "[UNICODE_5171]" in message or "[UNICODE_7D46]" in message
+        print(f"[UNICODE_2713] Therapeutic message: {message}")
+        
+        # [UNICODE_5168]
+        for resonance_type in ResonanceType:
+            for intensity in ResonanceIntensity:
+                msg = ResonanceCalculator.generate_therapeutic_message(
+                    resonance_type=resonance_type,
+                    intensity=intensity,
+                    player_level=10,
+                    yu_level=5
+                )
+                assert len(msg) > 0
+                print(f"[UNICODE_2713] {resonance_type.value} + {intensity.value}: Message generated")
+
+
+class TestResonanceEventManager:
+    """ResonanceEventManager[UNICODE_30AF]"""
+    
+    def test_manager_initialization(self):
+        """[UNICODE_30DE]"""
+        manager = ResonanceEventManager()
+        
+        assert isinstance(manager.conditions, ResonanceCondition)
+        assert len(manager.event_history) == 0
+        assert len(manager.last_event_times) == 0
+        print("[UNICODE_2713] Resonance event manager initialized correctly")
+    
+    def test_resonance_conditions_check(self):
+        """[UNICODE_5171]"""
+        manager = ResonanceEventManager()
+        
+        # [UNICODE_30EC]
+        can_resonate, resonance_type = manager.check_resonance_conditions(
+            player_level=5, yu_level=3  # [UNICODE_30EC]2
+        )
+        assert can_resonate is False
+        assert resonance_type is None
+        print("[UNICODE_2713] Insufficient level difference rejected")
+        
+        # [UNICODE_5341]
+        can_resonate, resonance_type = manager.check_resonance_conditions(
+            player_level=10, yu_level=3  # [UNICODE_30EC]7
+        )
+        assert can_resonate is True
+        assert resonance_type is not None
+        print(f"[UNICODE_2713] Sufficient level difference accepted: {resonance_type.value}")
+        
+        # [UNICODE_30D7]
+        can_resonate, resonance_type = manager.check_resonance_conditions(
+            player_level=2, yu_level=8  # [UNICODE_30EC]6[UNICODE_3060]
+        )
+        assert can_resonate is False
+        print("[UNICODE_2713] Low player level rejected")
+    
+    def test_resonance_event_trigger(self):
+        """[UNICODE_5171]"""
+        manager = ResonanceEventManager()
+        
+        event = manager.trigger_resonance_event(
+            player_level=15,
+            yu_level=8,
+            resonance_type=ResonanceType.LEVEL_SYNC
+        )
+        
+        assert isinstance(event, ResonanceEvent)
+        assert event.resonance_type == ResonanceType.LEVEL_SYNC
+        assert event.player_level == 15
+        assert event.yu_level == 8
+        assert event.level_difference == 7
+        assert event.bonus_xp > 0
+        assert len(event.therapeutic_message) > 0
+        
+        print(f"[UNICODE_2713] Resonance event triggered:")
+        print(f"  - Type: {event.resonance_type.value}")
+        print(f"  - Intensity: {event.intensity.value}")
+        print(f"  - Bonus XP: {event.bonus_xp}")
+        print(f"  - Crystal bonuses: {len(event.crystal_bonuses)}")
+        print(f"  - Special rewards: {len(event.special_rewards)}")
+        
+        # [UNICODE_30A4]
+        assert len(manager.event_history) == 1
+        assert ResonanceType.LEVEL_SYNC in manager.last_event_times
+    
+    def test_cooldown_mechanism(self):
+        """[UNICODE_30AF]"""
+        manager = ResonanceEventManager()
+        current_time = datetime.utcnow()
+        
+        # [UNICODE_6700]
+        event1 = manager.trigger_resonance_event(
+            player_level=15,
+            yu_level=8,
+            resonance_type=ResonanceType.LEVEL_SYNC,
+            current_time=current_time
+        )
+        
+        # [UNICODE_76F4]
+        can_resonate, resonance_type = manager.check_resonance_conditions(
+            player_level=16,
+            yu_level=8,
+            current_time=current_time + timedelta(hours=1)
+        )
+        
+        # LEVEL_SYNC[UNICODE_306F]
+        if can_resonate:
+            assert resonance_type != ResonanceType.LEVEL_SYNC
+            print(f"[UNICODE_2713] Cooldown working: different type selected ({resonance_type.value})")
+        else:
+            print("[UNICODE_2713] Cooldown working: no resonance available")
+        
+        # 24[UNICODE_6642]
+        can_resonate, resonance_type = manager.check_resonance_conditions(
+            player_level=16,
+            yu_level=8,
+            current_time=current_time + timedelta(hours=25)
+        )
+        
+        assert can_resonate is True
+        print("[UNICODE_2713] Cooldown expired: resonance available again")
+    
+    def test_resonance_statistics(self):
+        """[UNICODE_5171]"""
+        manager = ResonanceEventManager()
+        
+        # [UNICODE_8907]
+        events_data = [
+            (15, 8, ResonanceType.LEVEL_SYNC),
+            (20, 10, ResonanceType.CRYSTAL_HARMONY),
+            (25, 12, ResonanceType.EMOTIONAL_BOND),
+            (18, 15, ResonanceType.WISDOM_SHARING)
+        ]
+        
+        for player_level, yu_level, resonance_type in events_data:
+            manager.trigger_resonance_event(player_level, yu_level, resonance_type)
+        
+        stats = manager.get_resonance_statistics()
+        
+        assert stats["total_events"] == 4
+        assert len(stats["events_by_type"]) > 0
+        assert len(stats["events_by_intensity"]) > 0
+        assert stats["total_bonus_xp"] > 0
+        assert stats["average_bonus_xp"] > 0
+        assert stats["last_event"] is not None
+        
+        print("[UNICODE_2713] Resonance statistics:")
+        print(f"  - Total events: {stats['total_events']}")
+        print(f"  - Events by type: {stats['events_by_type']}")
+        print(f"  - Events by intensity: {stats['events_by_intensity']}")
+        print(f"  - Total bonus XP: {stats['total_bonus_xp']}")
+        print(f"  - Average bonus XP: {stats['average_bonus_xp']:.1f}")
+    
+    def test_resonance_simulation(self):
+        """[UNICODE_5171]"""
+        manager = ResonanceEventManager()
+        
+        simulation = manager.simulate_resonance_probability(
+            player_level=20,
+            yu_level=10,
+            days_ahead=7
+        )
+        
+        assert simulation["simulation_days"] == 7
+        assert len(simulation["results"]) == 7
+        assert "resonance_possible_days" in simulation
+        
+        print("[UNICODE_2713] Resonance simulation:")
+        print(f"  - Simulation days: {simulation['simulation_days']}")
+        print(f"  - Possible resonance days: {simulation['resonance_possible_days']}")
+        
+        for day_result in simulation["results"][:3]:  # [UNICODE_6700]3[UNICODE_65E5]
+            print(f"  - Day {day_result['day']}: {day_result['can_resonate']} ({day_result['resonance_type']})")
+
+
+class TestResonanceIntegration:
+    """[UNICODE_5171]"""
+    
+    def test_complete_resonance_workflow(self):
+        """[UNICODE_5B8C]"""
+        manager = ResonanceEventManager()
+        
+        # [UNICODE_30B7]: [UNICODE_30D7]20[UNICODE_3001]8[UNICODE_FF08]12[UNICODE_FF09]
+        player_level = 20
+        yu_level = 8
+        level_difference = abs(player_level - yu_level)
+        
+        print(f"[UNICODE_2713] Starting resonance workflow:")
+        print(f"  - Player Level: {player_level}")
+        print(f"  - Yu Level: {yu_level}")
+        print(f"  - Level Difference: {level_difference}")
+        
+        # 1. [UNICODE_5171]
+        can_resonate, resonance_type = manager.check_resonance_conditions(
+            player_level, yu_level
+        )
+        
+        assert can_resonate is True
+        assert resonance_type is not None
+        print(f"[UNICODE_2713] Resonance conditions met: {resonance_type.value}")
+        
+        # 2. [UNICODE_5171]
+        event = manager.trigger_resonance_event(
+            player_level, yu_level, resonance_type
+        )
+        
+        # 3. [UNICODE_30A4]
+        expected_intensity = ResonanceCalculator.calculate_resonance_intensity(level_difference)
+        assert event.intensity == expected_intensity
+        assert event.bonus_xp >= 100
+        assert len(event.crystal_bonuses) > 0
+        assert len(event.special_rewards) > 0
+        
+        print(f"[UNICODE_2713] Resonance event completed:")
+        print(f"  - Event ID: {event.event_id}")
+        print(f"  - Intensity: {event.intensity.value}")
+        print(f"  - Bonus XP: {event.bonus_xp}")
+        print(f"  - Crystal bonuses: {event.crystal_bonuses}")
+        print(f"  - Special rewards: {event.special_rewards}")
+        print(f"  - Message: {event.therapeutic_message}")
+        
+        # 4. [UNICODE_30B7]
+        stats = manager.get_resonance_statistics()
+        assert stats["total_events"] == 1
+        assert stats["total_bonus_xp"] == event.bonus_xp
+        
+        print("[UNICODE_2713] Complete resonance workflow successful")
+    
+    def test_multiple_resonance_types(self):
+        """[UNICODE_8907]"""
+        manager = ResonanceEventManager()
+        current_time = datetime.utcnow()
+        
+        # [UNICODE_7570]
+        resonance_scenarios = [
+            (15, 8, ResonanceType.LEVEL_SYNC, 0),
+            (18, 10, ResonanceType.CRYSTAL_HARMONY, 25),
+            (22, 12, ResonanceType.EMOTIONAL_BOND, 50),
+            (25, 15, ResonanceType.WISDOM_SHARING, 75)
+        ]
+        
+        events = []
+        for player_level, yu_level, resonance_type, hours_offset in resonance_scenarios:
+            event_time = current_time + timedelta(hours=hours_offset)
+            event = manager.trigger_resonance_event(
+                player_level, yu_level, resonance_type, event_time
+            )
+            events.append(event)
+            
+            print(f"[UNICODE_2713] {resonance_type.value} resonance:")
+            print(f"  - Level difference: {abs(player_level - yu_level)}")
+            print(f"  - Intensity: {event.intensity.value}")
+            print(f"  - Bonus XP: {event.bonus_xp}")
+        
+        # [UNICODE_7D71]
+        stats = manager.get_resonance_statistics()
+        assert stats["total_events"] == 4
+        assert len(stats["events_by_type"]) == 4
+        
+        # [UNICODE_5404]1[UNICODE_56DE]
+        for resonance_type in ResonanceType:
+            assert stats["events_by_type"][resonance_type.value] == 1
+        
+        print("[UNICODE_2713] Multiple resonance types test completed")
+    
+    def test_intensity_scaling(self):
+        """[UNICODE_5F37]"""
+        manager = ResonanceEventManager()
+        
+        # [UNICODE_7570]
+        level_differences = [5, 10, 15, 25]  # WEAK, MODERATE, STRONG, INTENSE
+        
+        events = []
+        for level_diff in level_differences:
+            player_level = 20
+            yu_level = player_level - level_diff
+            
+            event = manager.trigger_resonance_event(
+                player_level, yu_level, ResonanceType.LEVEL_SYNC
+            )
+            events.append(event)
+            
+            print(f"[UNICODE_2713] Level difference {level_diff}:")
+            print(f"  - Intensity: {event.intensity.value}")
+            print(f"  - Bonus XP: {event.bonus_xp}")
+            print(f"  - Special rewards: {len(event.special_rewards)}")
+        
+        # [UNICODE_5F37]
+        for i in range(1, len(events)):
+            assert events[i].bonus_xp >= events[i-1].bonus_xp
+            # INTENSE[UNICODE_30EC]
+            if events[i].intensity == ResonanceIntensity.INTENSE:
+                assert len(events[i].special_rewards) >= len(events[i-1].special_rewards)
+        
+        print("[UNICODE_2713] Intensity scaling test completed")
+
+
+def run_all_tests():
+    """[UNICODE_5168]"""
+    print("=== Running Resonance System Tests ===")
+    
+    # [UNICODE_5171]
+    calc_test = TestResonanceCalculator()
+    calc_test.test_resonance_intensity_calculation()
+    calc_test.test_bonus_xp_calculation()
+    calc_test.test_crystal_bonuses_calculation()
+    calc_test.test_therapeutic_message_generation()
+    print("[UNICODE_2713] Resonance calculator tests passed\n")
+    
+    # [UNICODE_5171]
+    manager_test = TestResonanceEventManager()
+    manager_test.test_manager_initialization()
+    manager_test.test_resonance_conditions_check()
+    manager_test.test_resonance_event_trigger()
+    manager_test.test_cooldown_mechanism()
+    manager_test.test_resonance_statistics()
+    manager_test.test_resonance_simulation()
+    print("[UNICODE_2713] Resonance event manager tests passed\n")
+    
+    # [UNICODE_7D71]
+    integration_test = TestResonanceIntegration()
+    integration_test.test_complete_resonance_workflow()
+    integration_test.test_multiple_resonance_types()
+    integration_test.test_intensity_scaling()
+    print("[UNICODE_2713] Integration tests passed\n")
+    
+    print("=== All Resonance System Tests Passed! ===")
+
+
+if __name__ == "__main__":
+    run_all_tests()

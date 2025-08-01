@@ -1,0 +1,83 @@
+{
+  "test_suite": "RPG[UNICODE_8981]",
+  "timestamp": "2025-07-29T12:25:37.825391",
+  "tests": [
+    {
+      "test_name": "[UNICODE_30B3]",
+      "passed": true,
+      "details": {
+        "base_coins": 10,
+        "difficulty": 3,
+        "mood_coefficient": 1.1,
+        "adhd_assist": 1.2,
+        "calculated_coins": 39
+      }
+    },
+    {
+      "test_name": "XP[UNICODE_30B7]",
+      "passed": true,
+      "details": {
+        "base_xp": 15,
+        "calculated_xp": 19,
+        "total_xp": 1000,
+        "calculated_level": 3
+      }
+    },
+    {
+      "test_name": "[UNICODE_8077]",
+      "passed": true,
+      "details": {
+        "available_jobs": 6,
+        "job_level": 3,
+        "base_bonus": 2,
+        "calculated_bonus": 2
+      }
+    },
+    {
+      "test_name": "[UNICODE_9B54]",
+      "passed": true,
+      "details": {
+        "available_demons": 4,
+        "user_actions": [
+          "routine_task_completion",
+          "pomodoro_usage"
+        ],
+        "calculated_damage": 50
+      }
+    },
+    {
+      "test_name": "[UNICODE_7D4C]",
+      "passed": true,
+      "details": {
+        "inflation_results": [
+          {
+            "coins": 500,
+            "adjustment": 1.0,
+            "reduction_percent": 0
+          },
+          {
+            "coins": 2000,
+            "adjustment": 0.95,
+            "reduction_percent": 5
+          },
+          {
+            "coins": 7000,
+            "adjustment": 0.9,
+            "reduction_percent": 9
+          },
+          {
+            "coins": 15000,
+            "adjustment": 0.8,
+            "reduction_percent": 19
+          }
+        ]
+      }
+    }
+  ],
+  "summary": {
+    "total_tests": 5,
+    "passed_tests": 5,
+    "failed_tests": 0,
+    "success_rate": 100.0
+  }
+}

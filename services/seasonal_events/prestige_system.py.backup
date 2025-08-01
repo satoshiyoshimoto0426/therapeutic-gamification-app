@@ -1,0 +1,617 @@
+"""
+[UNICODE_30D7]
+
+[UNICODE_3053]
+- [UNICODE_5206]
+- [UNICODE_30B3]
+- [UNICODE_30D7]
+"""
+
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Set
+from dataclasses import dataclass, asdict, field
+from enum import Enum
+import json
+import uuid
+
+class PrestigeLevel(Enum):
+    NOVICE = "novice"           # [UNICODE_521D]
+    APPRENTICE = "apprentice"   # [UNICODE_898B]
+    JOURNEYMAN = "journeyman"   # [UNICODE_8077]
+    EXPERT = "expert"           # [UNICODE_5C02]
+    MASTER = "master"           # [UNICODE_9054]
+    GRANDMASTER = "grandmaster" # [UNICODE_5B97]
+    LEGEND = "legend"           # [UNICODE_4F1D]
+
+class TherapeuticMilestone(Enum):
+    FIRST_STEP = "first_step"                    # [UNICODE_6700]
+    HABIT_FORMATION = "habit_formation"          # [UNICODE_7FD2]
+    SOCIAL_RECONNECTION = "social_reconnection"  # [UNICODE_793E]
+    EMOTIONAL_STABILITY = "emotional_stability"  # [UNICODE_611F]
+    SELF_EFFICACY = "self_efficacy"             # [UNICODE_81EA]
+    PEER_SUPPORT = "peer_support"               # [UNICODE_30D4]
+    MENTORSHIP = "mentorship"                   # [UNICODE_30E1]
+    LIFE_INTEGRATION = "life_integration"       # [UNICODE_751F]
+
+class CosmeticType(Enum):
+    AVATAR = "avatar"           # [UNICODE_30A2]
+    BACKGROUND = "background"   # [UNICODE_80CC]
+    FRAME = "frame"            # [UNICODE_30D5]
+    BADGE = "badge"            # [UNICODE_30D0]
+    TITLE = "title"            # [UNICODE_79F0]
+    EFFECT = "effect"          # [UNICODE_30A8]
+
+@dataclass
+class StoryBranch:
+    """[UNICODE_5206]"""
+    branch_id: str
+    title: str
+    description: str
+    therapeutic_theme: str
+    required_milestone: TherapeuticMilestone
+    unlock_conditions: Dict[str, int]
+    story_nodes: List[str]
+    completion_rewards: Dict[str, int]
+    is_unlocked: bool = False
+    completion_date: Optional[datetime] = None
+
+@dataclass
+class CosmeticItem:
+    """[UNICODE_30B3]"""
+    item_id: str
+    name: str
+    description: str
+    cosmetic_type: CosmeticType
+    rarity: str  # "common", "rare", "epic", "legendary"
+    unlock_condition: str
+    therapeutic_meaning: str
+    visual_data: Dict[str, str]  # [UNICODE_898B]
+    is_unlocked: bool = False
+    unlock_date: Optional[datetime] = None
+
+@dataclass
+class PrestigeProfile:
+    """[UNICODE_30D7]"""
+    user_uid: str
+    prestige_level: PrestigeLevel
+    total_prestige_points: int
+    achieved_milestones: Set[TherapeuticMilestone]
+    unlocked_story_branches: List[str]
+    cosmetic_collection: Dict[str, CosmeticItem]
+    equipped_cosmetics: Dict[CosmeticType, str]
+    legacy_achievements: List[str]
+    prestige_history: List[Dict]
+    created_date: datetime
+    last_updated: datetime = field(default_factory=datetime.now)
+
+class StoryBranchSystem:
+    """[UNICODE_5206]"""
+    
+    def __init__(self):
+        self.story_branches: Dict[str, StoryBranch] = {}
+        self.milestone_branches = self._initialize_milestone_branches()
+    
+    def _initialize_milestone_branches(self) -> Dict[TherapeuticMilestone, List[str]]:
+        """[UNICODE_6CBB]"""
+        
+        # [UNICODE_6700]
+        first_step_branch = StoryBranch(
+            branch_id="first_step_journey",
+            title="[UNICODE_306F]",
+            description="[UNICODE_5C0F]",
+            therapeutic_theme="[UNICODE_52C7]",
+            required_milestone=TherapeuticMilestone.FIRST_STEP,
+            unlock_conditions={"tasks_completed": 10, "consecutive_days": 3},
+            story_nodes=["fs_001", "fs_002", "fs_003"],
+            completion_rewards={"xp": 500, "coins": 200, "items": ["courage_badge"]}
+        )
+        
+        # [UNICODE_7FD2]
+        habit_branch = StoryBranch(
+            branch_id="habit_master_saga",
+            title="[UNICODE_7FD2]",
+            description="[UNICODE_7D99]",
+            therapeutic_theme="[UNICODE_7D99]",
+            required_milestone=TherapeuticMilestone.HABIT_FORMATION,
+            unlock_conditions={"habit_streak": 21, "routine_tasks": 50},
+            story_nodes=["hm_001", "hm_002", "hm_003", "hm_004"],
+            completion_rewards={"xp": 800, "coins": 300, "items": ["habit_crown", "persistence_gem"]}
+        )
+        
+        # [UNICODE_793E]
+        social_branch = StoryBranch(
+            branch_id="reconnection_chronicle",
+            title="[UNICODE_3064]",
+            description="[UNICODE_4EBA]",
+            therapeutic_theme="[UNICODE_793E]",
+            required_milestone=TherapeuticMilestone.SOCIAL_RECONNECTION,
+            unlock_conditions={"social_tasks": 30, "guild_participation": 14},
+            story_nodes=["rc_001", "rc_002", "rc_003", "rc_004", "rc_005"],
+            completion_rewards={"xp": 1000, "coins": 400, "items": ["connection_ring", "social_butterfly_wings"]}
+        )
+        
+        # [UNICODE_611F]
+        emotional_branch = StoryBranch(
+            branch_id="inner_peace_odyssey",
+            title="[UNICODE_5FC3]",
+            description="[UNICODE_611F]",
+            therapeutic_theme="[UNICODE_611F]",
+            required_milestone=TherapeuticMilestone.EMOTIONAL_STABILITY,
+            unlock_conditions={"mood_stability_days": 30, "reflection_entries": 50},
+            story_nodes=["ipo_001", "ipo_002", "ipo_003", "ipo_004"],
+            completion_rewards={"xp": 1200, "coins": 500, "items": ["serenity_amulet", "emotional_compass"]}
+        )
+        
+        self.story_branches.update({
+            first_step_branch.branch_id: first_step_branch,
+            habit_branch.branch_id: habit_branch,
+            social_branch.branch_id: social_branch,
+            emotional_branch.branch_id: emotional_branch
+        })
+        
+        return {
+            TherapeuticMilestone.FIRST_STEP: ["first_step_journey"],
+            TherapeuticMilestone.HABIT_FORMATION: ["habit_master_saga"],
+            TherapeuticMilestone.SOCIAL_RECONNECTION: ["reconnection_chronicle"],
+            TherapeuticMilestone.EMOTIONAL_STABILITY: ["inner_peace_odyssey"]
+        }
+    
+    def check_branch_unlock(self, branch_id: str, user_progress: Dict[str, int]) -> bool:
+        """[UNICODE_5206]"""
+        if branch_id not in self.story_branches:
+            return False
+        
+        branch = self.story_branches[branch_id]
+        
+        for condition, required_value in branch.unlock_conditions.items():
+            if user_progress.get(condition, 0) < required_value:
+                return False
+        
+        return True
+    
+    def unlock_branch(self, branch_id: str, user_uid: str) -> bool:
+        """[UNICODE_5206]"""
+        if branch_id not in self.story_branches:
+            return False
+        
+        branch = self.story_branches[branch_id]
+        branch.is_unlocked = True
+        
+        return True
+    
+    def get_available_branches(self, achieved_milestones: Set[TherapeuticMilestone]) -> List[StoryBranch]:
+        """[UNICODE_5229]"""
+        available_branches = []
+        
+        for milestone in achieved_milestones:
+            if milestone in self.milestone_branches:
+                for branch_id in self.milestone_branches[milestone]:
+                    if branch_id in self.story_branches:
+                        available_branches.append(self.story_branches[branch_id])
+        
+        return available_branches
+
+class CosmeticSystem:
+    """[UNICODE_30B3]"""
+    
+    def __init__(self):
+        self.cosmetic_catalog: Dict[str, CosmeticItem] = {}
+        self._initialize_cosmetic_catalog()
+    
+    def _initialize_cosmetic_catalog(self):
+        """[UNICODE_30B3]"""
+        
+        # [UNICODE_30A2]
+        avatars = [
+            CosmeticItem(
+                item_id="avatar_hopeful_yu",
+                name="[UNICODE_5E0C]",
+                description="[UNICODE_5E0C]",
+                cosmetic_type=CosmeticType.AVATAR,
+                rarity="common",
+                unlock_condition="complete_first_week",
+                therapeutic_meaning="[UNICODE_65B0]",
+                visual_data={"sprite": "yu_hopeful.png", "animation": "gentle_smile"}
+            ),
+            CosmeticItem(
+                item_id="avatar_confident_yu",
+                name="[UNICODE_81EA]",
+                description="[UNICODE_81EA]",
+                cosmetic_type=CosmeticType.AVATAR,
+                rarity="rare",
+                unlock_condition="achieve_habit_formation",
+                therapeutic_meaning="[UNICODE_7FD2]",
+                visual_data={"sprite": "yu_confident.png", "animation": "proud_stance"}
+            ),
+            CosmeticItem(
+                item_id="avatar_wise_yu",
+                name="[UNICODE_8CE2]",
+                description="[UNICODE_77E5]",
+                cosmetic_type=CosmeticType.AVATAR,
+                rarity="legendary",
+                unlock_condition="reach_prestige_master",
+                therapeutic_meaning="[UNICODE_7D4C]",
+                visual_data={"sprite": "yu_wise.png", "animation": "thoughtful_glow"}
+            )
+        ]
+        
+        # [UNICODE_80CC]
+        backgrounds = [
+            CosmeticItem(
+                item_id="bg_spring_garden",
+                name="[UNICODE_6625]",
+                description="[UNICODE_65B0]",
+                cosmetic_type=CosmeticType.BACKGROUND,
+                rarity="common",
+                unlock_condition="complete_spring_event",
+                therapeutic_meaning="[UNICODE_65B0]",
+                visual_data={"image": "spring_garden.jpg", "ambient": "birds_chirping"}
+            ),
+            CosmeticItem(
+                item_id="bg_peaceful_library",
+                name="[UNICODE_9759]",
+                description="[UNICODE_5FC3]",
+                cosmetic_type=CosmeticType.BACKGROUND,
+                rarity="rare",
+                unlock_condition="complete_reflection_milestone",
+                therapeutic_meaning="[UNICODE_5185]",
+                visual_data={"image": "peaceful_library.jpg", "ambient": "soft_pages"}
+            )
+        ]
+        
+        # [UNICODE_79F0]
+        titles = [
+            CosmeticItem(
+                item_id="title_first_steps",
+                name="[UNICODE_306F]",
+                description="[UNICODE_52C7]",
+                cosmetic_type=CosmeticType.TITLE,
+                rarity="common",
+                unlock_condition="complete_first_task",
+                therapeutic_meaning="[UNICODE_52C7]",
+                visual_data={"text": "[UNICODE_306F]", "color": "#4CAF50"}
+            ),
+            CosmeticItem(
+                item_id="title_habit_master",
+                name="[UNICODE_7FD2]",
+                description="[UNICODE_7D99]",
+                cosmetic_type=CosmeticType.TITLE,
+                rarity="epic",
+                unlock_condition="maintain_21_day_streak",
+                therapeutic_meaning="[UNICODE_7FD2]",
+                visual_data={"text": "[UNICODE_7FD2]", "color": "#FF9800"}
+            ),
+            CosmeticItem(
+                item_id="title_community_pillar",
+                name="[UNICODE_30B3]",
+                description="[UNICODE_4EF2]",
+                cosmetic_type=CosmeticType.TITLE,
+                rarity="legendary",
+                unlock_condition="support_100_guild_members",
+                therapeutic_meaning="[UNICODE_4ED6]",
+                visual_data={"text": "[UNICODE_30B3]", "color": "#9C27B0"}
+            )
+        ]
+        
+        # [UNICODE_30D0]
+        badges = [
+            CosmeticItem(
+                item_id="badge_resilience",
+                name="[UNICODE_56DE]",
+                description="[UNICODE_56F0]",
+                cosmetic_type=CosmeticType.BADGE,
+                rarity="rare",
+                unlock_condition="overcome_setback_5_times",
+                therapeutic_meaning="[UNICODE_9006]",
+                visual_data={"icon": "resilience_badge.svg", "glow": "soft_blue"}
+            ),
+            CosmeticItem(
+                item_id="badge_empathy",
+                name="[UNICODE_5171]",
+                description="[UNICODE_4ED6]",
+                cosmetic_type=CosmeticType.BADGE,
+                rarity="epic",
+                unlock_condition="provide_peer_support_50_times",
+                therapeutic_meaning="[UNICODE_4ED6]",
+                visual_data={"icon": "empathy_badge.svg", "glow": "warm_gold"}
+            )
+        ]
+        
+        # [UNICODE_30AB]
+        all_items = avatars + backgrounds + titles + badges
+        for item in all_items:
+            self.cosmetic_catalog[item.item_id] = item
+    
+    def check_unlock_condition(self, item_id: str, user_achievements: Dict[str, bool]) -> bool:
+        """[UNICODE_30B3]"""
+        if item_id not in self.cosmetic_catalog:
+            return False
+        
+        item = self.cosmetic_catalog[item_id]
+        return user_achievements.get(item.unlock_condition, False)
+    
+    def unlock_cosmetic(self, item_id: str, user_uid: str) -> Optional[CosmeticItem]:
+        """[UNICODE_30B3]"""
+        if item_id not in self.cosmetic_catalog:
+            return None
+        
+        item = self.cosmetic_catalog[item_id]
+        unlocked_item = CosmeticItem(
+            item_id=item.item_id,
+            name=item.name,
+            description=item.description,
+            cosmetic_type=item.cosmetic_type,
+            rarity=item.rarity,
+            unlock_condition=item.unlock_condition,
+            therapeutic_meaning=item.therapeutic_meaning,
+            visual_data=item.visual_data,
+            is_unlocked=True,
+            unlock_date=datetime.now()
+        )
+        
+        return unlocked_item
+    
+    def get_cosmetics_by_type(self, cosmetic_type: CosmeticType) -> List[CosmeticItem]:
+        """[UNICODE_30BF]"""
+        return [item for item in self.cosmetic_catalog.values() 
+                if item.cosmetic_type == cosmetic_type]
+
+class PrestigeSystem:
+    """[UNICODE_30D7]"""
+    
+    def __init__(self):
+        self.prestige_thresholds = {
+            PrestigeLevel.NOVICE: 0,
+            PrestigeLevel.APPRENTICE: 1000,
+            PrestigeLevel.JOURNEYMAN: 5000,
+            PrestigeLevel.EXPERT: 15000,
+            PrestigeLevel.MASTER: 35000,
+            PrestigeLevel.GRANDMASTER: 70000,
+            PrestigeLevel.LEGEND: 150000
+        }
+        
+        self.milestone_points = {
+            TherapeuticMilestone.FIRST_STEP: 100,
+            TherapeuticMilestone.HABIT_FORMATION: 500,
+            TherapeuticMilestone.SOCIAL_RECONNECTION: 800,
+            TherapeuticMilestone.EMOTIONAL_STABILITY: 1000,
+            TherapeuticMilestone.SELF_EFFICACY: 1200,
+            TherapeuticMilestone.PEER_SUPPORT: 1500,
+            TherapeuticMilestone.MENTORSHIP: 2000,
+            TherapeuticMilestone.LIFE_INTEGRATION: 3000
+        }
+    
+    def calculate_prestige_level(self, total_points: int) -> PrestigeLevel:
+        """[UNICODE_30D7]"""
+        for level in reversed(list(PrestigeLevel)):
+            if total_points >= self.prestige_thresholds[level]:
+                return level
+        return PrestigeLevel.NOVICE
+    
+    def check_milestone_achievement(self, milestone: TherapeuticMilestone, 
+                                  user_data: Dict[str, int]) -> bool:
+        """[UNICODE_6CBB]"""
+        milestone_conditions = {
+            TherapeuticMilestone.FIRST_STEP: lambda d: d.get("tasks_completed", 0) >= 1,
+            TherapeuticMilestone.HABIT_FORMATION: lambda d: d.get("habit_streak", 0) >= 21,
+            TherapeuticMilestone.SOCIAL_RECONNECTION: lambda d: d.get("social_interactions", 0) >= 50,
+            TherapeuticMilestone.EMOTIONAL_STABILITY: lambda d: d.get("mood_stability_days", 0) >= 30,
+            TherapeuticMilestone.SELF_EFFICACY: lambda d: d.get("self_efficacy_score", 0) >= 80,
+            TherapeuticMilestone.PEER_SUPPORT: lambda d: d.get("peer_support_given", 0) >= 25,
+            TherapeuticMilestone.MENTORSHIP: lambda d: d.get("mentorship_sessions", 0) >= 10,
+            TherapeuticMilestone.LIFE_INTEGRATION: lambda d: d.get("life_integration_score", 0) >= 90
+        }
+        
+        condition_func = milestone_conditions.get(milestone)
+        return condition_func(user_data) if condition_func else False
+    
+    def award_milestone(self, profile: PrestigeProfile, milestone: TherapeuticMilestone) -> int:
+        """[UNICODE_30DE]"""
+        if milestone not in profile.achieved_milestones:
+            points = self.milestone_points[milestone]
+            profile.achieved_milestones.add(milestone)
+            profile.total_prestige_points += points
+            profile.prestige_level = self.calculate_prestige_level(profile.total_prestige_points)
+            
+            # [UNICODE_5C65]
+            profile.prestige_history.append({
+                "type": "milestone_achieved",
+                "milestone": milestone.value,
+                "points_awarded": points,
+                "timestamp": datetime.now().isoformat()
+            })
+            
+            return points
+        
+        return 0
+    
+    def get_legacy_achievements(self, profile: PrestigeProfile) -> List[str]:
+        """[UNICODE_30EC]"""
+        legacy_achievements = []
+        
+        # [UNICODE_30D7]
+        if profile.prestige_level.value in ["master", "grandmaster", "legend"]:
+            legacy_achievements.append(f"prestige_{profile.prestige_level.value}")
+        
+        # [UNICODE_30DE]
+        milestone_count = len(profile.achieved_milestones)
+        if milestone_count >= 5:
+            legacy_achievements.append("milestone_collector")
+        if milestone_count >= 8:
+            legacy_achievements.append("milestone_master")
+        
+        # [UNICODE_7279]
+        if (TherapeuticMilestone.PEER_SUPPORT in profile.achieved_milestones and 
+            TherapeuticMilestone.MENTORSHIP in profile.achieved_milestones):
+            legacy_achievements.append("community_leader")
+        
+        return legacy_achievements
+
+class LongTermEngagementSystem:
+    """[UNICODE_9577]"""
+    
+    def __init__(self):
+        self.story_system = StoryBranchSystem()
+        self.cosmetic_system = CosmeticSystem()
+        self.prestige_system = PrestigeSystem()
+        self.user_profiles: Dict[str, PrestigeProfile] = {}
+    
+    def create_prestige_profile(self, user_uid: str) -> PrestigeProfile:
+        """[UNICODE_30D7]"""
+        profile = PrestigeProfile(
+            user_uid=user_uid,
+            prestige_level=PrestigeLevel.NOVICE,
+            total_prestige_points=0,
+            achieved_milestones=set(),
+            unlocked_story_branches=[],
+            cosmetic_collection={},
+            equipped_cosmetics={},
+            legacy_achievements=[],
+            prestige_history=[],
+            created_date=datetime.now()
+        )
+        
+        self.user_profiles[user_uid] = profile
+        return profile
+    
+    def update_user_progress(self, user_uid: str, progress_data: Dict[str, int]) -> Dict[str, any]:
+        """[UNICODE_30E6]"""
+        if user_uid not in self.user_profiles:
+            self.create_prestige_profile(user_uid)
+        
+        profile = self.user_profiles[user_uid]
+        updates = {
+            "milestones_achieved": [],
+            "branches_unlocked": [],
+            "cosmetics_unlocked": [],
+            "prestige_level_up": False
+        }
+        
+        # [UNICODE_30DE]
+        for milestone in TherapeuticMilestone:
+            if (milestone not in profile.achieved_milestones and 
+                self.prestige_system.check_milestone_achievement(milestone, progress_data)):
+                
+                points_awarded = self.prestige_system.award_milestone(profile, milestone)
+                updates["milestones_achieved"].append({
+                    "milestone": milestone.value,
+                    "points": points_awarded
+                })
+                
+                # [UNICODE_30D7]
+                old_level = profile.prestige_level
+                new_level = self.prestige_system.calculate_prestige_level(profile.total_prestige_points)
+                if new_level != old_level:
+                    profile.prestige_level = new_level
+                    updates["prestige_level_up"] = True
+        
+        # [UNICODE_5206]
+        available_branches = self.story_system.get_available_branches(profile.achieved_milestones)
+        for branch in available_branches:
+            if (branch.branch_id not in profile.unlocked_story_branches and
+                self.story_system.check_branch_unlock(branch.branch_id, progress_data)):
+                
+                self.story_system.unlock_branch(branch.branch_id, user_uid)
+                profile.unlocked_story_branches.append(branch.branch_id)
+                updates["branches_unlocked"].append(branch.branch_id)
+        
+        # [UNICODE_30B3]
+        user_achievements = self._convert_progress_to_achievements(progress_data, profile)
+        for item_id, item in self.cosmetic_system.cosmetic_catalog.items():
+            if (item_id not in profile.cosmetic_collection and
+                self.cosmetic_system.check_unlock_condition(item_id, user_achievements)):
+                
+                unlocked_item = self.cosmetic_system.unlock_cosmetic(item_id, user_uid)
+                if unlocked_item:
+                    profile.cosmetic_collection[item_id] = unlocked_item
+                    updates["cosmetics_unlocked"].append(item_id)
+        
+        # [UNICODE_30EC]
+        profile.legacy_achievements = self.prestige_system.get_legacy_achievements(profile)
+        profile.last_updated = datetime.now()
+        
+        return updates
+    
+    def _convert_progress_to_achievements(self, progress_data: Dict[str, int], 
+                                        profile: PrestigeProfile) -> Dict[str, bool]:
+        """[UNICODE_9032]"""
+        achievements = {}
+        
+        # [UNICODE_57FA]
+        achievements["complete_first_task"] = progress_data.get("tasks_completed", 0) >= 1
+        achievements["complete_first_week"] = progress_data.get("consecutive_days", 0) >= 7
+        achievements["maintain_21_day_streak"] = progress_data.get("habit_streak", 0) >= 21
+        achievements["complete_spring_event"] = progress_data.get("spring_event_completed", 0) >= 1
+        achievements["complete_reflection_milestone"] = progress_data.get("reflection_entries", 0) >= 50
+        achievements["overcome_setback_5_times"] = progress_data.get("setbacks_overcome", 0) >= 5
+        achievements["provide_peer_support_50_times"] = progress_data.get("peer_support_given", 0) >= 50
+        achievements["support_100_guild_members"] = progress_data.get("guild_members_supported", 0) >= 100
+        
+        # [UNICODE_30D7]
+        achievements["achieve_habit_formation"] = TherapeuticMilestone.HABIT_FORMATION in profile.achieved_milestones
+        achievements["reach_prestige_master"] = profile.prestige_level.value in ["master", "grandmaster", "legend"]
+        
+        return achievements
+    
+    def get_user_engagement_summary(self, user_uid: str) -> Dict[str, any]:
+        """[UNICODE_30E6]"""
+        if user_uid not in self.user_profiles:
+            return {"error": "Profile not found"}
+        
+        profile = self.user_profiles[user_uid]
+        
+        return {
+            "prestige_level": profile.prestige_level.value,
+            "total_prestige_points": profile.total_prestige_points,
+            "achieved_milestones": [m.value for m in profile.achieved_milestones],
+            "unlocked_story_branches": len(profile.unlocked_story_branches),
+            "cosmetic_collection_size": len(profile.cosmetic_collection),
+            "legacy_achievements": profile.legacy_achievements,
+            "days_since_creation": (datetime.now() - profile.created_date).days,
+            "available_story_branches": [
+                asdict(branch) for branch in 
+                self.story_system.get_available_branches(profile.achieved_milestones)
+            ],
+            "equipped_cosmetics": profile.equipped_cosmetics
+        }
+    
+    def equip_cosmetic(self, user_uid: str, item_id: str) -> bool:
+        """[UNICODE_30B3]"""
+        if user_uid not in self.user_profiles:
+            return False
+        
+        profile = self.user_profiles[user_uid]
+        
+        if item_id not in profile.cosmetic_collection:
+            return False
+        
+        item = profile.cosmetic_collection[item_id]
+        profile.equipped_cosmetics[item.cosmetic_type] = item_id
+        
+        return True
+
+if __name__ == "__main__":
+    # [UNICODE_30B7]
+    engagement = LongTermEngagementSystem()
+    
+    # [UNICODE_30E6]
+    user_uid = "user_001"
+    profile = engagement.create_prestige_profile(user_uid)
+    print(f"[UNICODE_30D7]: {user_uid}")
+    
+    # [UNICODE_9032]
+    progress_data = {
+        "tasks_completed": 25,
+        "consecutive_days": 14,
+        "habit_streak": 21,
+        "social_interactions": 30,
+        "reflection_entries": 15,
+        "mood_stability_days": 20
+    }
+    
+    updates = engagement.update_user_progress(user_uid, progress_data)
+    print(f"[UNICODE_9032]: {json.dumps(updates, indent=2, ensure_ascii=False)}")
+    
+    # [UNICODE_30A8]
+    summary = engagement.get_user_engagement_summary(user_uid)
+    print(f"[UNICODE_30A8]: {json.dumps(summary, indent=2, ensure_ascii=False)}")

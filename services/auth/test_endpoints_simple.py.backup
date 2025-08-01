@@ -1,0 +1,254 @@
+"""
+[UNICODE_8A8D]
+
+[UNICODE_8A8D]
+[UNICODE_8981]6.1, 10.3[UNICODE_306B]
+
+Requirements: 6.1, 10.3
+"""
+
+import sys
+import os
+
+# Add project root to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+from services.auth.jwt_service import jwt_service
+from shared.interfaces.rbac_system import PermissionLevel, rbac_system
+
+
+def test_jwt_service_endpoints():
+    """JWT[UNICODE_30B5]"""
+    print("=== JWT[UNICODE_30B5] ===")
+    
+    try:
+        guardian_id = "test_guardian_001"
+        user_id = "test_user_001"
+        permission_level = PermissionLevel.TASK_EDIT.value
+        
+        # 1. [UNICODE_30C8]
+        token_pair = jwt_service.create_token_pair(
+            guardian_id, user_id, permission_level
+        )
+        
+        print(f"[UNICODE_2713] [UNICODE_30ED]: [UNICODE_6210]")
+        print(f"  - [UNICODE_30A2]: {token_pair.access_token[:20]}...")
+        print(f"  - [UNICODE_30EA]: {token_pair.refresh_token[:20]}...")
+        print(f"  - [UNICODE_6709]: {token_pair.expires_in}[UNICODE_79D2]")
+        
+        # 2. [UNICODE_30C8]
+        access_token_data = jwt_service.verify_token(token_pair.access_token)
+        print(f"[UNICODE_2713] [UNICODE_30C8]: [UNICODE_6210]")
+        print(f"  - Guardian ID: {access_token_data.guardian_id}")
+        print(f"  - User ID: {access_token_data.user_id}")
+        print(f"  - Permission Level: {access_token_data.permission_level}")
+        
+        # 3. [UNICODE_30C8]
+        new_token_pair = jwt_service.refresh_access_token(token_pair.refresh_token)
+        print(f"[UNICODE_2713] [UNICODE_30C8]: [UNICODE_6210]")
+        print(f"  - [UNICODE_65B0]: {new_token_pair.access_token[:20]}...")
+        
+        # 4. [UNICODE_30C8]
+        token_info = jwt_service.get_token_info(new_token_pair.access_token)
+        print(f"[UNICODE_2713] [UNICODE_30C8]: [UNICODE_6210]")
+        print(f"  - JTI: {token_info['jti']}")
+        print(f"  - [UNICODE_767A]: {token_info['issued_at']}")
+        print(f"  - [UNICODE_6709]: {token_info['expires_at']}")
+        
+        # 5. [UNICODE_30C8]
+        revoke_success = jwt_service.revoke_token(new_token_pair.access_token)
+        print(f"[UNICODE_2713] [UNICODE_30ED]: {'[UNICODE_6210]' if revoke_success else '[UNICODE_5931]'}")
+        
+        return True
+        
+    except Exception as e:
+        print(f"[UNICODE_2717] JWT[UNICODE_30B5]: {str(e)}")
+        return False
+
+
+def test_rbac_system_basic():
+    """RBAC[UNICODE_30B7]"""
+    print("\n=== RBAC[UNICODE_30B7] ===")
+    
+    try:
+        # 1. [UNICODE_30C7]
+        roles_data = rbac_system.export_roles_data()
+        print(f"[UNICODE_2713] [UNICODE_30C7]: {len(roles_data['roles'])}")
+        
+        for role_key, role_info in roles_data['roles'].items():
+            print(f"  - {role_key}: {role_info['name']} ({role_info['description']})")
+        
+        # 2. [UNICODE_30C6]
+        test_guardian_id = "test_guardian_rbac"
+        test_user_id = "test_user_rbac"
+        
+        grant_success = rbac_system.grant_role(
+            test_user_id, test_guardian_id, 
+            PermissionLevel.TASK_EDIT, "system_test"
+        )
+        print(f"[UNICODE_2713] [UNICODE_30ED]: {'[UNICODE_6210]' if grant_success else '[UNICODE_5931]'}")
+        
+        # 3. [UNICODE_6A29]
+        from shared.interfaces.rbac_system import ResourceType, Action
+        
+        has_permission = rbac_system.check_permission(
+            test_guardian_id, test_user_id,
+            ResourceType.TASK_DATA, Action.READ
+        )
+        print(f"[UNICODE_2713] [UNICODE_6A29]: {'[UNICODE_8A31]' if has_permission else '[UNICODE_62D2]'}")
+        
+        # 4. [UNICODE_6A29]
+        permission_summary = rbac_system.get_permission_summary(
+            test_guardian_id, test_user_id
+        )
+        print(f"[UNICODE_2713] [UNICODE_6A29]: {'[UNICODE_6210]' if permission_summary.get('has_access') else '[UNICODE_5931]'}")
+        
+        # 5. [UNICODE_30ED]
+        revoke_success = rbac_system.revoke_role(test_user_id, test_guardian_id)
+        print(f"[UNICODE_2713] [UNICODE_30ED]: {'[UNICODE_6210]' if revoke_success else '[UNICODE_5931]'}")
+        
+        return True
+        
+    except Exception as e:
+        print(f"[UNICODE_2717] RBAC[UNICODE_30B7]: {str(e)}")
+        return False
+
+
+def test_authentication_flow_simulation():
+    """[UNICODE_8A8D]"""
+    print("\n=== [UNICODE_8A8D] ===")
+    
+    try:
+        # [UNICODE_30B7]: Guardian Portal [UNICODE_30ED]
+        guardian_id = "guardian_portal_001"
+        user_id = "managed_user_001"
+        permission_level = PermissionLevel.CHAT_SEND
+        
+        print(f"[UNICODE_30B7]:")
+        print(f"  Guardian ID: {guardian_id}")
+        print(f"  User ID: {user_id}")
+        print(f"  Permission Level: {permission_level.value}")
+        
+        # 1. RBAC[UNICODE_30B7]
+        rbac_system.grant_role(
+            user_id, guardian_id, permission_level, "admin"
+        )
+        print(f"[UNICODE_2713] Step 1: RBAC[UNICODE_6A29]")
+        
+        # 2. [UNICODE_30ED]JWT[UNICODE_30C8]
+        token_pair = jwt_service.create_token_pair(
+            guardian_id, user_id, permission_level.value
+        )
+        print(f"[UNICODE_2713] Step 2: [UNICODE_30ED]JWT[UNICODE_30C8]")
+        
+        # 3. [UNICODE_8A8D]
+        token_data = jwt_service.verify_token(token_pair.access_token)
+        print(f"[UNICODE_2713] Step 3: [UNICODE_8A8D]")
+        
+        # 4. [UNICODE_6A29]
+        from shared.interfaces.rbac_system import ResourceType, Action
+        
+        has_chat_permission = rbac_system.check_permission(
+            guardian_id, user_id, ResourceType.CHAT_MESSAGES, Action.WRITE
+        )
+        print(f"[UNICODE_2713] Step 4: [UNICODE_6A29]: {'[UNICODE_8A31]' if has_chat_permission else '[UNICODE_62D2]'}")
+        
+        # 5. [UNICODE_30C8]
+        new_token_pair = jwt_service.refresh_access_token(token_pair.refresh_token)
+        print(f"[UNICODE_2713] Step 5: [UNICODE_30C8]")
+        
+        # 6. [UNICODE_30ED]
+        jwt_service.revoke_token(new_token_pair.access_token)
+        jwt_service.revoke_token(new_token_pair.refresh_token)
+        print(f"[UNICODE_2713] Step 6: [UNICODE_30ED]")
+        
+        # 7. [UNICODE_30AF]
+        rbac_system.revoke_role(user_id, guardian_id)
+        print(f"[UNICODE_2713] Step 7: [UNICODE_30C6]")
+        
+        return True
+        
+    except Exception as e:
+        print(f"[UNICODE_2717] [UNICODE_8A8D]: {str(e)}")
+        return False
+
+
+def test_error_scenarios():
+    """[UNICODE_30A8]"""
+    print("\n=== [UNICODE_30A8] ===")
+    
+    try:
+        # 1. [UNICODE_7121]
+        try:
+            jwt_service.verify_token("invalid.jwt.token")
+            print("[UNICODE_2717] [UNICODE_7121]")
+            return False
+        except:
+            print("[UNICODE_2713] [UNICODE_7121]")
+        
+        # 2. [UNICODE_5B58]Guardian[UNICODE_3067]
+        from shared.interfaces.rbac_system import ResourceType, Action
+        
+        has_permission = rbac_system.check_permission(
+            "nonexistent_guardian", "nonexistent_user",
+            ResourceType.TASK_DATA, Action.READ
+        )
+        if not has_permission:
+            print("[UNICODE_2713] [UNICODE_5B58]Guardian[UNICODE_306E]")
+        else:
+            print("[UNICODE_2717] [UNICODE_5B58]Guardian[UNICODE_306B]")
+            return False
+        
+        # 3. [UNICODE_671F]
+        token = jwt_service.create_access_token("test_guardian", "test_user", "view-only")
+        jwt_service.revoke_token(token)
+        
+        try:
+            jwt_service.verify_token(token)
+            print("[UNICODE_2717] [UNICODE_53D6]")
+            return False
+        except:
+            print("[UNICODE_2713] [UNICODE_53D6]")
+        
+        return True
+        
+    except Exception as e:
+        print(f"[UNICODE_2717] [UNICODE_30A8]: {str(e)}")
+        return False
+
+
+def run_endpoint_tests():
+    """[UNICODE_30A8]"""
+    print("=== [UNICODE_8A8D] ===")
+    
+    tests = [
+        ("JWT[UNICODE_30B5]", test_jwt_service_endpoints),
+        ("RBAC[UNICODE_30B7]", test_rbac_system_basic),
+        ("[UNICODE_8A8D]", test_authentication_flow_simulation),
+        ("[UNICODE_30A8]", test_error_scenarios),
+    ]
+    
+    passed = 0
+    total = len(tests)
+    
+    for test_name, test_func in tests:
+        try:
+            result = test_func()
+            if result:
+                passed += 1
+        except Exception as e:
+            print(f"[UNICODE_2717] {test_name}[UNICODE_30C6]: {str(e)}")
+    
+    print(f"\n=== [UNICODE_30A8]: {passed}/{total} [UNICODE_6210] ===")
+    
+    if passed == total:
+        print("[UNICODE_1F389] [UNICODE_5168]")
+        return True
+    else:
+        print("[UNICODE_274C] [UNICODE_4E00]")
+        return False
+
+
+if __name__ == "__main__":
+    success = run_endpoint_tests()
+    exit(0 if success else 1)

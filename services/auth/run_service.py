@@ -1,0 +1,123 @@
+#!/usr/bin/env python3
+"""
+Startup script for the Authentication Service
+Handles environment setup and service initialization
+"""
+
+import os
+import sys
+import uvicorn
+from pathlib import Path
+
+# Add shared modules to Python path
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
+
+def setup_environment():
+    """Setup environment variables for development"""
+    
+    # Set default environment variables if not already set
+    env_defaults = {
+        "ENVIRONMENT": "development",
+        "DEBUG": "true",
+        "JWT_SECRET": "development-secret-key-change-in-production",
+        "JWT_ALGORITHM": "HS256",
+        "JWT_EXPIRATION_HOURS": "24",
+        "GOOGLE_CLOUD_PROJECT": "therapeutic-gamification",
+        "FIRESTORE_DATABASE": "(default)",
+        "REDIS_HOST": "localhost",
+        "REDIS_PORT": "6379",
+        "MAX_CONCURRENT_AI_REQUESTS": "200",
+        "REQUEST_TIMEOUT_SECONDS": "30"
+    }
+    
+    for key, default_value in env_defaults.items():
+        if key not in os.environ:
+            os.environ[key] = default_value
+            print(f"Set {key}={default_value}")
+
+def check_dependencies():
+    """Check if required dependencies are available"""
+    
+    required_modules = [
+        "fastapi",
+        "uvicorn", 
+        "pydantic",
+        "bcrypt",
+        "jwt"
+    ]
+    
+    missing_modules = []
+    
+    for module in required_modules:
+        try:
+            __import__(module)
+            print(f"? {module} available")
+        except ImportError:
+            missing_modules.append(module)
+            print(f"? {module} missing")
+    
+    if missing_modules:
+        print(f"\nMissing dependencies: {', '.join(missing_modules)}")
+        print("Install with: pip install -r requirements.txt")
+        return False
+    
+    return True
+
+def main():
+    """Main startup function"""
+    
+    print("=== Authentication Service Startup ===\n")
+    
+    # Setup environment
+    print("Setting up environment...")
+    setup_environment()
+    print()
+    
+    # Check dependencies
+    print("Checking dependencies...")
+    if not check_dependencies():
+        print("\n? Cannot start service due to missing dependencies")
+        return 1
+    print()
+    
+    # Import and start the service
+    try:
+        print("Starting Authentication Service...")
+        
+        # Import the FastAPI app
+        from main import app
+        
+        # Configure uvicorn
+        config = uvicorn.Config(
+            app=app,
+            host="0.0.0.0",
+            port=8001,
+            reload=True if os.getenv("DEBUG", "false").lower() == "true" else False,
+            log_level="info"
+        )
+        
+        server = uvicorn.Server(config)
+        
+        print("? Authentication Service starting on http://0.0.0.0:8001")
+        print("? API Documentation available at http://0.0.0.0:8001/docs")
+        print("? Health check available at http://0.0.0.0:8001/health")
+        print("\nPress Ctrl+C to stop the service\n")
+        
+        # Start the server
+        server.run()
+        
+    except ImportError as e:
+        print(f"? Failed to import service: {e}")
+        print("Make sure all dependencies are installed and the service is properly configured")
+        return 1
+    except KeyboardInterrupt:
+        print("\n? Authentication Service stopped")
+        return 0
+    except Exception as e:
+        print(f"? Failed to start service: {e}")
+        return 1
+
+if __name__ == "__main__":
+    exit_code = main()
+    sys.exit(exit_code)

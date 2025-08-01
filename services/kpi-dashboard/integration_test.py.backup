@@ -1,0 +1,342 @@
+"""
+KPI Dashboard Service [UNICODE_7D71]
+[UNICODE_4ED6]
+"""
+import asyncio
+import json
+import requests
+from datetime import datetime, date, timedelta
+from main import KPIDashboardEngine, UserState, UserEngagementData
+
+class MockServiceIntegration:
+    """[UNICODE_4ED6]"""
+    
+    def __init__(self):
+        self.auth_service_url = "http://localhost:8001"
+        self.task_service_url = "http://localhost:8002"
+        self.mood_service_url = "http://localhost:8003"
+        
+    async def fetch_user_data_from_services(self):
+        """[UNICODE_5404]"""
+        # [UNICODE_5B9F]API[UNICODE_3092]
+        mock_users = []
+        
+        # [UNICODE_8A8D]
+        auth_users = await self._mock_auth_service_data()
+        
+        # [UNICODE_30BF]
+        task_data = await self._mock_task_service_data()
+        
+        # [UNICODE_6C17]
+        mood_data = await self._mock_mood_service_data()
+        
+        # [UNICODE_30C7]UserEngagementData[UNICODE_3092]
+        for user_id in auth_users:
+            user_auth = auth_users[user_id]
+            user_tasks = task_data.get(user_id, {})
+            user_mood = mood_data.get(user_id, {})
+            
+            # [UNICODE_30E6]
+            current_state = self._determine_user_state(user_tasks, user_mood)
+            
+            user_engagement = UserEngagementData(
+                user_id=user_id,
+                registration_date=user_auth["registration_date"],
+                last_login_date=user_auth.get("last_login_date"),
+                current_state=current_state,
+                consecutive_days=user_tasks.get("consecutive_days", 0),
+                total_sessions=user_tasks.get("total_sessions", 0),
+                total_xp=user_tasks.get("total_xp", 0),
+                revenue_generated=user_auth.get("revenue_generated", 0.0),
+                therapeutic_progress=user_mood.get("therapeutic_progress", {}),
+                safety_incidents=user_mood.get("safety_incidents", 0)
+            )
+            
+            mock_users.append(user_engagement)
+        
+        return mock_users
+    
+    async def _mock_auth_service_data(self):
+        """[UNICODE_8A8D]"""
+        return {
+            "user_001": {
+                "registration_date": date.today() - timedelta(days=30),
+                "last_login_date": date.today(),
+                "revenue_generated": 500.0
+            },
+            "user_002": {
+                "registration_date": date.today() - timedelta(days=21),
+                "last_login_date": date.today() - timedelta(days=1),
+                "revenue_generated": 200.0
+            },
+            "user_003": {
+                "registration_date": date.today() - timedelta(days=7),
+                "last_login_date": date.today(),
+                "revenue_generated": 0.0
+            },
+            "user_004": {
+                "registration_date": date.today() - timedelta(days=2),
+                "last_login_date": date.today() - timedelta(days=1),
+                "revenue_generated": 100.0
+            }
+        }
+    
+    async def _mock_task_service_data(self):
+        """[UNICODE_30BF]"""
+        return {
+            "user_001": {
+                "consecutive_days": 25,
+                "total_sessions": 50,
+                "total_xp": 1250,
+                "completed_tasks": 75
+            },
+            "user_002": {
+                "consecutive_days": 18,
+                "total_sessions": 36,
+                "total_xp": 900,
+                "completed_tasks": 54
+            },
+            "user_003": {
+                "consecutive_days": 5,
+                "total_sessions": 10,
+                "total_xp": 250,
+                "completed_tasks": 15
+            },
+            "user_004": {
+                "consecutive_days": 2,
+                "total_sessions": 4,
+                "total_xp": 100,
+                "completed_tasks": 6
+            }
+        }
+    
+    async def _mock_mood_service_data(self):
+        """[UNICODE_6C17]"""
+        return {
+            "user_001": {
+                "therapeutic_progress": {
+                    "self_efficacy": 0.85,
+                    "cbt_engagement": 1.0,
+                    "mood_improvement": 0.75
+                },
+                "safety_incidents": 0
+            },
+            "user_002": {
+                "therapeutic_progress": {
+                    "self_efficacy": 0.70,
+                    "cbt_engagement": 1.0,
+                    "mood_improvement": 0.60
+                },
+                "safety_incidents": 0
+            },
+            "user_003": {
+                "therapeutic_progress": {
+                    "self_efficacy": 0.45,
+                    "cbt_engagement": 0.0,
+                    "mood_improvement": 0.30
+                },
+                "safety_incidents": 0
+            },
+            "user_004": {
+                "therapeutic_progress": {
+                    "self_efficacy": 0.25,
+                    "cbt_engagement": 0.0,
+                    "mood_improvement": 0.15
+                },
+                "safety_incidents": 0
+            }
+        }
+    
+    def _determine_user_state(self, task_data, mood_data):
+        """[UNICODE_30E6]"""
+        consecutive_days = task_data.get("consecutive_days", 0)
+        self_efficacy = mood_data.get("therapeutic_progress", {}).get("self_efficacy", 0)
+        
+        if consecutive_days >= 21 and self_efficacy >= 0.7:
+            return UserState.HABITUATION
+        elif consecutive_days >= 7 and self_efficacy >= 0.5:
+            return UserState.CONTINUATION
+        elif consecutive_days >= 3 and self_efficacy >= 0.3:
+            return UserState.ACTION
+        elif consecutive_days >= 1:
+            return UserState.INTEREST
+        else:
+            return UserState.APATHY
+
+async def test_service_integration():
+    """[UNICODE_30B5]"""
+    print("=== KPI Dashboard Service [UNICODE_7D71] ===")
+    
+    # [UNICODE_30E2]
+    integration = MockServiceIntegration()
+    
+    # KPI[UNICODE_30C0]
+    dashboard = KPIDashboardEngine()
+    
+    print("[UNICODE_2713] [UNICODE_30B5]")
+    
+    # [UNICODE_4ED6]
+    print("\n=== [UNICODE_4ED6] ===")
+    integrated_users = await integration.fetch_user_data_from_services()
+    
+    print(f"[UNICODE_2713] [UNICODE_7D71]: {len(integrated_users)}[UNICODE_4EBA]")
+    
+    # [UNICODE_30C0]
+    dashboard.user_data = {user.user_id: user for user in integrated_users}
+    
+    # [UNICODE_5404]
+    print("\n=== [UNICODE_30E6] ===")
+    for user in integrated_users:
+        print(f"[UNICODE_2022] {user.user_id}")
+        print(f"  [UNICODE_72B6]: {user.current_state.value}")
+        print(f"  [UNICODE_7D99]: {user.consecutive_days}[UNICODE_65E5]")
+        print(f"  XP: {user.total_xp}")
+        print(f"  [UNICODE_53CE]: [UNICODE_00A5]{user.revenue_generated}")
+        print(f"  [UNICODE_81EA]: {user.therapeutic_progress.get('self_efficacy', 0):.2f}")
+    
+    # KPI[UNICODE_8A08]
+    print("\n=== [UNICODE_7D71]KPI[UNICODE_8A08] ===")
+    calculation_result = await dashboard.calculate_kpi_metrics()
+    
+    print(f"[UNICODE_2713] KPI[UNICODE_8A08]")
+    print(f"  [UNICODE_66F4]: {calculation_result['metrics_updated']}")
+    print(f"  [UNICODE_751F]: {calculation_result['alerts_generated']}")
+    
+    # [UNICODE_91CD]
+    print("\n=== [UNICODE_7D71] ===")
+    critical_metrics = [m for m in dashboard.kpi_metrics.values() if m.is_critical]
+    for metric in critical_metrics:
+        print(f"[UNICODE_2022] {metric.name}")
+        print(f"  [UNICODE_73FE]: {metric.current_value:.3f} {metric.unit}")
+        print(f"  [UNICODE_76EE]: {metric.target_value:.3f} {metric.unit}")
+        achievement = (metric.current_value / metric.target_value * 100) if metric.target_value > 0 else 0
+        print(f"  [UNICODE_9054]: {achievement:.1f}%")
+    
+    # [UNICODE_30C0]
+    print("\n=== [UNICODE_7D71] ===")
+    summary = await dashboard.get_dashboard_summary()
+    
+    print(f"[UNICODE_2713] [UNICODE_5168]: {summary['overall_health_score']:.3f}")
+    print(f"[UNICODE_2713] [UNICODE_7DCF]: {summary['total_users']}")
+    print(f"[UNICODE_2713] [UNICODE_30A2]: {len(summary['active_alerts'])}")
+    
+    # [UNICODE_6CBB]
+    print("\n=== [UNICODE_6CBB] ===")
+    habituation_users = [u for u in integrated_users if u.current_state == UserState.HABITUATION]
+    action_plus_users = [u for u in integrated_users if u.current_state.value in ["ACTION", "CONTINUATION", "HABITUATION"]]
+    
+    print(f"[UNICODE_2022] [UNICODE_7FD2]: {len(habituation_users)}[UNICODE_4EBA] ({len(habituation_users)/len(integrated_users)*100:.1f}%)")
+    print(f"[UNICODE_2022] ACTION[UNICODE_4EE5]: {len(action_plus_users)}[UNICODE_4EBA] ({len(action_plus_users)/len(integrated_users)*100:.1f}%)")
+    
+    # [UNICODE_53CE]
+    total_revenue = sum(u.revenue_generated for u in integrated_users)
+    paying_users = [u for u in integrated_users if u.revenue_generated > 0]
+    
+    print(f"[UNICODE_2022] [UNICODE_7DCF]: [UNICODE_00A5]{total_revenue}")
+    print(f"[UNICODE_2022] [UNICODE_8AB2]: {len(paying_users)}[UNICODE_4EBA] ({len(paying_users)/len(integrated_users)*100:.1f}%)")
+    if paying_users:
+        avg_revenue = total_revenue / len(paying_users)
+        print(f"[UNICODE_2022] [UNICODE_8AB2]: [UNICODE_00A5]{avg_revenue:.0f}")
+    
+    # [UNICODE_30A2]
+    if summary['active_alerts']:
+        print("\n=== [UNICODE_30A2] ===")
+        for alert in summary['active_alerts']:
+            print(f"[UNICODE_26A0]  {alert['severity'].upper()}: {alert['message']}")
+    
+    print("\n=== [UNICODE_7D71] ===")
+    return True
+
+async def test_real_time_updates():
+    """[UNICODE_30EA]"""
+    print("\n=== [UNICODE_30EA] ===")
+    
+    dashboard = KPIDashboardEngine()
+    
+    # [UNICODE_521D]
+    initial_summary = await dashboard.get_dashboard_summary()
+    initial_health_score = initial_summary['overall_health_score']
+    
+    print(f"[UNICODE_521D]: {initial_health_score:.3f}")
+    
+    # [UNICODE_65B0]
+    new_user = UserEngagementData(
+        user_id="new_user_high_performer",
+        registration_date=date.today() - timedelta(days=25),
+        last_login_date=date.today(),
+        current_state=UserState.HABITUATION,
+        consecutive_days=25,
+        total_sessions=50,
+        total_xp=1250,
+        revenue_generated=800.0,
+        therapeutic_progress={
+            "self_efficacy": 0.95,
+            "cbt_engagement": 1.0,
+            "mood_improvement": 0.85
+        },
+        safety_incidents=0
+    )
+    
+    dashboard.user_data[new_user.user_id] = new_user
+    
+    # [UNICODE_66F4]
+    updated_summary = await dashboard.get_dashboard_summary()
+    updated_health_score = updated_summary['overall_health_score']
+    
+    print(f"[UNICODE_66F4]: {updated_health_score:.3f}")
+    print(f"[UNICODE_5065]: {updated_health_score - initial_health_score:+.3f}")
+    
+    # [UNICODE_30E1]
+    print("\n=== [UNICODE_30E1] ===")
+    for metric_id in ["arpmau", "d21_habituation_rate"]:
+        if metric_id in updated_summary['critical_metrics']:
+            metric = updated_summary['critical_metrics'][metric_id]
+            print(f"[UNICODE_2022] {metric['name']}: {metric['current_value']:.3f} {metric['unit']}")
+    
+    print("[UNICODE_2713] [UNICODE_30EA]")
+
+def test_api_performance():
+    """API [UNICODE_30D1]"""
+    print("\n=== API [UNICODE_30D1] ===")
+    
+    from fastapi.testclient import TestClient
+    from main import app
+    import time
+    
+    client = TestClient(app)
+    
+    # [UNICODE_5404]
+    endpoints = [
+        ("/kpi/dashboard", "[UNICODE_30C0]"),
+        ("/kpi/metrics", "[UNICODE_30E1]"),
+        ("/kpi/metrics/d1_retention", "[UNICODE_500B]"),
+        ("/kpi/alerts", "[UNICODE_30A2]"),
+        ("/kpi/health", "[UNICODE_30B7]")
+    ]
+    
+    for endpoint, name in endpoints:
+        start_time = time.time()
+        response = client.get(endpoint)
+        end_time = time.time()
+        
+        response_time = (end_time - start_time) * 1000  # [UNICODE_30DF]
+        
+        print(f"[UNICODE_2022] {name}: {response_time:.2f}ms (Status: {response.status_code})")
+        
+        # 1.2[UNICODE_79D2]1200ms[UNICODE_FF09]
+        assert response_time < 1200, f"{name}[UNICODE_306E]: {response_time:.2f}ms"
+        assert response.status_code == 200, f"{name}[UNICODE_3067]: {response.status_code}"
+    
+    print("[UNICODE_2713] [UNICODE_5168]")
+
+if __name__ == "__main__":
+    # [UNICODE_7D71]
+    asyncio.run(test_service_integration())
+    
+    # [UNICODE_30EA]
+    asyncio.run(test_real_time_updates())
+    
+    # [UNICODE_30D1]
+    test_api_performance()
+    
+    print("\n[UNICODE_1F389] KPI Dashboard Service [UNICODE_7D71]")

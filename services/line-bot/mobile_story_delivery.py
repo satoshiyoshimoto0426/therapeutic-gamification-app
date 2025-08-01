@@ -1,0 +1,511 @@
+"""
+Mobile-optimized story delivery functions for LINE Bot
+Handles evening story generation and delivery with mobile-friendly UI
+"""
+
+from linebot.models import (
+    FlexSendMessage, BubbleContainer, BoxComponent, TextComponent, 
+    ButtonComponent, PostbackAction, CarouselContainer, SeparatorComponent,
+    ImageComponent, FillerComponent
+)
+from typing import List, Dict, Optional
+import random
+
+def create_mobile_optimized_evening_story(story_data: Dict) -> FlexSendMessage:
+    """Create mobile-optimized evening story delivery"""
+    story_content = story_data.get("content", "?")
+    story_title = story_data.get("title", "?")
+    choices = story_data.get("choices", [])
+    
+    # Main story bubble
+    story_bubble = BubbleContainer(
+        body=BoxComponent(
+            layout="vertical",
+            spacing="md",
+            paddingAll="lg",
+            contents=[
+                # Header with evening theme
+                BoxComponent(
+                    layout="horizontal",
+                    spacing="sm",
+                    contents=[
+                        TextComponent(
+                            text="?",
+                            size="xl",
+                            flex=0
+                        ),
+                        TextComponent(
+                            text=story_title,
+                            weight="bold",
+                            size="lg",
+                            color="#4A5568",
+                            flex=1
+                        ),
+                        TextComponent(
+                            text="21:30",
+                            size="sm",
+                            color="#718096",
+                            flex=0
+                        )
+                    ]
+                ),
+                SeparatorComponent(margin="md"),
+                
+                # Story content - mobile optimized with line breaks
+                TextComponent(
+                    text=format_story_for_mobile(story_content),
+                    size="md",
+                    wrap=True,
+                    lineSpacing="lg",
+                    color="#2D3748"
+                ),
+                
+                FillerComponent(flex=1),
+                
+                # Story choices section
+                TextComponent(
+                    text="? ?",
+                    weight="bold",
+                    size="md",
+                    color="#805AD5",
+                    align="center"
+                )
+            ]
+        )
+    )
+    
+    # Create choice bubbles if available
+    bubbles = [story_bubble]
+    
+    if choices:
+        choice_bubbles = create_mobile_story_choices(choices)
+        bubbles.extend(choice_bubbles)
+    
+    # Create carousel
+    carousel = CarouselContainer(contents=bubbles)
+    
+    return FlexSendMessage(
+        alt_text=f"? {story_title}",
+        contents=carousel
+    )
+
+def create_mobile_story_choices(choices: List[Dict]) -> List[BubbleContainer]:
+    """Create mobile-optimized story choice bubbles in 3x3 Mandala format"""
+    choice_bubbles = []
+    
+    # Limit to 9 choices for 3x3 Mandala format (ADHD consideration)
+    limited_choices = choices[:9]
+    
+    # Group choices into rows of 3
+    for i in range(0, len(limited_choices), 3):
+        row_choices = limited_choices[i:i+3]
+        
+        # Create choice buttons for this row
+        choice_contents = []
+        
+        for choice in row_choices:
+            choice_button = create_mobile_choice_button(choice)
+            choice_contents.append(choice_button)
+        
+        # Fill empty slots if needed
+        while len(choice_contents) < 3:
+            choice_contents.append(create_empty_choice_slot())
+        
+        # Create row bubble
+        row_bubble = BubbleContainer(
+            size="kilo",  # Compact for mobile
+            body=BoxComponent(
+                layout="horizontal",
+                spacing="xs",
+                paddingAll="sm",
+                contents=choice_contents
+            )
+        )
+        choice_bubbles.append(row_bubble)
+    
+    # Ensure we have exactly 3 rows for 3x3 grid
+    while len(choice_bubbles) < 3:
+        empty_row = BubbleContainer(
+            size="kilo",
+            body=BoxComponent(
+                layout="horizontal",
+                spacing="xs",
+                paddingAll="sm",
+                contents=[create_empty_choice_slot() for _ in range(3)]
+            )
+        )
+        choice_bubbles.append(empty_row)
+    
+    return choice_bubbles
+
+def create_mobile_choice_button(choice: Dict) -> BoxComponent:
+    """Create individual choice button optimized for mobile touch"""
+    choice_text = choice.get("text", "?")
+    choice_id = choice.get("id", "")
+    real_task_id = choice.get("real_task_id")
+    habit_tag = choice.get("habit_tag")
+    
+    # Determine choice type and emoji
+    choice_emoji = "?"
+    if real_task_id:
+        choice_emoji = "?"  # Task-linked choice
+    elif habit_tag:
+        choice_emoji = "?"  # Habit-linked choice
+    
+    # Truncate text for mobile display
+    display_text = choice_text[:12] + ("..." if len(choice_text) > 12 else "")
+    
+    return BoxComponent(
+        layout="vertical",
+        spacing="xs",
+        paddingAll="sm",
+        backgroundColor="#F7FAFC",
+        cornerRadius="md",
+        contents=[
+            TextComponent(
+                text=choice_emoji,
+                size="lg",
+                align="center"
+            ),
+            TextComponent(
+                text=display_text,
+                size="xs",
+                weight="bold",
+                align="center",
+                wrap=True,
+                maxLines=2,
+                color="#4A5568"
+            ),
+            ButtonComponent(
+                style="primary",
+                height="sm",
+                color="#805AD5",
+                action=PostbackAction(
+                    label="?",
+                    data=f"story_choice_{choice_id}"
+                )
+            )
+        ],
+        action=PostbackAction(
+            data=f"view_choice_{choice_id}"
+        )
+    )
+
+def create_empty_choice_slot() -> BoxComponent:
+    """Create empty choice slot for 3x3 grid layout"""
+    return BoxComponent(
+        layout="vertical",
+        spacing="xs",
+        paddingAll="sm",
+        backgroundColor="#EDF2F7",
+        cornerRadius="md",
+        contents=[
+            TextComponent(
+                text="?",
+                size="lg",
+                align="center",
+                color="#CBD5E0"
+            ),
+            TextComponent(
+                text="?...",
+                size="xs",
+                align="center",
+                color="#A0AEC0"
+            )
+        ]
+    )
+
+def create_story_choice_confirmation(choice_data: Dict, task_info: Optional[Dict] = None) -> FlexSendMessage:
+    """Create confirmation message for story choice selection"""
+    choice_text = choice_data.get("text", "?")
+    
+    # Determine if this choice links to a real task
+    has_task = task_info is not None
+    
+    bubble = BubbleContainer(
+        body=BoxComponent(
+            layout="vertical",
+            spacing="md",
+            paddingAll="lg",
+            backgroundColor="#E6FFFA",
+            contents=[
+                TextComponent(
+                    text="? ?",
+                    weight="bold",
+                    size="xl",
+                    color="#319795",
+                    align="center"
+                ),
+                SeparatorComponent(margin="md"),
+                
+                BoxComponent(
+                    layout="vertical",
+                    spacing="sm",
+                    contents=[
+                        TextComponent(
+                            text="?:",
+                            size="sm",
+                            color="#4A5568"
+                        ),
+                        TextComponent(
+                            text=choice_text,
+                            size="md",
+                            weight="bold",
+                            wrap=True,
+                            color="#2D3748"
+                        )
+                    ]
+                ),
+                
+                FillerComponent(flex=1),
+                
+                # Show task connection if available
+                BoxComponent(
+                    layout="vertical",
+                    spacing="sm",
+                    contents=[
+                        TextComponent(
+                            text="? ?Mandalaに:",
+                            size="sm",
+                            color="#805AD5",
+                            weight="bold"
+                        ),
+                        TextComponent(
+                            text=task_info.get("title", "?") if has_task else "こ",
+                            size="sm",
+                            wrap=True,
+                            color="#553C9A"
+                        )
+                    ]
+                ) if has_task or choice_data.get("real_task_id") or choice_data.get("habit_tag") else FillerComponent(flex=1),
+                
+                ButtonComponent(
+                    style="secondary",
+                    height="sm",
+                    action=PostbackAction(
+                        label="?",
+                        data="view_daily_reflection"
+                    )
+                )
+            ]
+        )
+    )
+    
+    return FlexSendMessage(
+        alt_text=f"?: {choice_text}",
+        contents=bubble
+    )
+
+def format_story_for_mobile(story_content: str) -> str:
+    """Format story content for mobile readability"""
+    # Split long paragraphs and add appropriate line breaks
+    sentences = story_content.split('?')
+    formatted_sentences = []
+    
+    for sentence in sentences:
+        if sentence.strip():
+            # Add period back and ensure proper spacing
+            formatted_sentence = sentence.strip() + '?'
+            formatted_sentences.append(formatted_sentence)
+    
+    # Join with line breaks for mobile readability
+    # Limit to reasonable length for mobile screens
+    formatted_content = '\n\n'.join(formatted_sentences[:4])  # Max 4 sentences
+    
+    # Add continuation indicator if content was truncated
+    if len(sentences) > 4:
+        formatted_content += "\n\n? ?..."
+    
+    return formatted_content
+
+def create_mandala_story_grid(story_elements: List[Dict]) -> FlexSendMessage:
+    """Create 3x3 Mandala grid showing story elements and choices"""
+    # Limit to 9 elements for 3x3 grid
+    grid_elements = story_elements[:9]
+    
+    # Create grid bubbles
+    bubbles = []
+    
+    # Header bubble
+    header_bubble = BubbleContainer(
+        body=BoxComponent(
+            layout="vertical",
+            spacing="md",
+            contents=[
+                TextComponent(
+                    text="? 物語Mandala",
+                    weight="bold",
+                    size="xl",
+                    color="#805AD5",
+                    align="center"
+                ),
+                TextComponent(
+                    text="?",
+                    size="sm",
+                    color="#718096",
+                    align="center"
+                ),
+                SeparatorComponent(margin="md")
+            ]
+        )
+    )
+    bubbles.append(header_bubble)
+    
+    # Create 3x3 grid
+    for i in range(0, 9, 3):
+        row_elements = grid_elements[i:i+3] if i < len(grid_elements) else []
+        
+        # Fill row to 3 elements
+        while len(row_elements) < 3:
+            row_elements.append({"type": "empty"})
+        
+        row_contents = []
+        for element in row_elements:
+            if element.get("type") == "empty":
+                row_contents.append(create_empty_mandala_cell())
+            else:
+                row_contents.append(create_mandala_story_cell(element))
+        
+        row_bubble = BubbleContainer(
+            size="kilo",
+            body=BoxComponent(
+                layout="horizontal",
+                spacing="xs",
+                paddingAll="xs",
+                contents=row_contents
+            )
+        )
+        bubbles.append(row_bubble)
+    
+    carousel = CarouselContainer(contents=bubbles)
+    
+    return FlexSendMessage(
+        alt_text="? 物語Mandala - 3x3?",
+        contents=carousel
+    )
+
+def create_mandala_story_cell(element: Dict) -> BoxComponent:
+    """Create individual cell for Mandala story grid"""
+    element_type = element.get("type", "choice")
+    text = element.get("text", "?")
+    
+    # Emoji mapping for different story elements
+    emoji_map = {
+        "choice": "?",
+        "consequence": "?",
+        "opportunity": "?",
+        "challenge": "?",
+        "reward": "?",
+        "growth": "?",
+        "connection": "?",
+        "wisdom": "?",
+        "courage": "?"
+    }
+    
+    emoji = emoji_map.get(element_type, "?")
+    display_text = text[:6] + ("..." if len(text) > 6 else "")
+    
+    return BoxComponent(
+        layout="vertical",
+        spacing="xs",
+        paddingAll="xs",
+        backgroundColor="#F7FAFC",
+        cornerRadius="sm",
+        contents=[
+            TextComponent(
+                text=emoji,
+                size="md",
+                align="center"
+            ),
+            TextComponent(
+                text=display_text,
+                size="xxs",
+                align="center",
+                wrap=True,
+                maxLines=1,
+                color="#4A5568"
+            )
+        ],
+        action=PostbackAction(
+            data=f"mandala_element_{element.get('id', '')}"
+        )
+    )
+
+def create_empty_mandala_cell() -> BoxComponent:
+    """Create empty cell for Mandala grid"""
+    return BoxComponent(
+        layout="vertical",
+        spacing="xs",
+        paddingAll="xs",
+        backgroundColor="#EDF2F7",
+        cornerRadius="sm",
+        contents=[
+            TextComponent(
+                text="?",
+                size="md",
+                align="center",
+                color="#CBD5E0"
+            ),
+            TextComponent(
+                text="?",
+                size="xxs",
+                align="center",
+                color="#A0AEC0"
+            )
+        ]
+    )
+
+def get_evening_story_motivational_messages() -> List[str]:
+    """Get collection of evening motivational messages"""
+    return [
+        "? ?",
+        "? ?",
+        "? ?",
+        "? ?",
+        "? ?",
+        "? ?"
+    ]
+
+def create_evening_motivation_message() -> FlexSendMessage:
+    """Create evening motivation message"""
+    messages = get_evening_story_motivational_messages()
+    selected_message = random.choice(messages)
+    
+    bubble = BubbleContainer(
+        body=BoxComponent(
+            layout="vertical",
+            spacing="md",
+            paddingAll="lg",
+            backgroundColor="#FFF5F5",
+            contents=[
+                TextComponent(
+                    text="? ?",
+                    weight="bold",
+                    size="lg",
+                    color="#E53E3E",
+                    align="center"
+                ),
+                SeparatorComponent(margin="md"),
+                TextComponent(
+                    text=selected_message,
+                    size="md",
+                    wrap=True,
+                    lineSpacing="lg",
+                    color="#2D3748",
+                    align="center"
+                ),
+                FillerComponent(flex=1),
+                TextComponent(
+                    text="?",
+                    size="sm",
+                    color="#718096",
+                    align="center"
+                )
+            ]
+        )
+    )
+    
+    return FlexSendMessage(
+        alt_text="? ?",
+        contents=bubble
+    )

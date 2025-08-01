@@ -1,0 +1,306 @@
+"""
+Alpha Playtest Service [UNICODE_7C21]
+"""
+import asyncio
+import json
+from datetime import datetime, timedelta
+from main import AlphaPlaytestEngine, TestUserStatus, FeedbackType, ABTestVariant
+
+async def test_alpha_playtest():
+    """[UNICODE_03B1]"""
+    print("=== Alpha Playtest Service [UNICODE_30C6] ===")
+    
+    # [UNICODE_30A8]
+    engine = AlphaPlaytestEngine()
+    print("[UNICODE_2713] [UNICODE_30D7]")
+    print(f"  - [UNICODE_6700]: {engine.max_test_users}")
+    print(f"  - A/B[UNICODE_30C6]: {len(engine.ab_tests)}")
+    
+    # [UNICODE_30C6]
+    print("\n=== [UNICODE_30C6] ===")
+    
+    test_users = []
+    for i in range(10):
+        email = f"testuser{i}@example.com"
+        demographics = {
+            "age": 20 + (i % 30),
+            "gender": "male" if i % 2 == 0 else "female",
+            "location": "Tokyo" if i % 3 == 0 else "Osaka"
+        }
+        
+        user = await engine.register_test_user(email, demographics)
+        test_users.append(user)
+        print(f"[UNICODE_2713] [UNICODE_30E6]: {user.user_id[:8]}... ([UNICODE_30D0]: {user.assigned_variant.value})")
+    
+    print(f"[UNICODE_2713] [UNICODE_7DCF]: {len(test_users)}")
+    
+    # [UNICODE_30D0]
+    variant_counts = {}
+    for user in test_users:
+        variant = user.assigned_variant.value
+        variant_counts[variant] = variant_counts.get(variant, 0) + 1
+    
+    print("[UNICODE_2713] [UNICODE_30D0]:")
+    for variant, count in variant_counts.items():
+        print(f"  - {variant}: {count}[UNICODE_4EBA]")
+    
+    # [UNICODE_884C]
+    print("\n=== [UNICODE_884C] ===")
+    
+    behavior_events = [
+        ("app_launch", {"version": "1.0.0", "platform": "mobile"}),
+        ("onboarding_start", {"step": 1}),
+        ("onboarding_complete", {"duration_seconds": 120}),
+        ("task_create", {"task_type": "routine", "difficulty": 3}),
+        ("task_complete", {"task_id": "task_001", "xp_gained": 50}),
+        ("story_view", {"story_id": "story_001", "chapter": 1}),
+        ("mandala_access", {"grid_position": "center"}),
+        ("mood_log", {"mood_score": 4, "energy": 3}),
+        ("session_end", {"duration_minutes": 25})
+    ]
+    
+    logged_count = 0
+    for user in test_users[:5]:  # [UNICODE_6700]5[UNICODE_4EBA]
+        session_id = f"session_{user.user_id[:8]}"
+        
+        for event_type, event_data in behavior_events:
+            success = await engine.log_user_behavior(user.user_id, event_type, event_data, session_id)
+            if success:
+                logged_count += 1
+    
+    print(f"[UNICODE_2713] [UNICODE_884C]: {logged_count}[UNICODE_4EF6]")
+    print(f"[UNICODE_2713] [UNICODE_7DCF]: {len(engine.behavior_logs)}")
+    
+    # [UNICODE_30D5]
+    print("\n=== [UNICODE_30D5] ===")
+    
+    feedback_samples = [
+        (FeedbackType.BUG_REPORT, "[UNICODE_30ED]", "[UNICODE_30ED]", 2),
+        (FeedbackType.USABILITY, "[UNICODE_30CA]", "[UNICODE_30E1]", 3),
+        (FeedbackType.THERAPEUTIC_EFFECT, "[UNICODE_6C17]", "[UNICODE_6BCE]", 5),
+        (FeedbackType.FEATURE_REQUEST, "[UNICODE_65B0]", "[UNICODE_30EA]", 4),
+        (FeedbackType.GENERAL, "[UNICODE_5168]", "[UNICODE_3068]", 4)
+    ]
+    
+    for i, (fb_type, title, content, rating) in enumerate(feedback_samples):
+        user = test_users[i % len(test_users)]
+        feedback = await engine.collect_feedback(user.user_id, fb_type, title, content, rating)
+        print(f"[UNICODE_2713] [UNICODE_30D5]: {feedback.feedback_id[:8]}... ([UNICODE_611F]: {feedback.sentiment_score:.3f})")
+        print(f"  [UNICODE_30C6]: {feedback.themes}")
+    
+    print(f"[UNICODE_2713] [UNICODE_7DCF]: {len(engine.feedback_data)}")
+    
+    # A/B[UNICODE_30C6]
+    print("\n=== A/B[UNICODE_30C6] ===")
+    
+    # [UNICODE_30C6]
+    for i, user in enumerate(test_users):
+        if i % 3 == 0:  # 33%[UNICODE_3092]
+            user.status = TestUserStatus.COMPLETED
+            user.completion_date = datetime.now()
+    
+    for test_id in engine.ab_tests.keys():
+        try:
+            result = await engine.run_ab_test_analysis(test_id)
+            print(f"[UNICODE_2713] A/B[UNICODE_30C6]: {test_id}")
+            print(f"  - [UNICODE_30B3]: {result.control_value:.3f}")
+            print(f"  - [UNICODE_30D0]A: {result.variant_a_value:.3f}")
+            print(f"  - [UNICODE_30D0]B: {result.variant_b_value:.3f}")
+            print(f"  - [UNICODE_7D71]: {result.statistical_significance:.3f}")
+            print(f"  - [UNICODE_30B5]: {result.sample_sizes}")
+        except Exception as e:
+            print(f"[UNICODE_26A0]  A/B[UNICODE_30C6] ({test_id}): {e}")
+    
+    # [UNICODE_5206]
+    print("\n=== [UNICODE_5206] ===")
+    
+    report = await engine.generate_analytics_report()
+    print(f"[UNICODE_2713] [UNICODE_5206]")
+    print(f"  - [UNICODE_7DCF]: {report.total_users}")
+    print(f"  - [UNICODE_30A2]: {report.active_users}")
+    print(f"  - [UNICODE_5B8C]: {report.completion_rate:.3f}")
+    print(f"  - [UNICODE_5E73]: {report.average_session_duration:.1f}[UNICODE_5206]")
+    print(f"  - [UNICODE_30D0]: {report.bug_reports_count}")
+    print(f"  - [UNICODE_6E80]: {report.satisfaction_score:.1f}/5")
+    
+    print("  - [UNICODE_30EA]:")
+    for period, rate in report.retention_rates.items():
+        print(f"    {period}: {rate:.3f}")
+    
+    print("  - [UNICODE_6A5F]5[UNICODE_4F4D]:")
+    sorted_features = sorted(report.feature_usage.items(), key=lambda x: x[1], reverse=True)
+    for feature, usage in sorted_features[:5]:
+        print(f"    {feature}: {usage:.3f}")
+    
+    # [UNICODE_30D5]
+    print("\n=== [UNICODE_30D5] ===")
+    
+    # [UNICODE_6539]
+    suggestions = await engine.generate_improvement_suggestions(engine.feedback_data)
+    print("[UNICODE_2713] [UNICODE_6539]:")
+    for i, suggestion in enumerate(suggestions, 1):
+        print(f"  {i}. {suggestion}")
+    
+    # [UNICODE_611F]
+    sentiment_scores = [fb.sentiment_score for fb in engine.feedback_data if fb.sentiment_score is not None]
+    if sentiment_scores:
+        avg_sentiment = sum(sentiment_scores) / len(sentiment_scores)
+        print(f"[UNICODE_2713] [UNICODE_5E73]: {avg_sentiment:.3f}")
+    
+    # [UNICODE_30C6]
+    all_themes = []
+    for fb in engine.feedback_data:
+        all_themes.extend(fb.themes)
+    
+    from collections import Counter
+    theme_counts = Counter(all_themes)
+    print("[UNICODE_2713] [UNICODE_983B]:")
+    for theme, count in theme_counts.most_common(5):
+        print(f"  - {theme}: {count}[UNICODE_56DE]")
+    
+    # [UNICODE_30D7]
+    print("\n=== [UNICODE_30D7] ===")
+    
+    # [UNICODE_533F]
+    anonymized_logs = [log for log in engine.behavior_logs if log.anonymized]
+    print(f"[UNICODE_2713] [UNICODE_533F]: {len(anonymized_logs)}/{len(engine.behavior_logs)}")
+    
+    # [UNICODE_30E1]
+    original_emails = set()
+    hashed_emails = set()
+    for user in test_users:
+        hashed_emails.add(user.email)
+    
+    print(f"[UNICODE_2713] [UNICODE_30E1]: {len(hashed_emails)}[UNICODE_4EF6]")
+    
+    # [UNICODE_30C7]
+    print(f"[UNICODE_2713] [UNICODE_30C7]: {engine.privacy_config['data_retention_days']}[UNICODE_65E5]")
+    
+    # [UNICODE_30D1]
+    print("\n=== [UNICODE_30D1] ===")
+    
+    import time
+    
+    # [UNICODE_5927]
+    start_time = time.time()
+    
+    test_user = test_users[0]
+    for i in range(100):
+        await engine.log_user_behavior(
+            test_user.user_id,
+            "performance_test",
+            {"iteration": i, "data": f"test_data_{i}"},
+            "perf_session"
+        )
+    
+    log_time = time.time() - start_time
+    print(f"[UNICODE_2713] 100[UNICODE_4EF6]: {log_time:.3f}[UNICODE_79D2]")
+    
+    # [UNICODE_5206]
+    start_time = time.time()
+    
+    for _ in range(10):
+        await engine.generate_analytics_report()
+    
+    analysis_time = time.time() - start_time
+    print(f"[UNICODE_2713] 10[UNICODE_56DE]: {analysis_time:.3f}[UNICODE_79D2]")
+    
+    # [UNICODE_6700]
+    print("\n=== [UNICODE_6700] ===")
+    print(f"[UNICODE_7DCF]: {len(engine.test_users)}")
+    print(f"[UNICODE_7DCF]: {len(engine.behavior_logs)}")
+    print(f"[UNICODE_7DCF]: {len(engine.feedback_data)}")
+    print(f"A/B[UNICODE_30C6]: {len(engine.ab_tests)}")
+    
+    # [UNICODE_30E6]
+    from collections import Counter
+    status_counts = Counter(user.status for user in engine.test_users.values())
+    print("[UNICODE_30E6]:")
+    for status, count in status_counts.items():
+        print(f"  - {status.value}: {count}[UNICODE_4EBA]")
+    
+    print("\n=== [UNICODE_30C6] ===")
+    return True
+
+def test_api_endpoints():
+    """API [UNICODE_30A8]"""
+    print("\n=== API [UNICODE_30A8] ===")
+    
+    from fastapi.testclient import TestClient
+    from main import app
+    
+    client = TestClient(app)
+    
+    # [UNICODE_30D8]
+    response = client.get("/playtest/health")
+    assert response.status_code == 200
+    print("[UNICODE_2713] GET /playtest/health")
+    
+    # [UNICODE_30E6]
+    response = client.post(
+        "/playtest/users/register",
+        params={"email": "api_test@example.com"},
+        json={"age": 25, "gender": "male"}
+    )
+    assert response.status_code == 200
+    user_data = response.json()
+    user_id = user_data["user_id"]
+    print("[UNICODE_2713] POST /playtest/users/register")
+    
+    # [UNICODE_884C]
+    response = client.post(
+        "/playtest/behavior/log",
+        params={
+            "user_id": user_id,
+            "event_type": "api_test_event",
+            "session_id": "api_session"
+        },
+        json={"test_data": "api_test"}
+    )
+    assert response.status_code == 200
+    print("[UNICODE_2713] POST /playtest/behavior/log")
+    
+    # [UNICODE_30D5]
+    response = client.post(
+        "/playtest/feedback/submit",
+        params={
+            "user_id": user_id,
+            "feedback_type": "general",
+            "title": "API Test Feedback",
+            "content": "This is a test feedback",
+            "rating": 4
+        }
+    )
+    assert response.status_code == 200
+    print("[UNICODE_2713] POST /playtest/feedback/submit")
+    
+    # [UNICODE_5206]
+    response = client.get("/playtest/analytics/report")
+    assert response.status_code == 200
+    print("[UNICODE_2713] GET /playtest/analytics/report")
+    
+    # A/B[UNICODE_30C6]
+    response = client.get("/playtest/abtest/list")
+    assert response.status_code == 200
+    print("[UNICODE_2713] GET /playtest/abtest/list")
+    
+    # [UNICODE_30D5]
+    response = client.get("/playtest/feedback/analysis")
+    assert response.status_code == 200
+    print("[UNICODE_2713] GET /playtest/feedback/analysis")
+    
+    # [UNICODE_30E6]
+    response = client.get("/playtest/users/status")
+    assert response.status_code == 200
+    print("[UNICODE_2713] GET /playtest/users/status")
+    
+    print("[UNICODE_2713] [UNICODE_5168]API[UNICODE_30A8]")
+
+if __name__ == "__main__":
+    # [UNICODE_975E]
+    asyncio.run(test_alpha_playtest())
+    
+    # API [UNICODE_30C6]
+    test_api_endpoints()
+    
+    print("\n[UNICODE_1F389] Alpha Playtest Service [UNICODE_30C6]")

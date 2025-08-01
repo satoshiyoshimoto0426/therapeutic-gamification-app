@@ -1,0 +1,377 @@
+"""
+Guardian?
+"""
+
+import pytest
+import asyncio
+from fastapi.testclient import TestClient
+from datetime import datetime, timedelta
+import json
+
+# ?
+from main import app, guardian_auth, guardian_rbac
+from report_generator import report_service
+
+client = TestClient(app)
+
+class TestGuardianAuth:
+    """Guardian?"""
+    
+    def test_magic_link_generation(self):
+        """Magic Link?"""
+        response = client.post("/auth/magic-link", json={
+            "email": "guardian@example.com",
+            "guardian_id": "guardian_001"
+        })
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert "magic_link" in data
+        assert "Magic Linkを" in data["message"]
+    
+    def test_magic_link_invalid_email(self):
+        """無Magic Link?"""
+        response = client.post("/auth/magic-link", json={
+            "email": "invalid-email",
+            "guardian_id": "guardian_001"
+        })
+        
+        assert response.status_code == 400
+    
+    def test_magic_link_verification(self):
+        """Magic Link検証"""
+        # まMagic Linkを
+        magic_link = guardian_auth.generate_magic_link(
+            "guardian@example.com", 
+            "guardian_001"
+        )
+        
+        # URLか
+        token = magic_link.split("token=")[1]
+        
+        # Magic Link検証
+        response = client.get(f"/auth/magic?token={token}")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert "access_token" in data
+        assert data["guardian_id"] == "guardian_001"
+        assert "permissions" in data
+    
+    def test_magic_link_expired(self):
+        """?Magic Link?"""
+        # ?
+        expired_token = "expired_token_123"
+        guardian_auth.magic_links[expired_token] = {
+            "email": "guardian@example.com",
+            "guardian_id": "guardian_001",
+            "expires_at": datetime.utcnow() - timedelta(minutes=1),
+            "used": False
+        }
+        
+        response = client.get(f"/auth/magic?token={expired_token}")
+        assert response.status_code == 401
+        assert "?" in response.json()["detail"]
+    
+    def test_magic_link_already_used(self):
+        """?Magic Link?"""
+        # 使用
+        used_token = "used_token_123"
+        guardian_auth.magic_links[used_token] = {
+            "email": "guardian@example.com",
+            "guardian_id": "guardian_001",
+            "expires_at": datetime.utcnow() + timedelta(minutes=15),
+            "used": True
+        }
+        
+        response = client.get(f"/auth/magic?token={used_token}")
+        assert response.status_code == 401
+        assert "?" in response.json()["detail"]
+    
+    def test_saml_authentication(self):
+        """SAML?"""
+        response = client.post("/auth/saml", json={
+            "saml_response": "dummy_saml_response",
+            "relay_state": "test_state"
+        })
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert "access_token" in data
+        assert data["guardian_id"] == "guardian_saml_001"
+    
+    def test_jwt_token_verification(self):
+        """JWT?"""
+        # JWT?
+        token = guardian_auth.create_guardian_jwt(
+            "guardian_001", 
+            ["view_reports", "edit_tasks"]
+        )
+        
+        # ?
+        payload = guardian_auth.verify_guardian_jwt(token)
+        assert payload["guardian_id"] == "guardian_001"
+        assert "view_reports" in payload["permissions"]
+        assert "edit_tasks" in payload["permissions"]
+
+class TestGuardianRBAC:
+    """Guardian?"""
+    
+    def test_permission_levels(self):
+        """?"""
+        # view-only?
+        view_only_perms = guardian_rbac.get_guardian_permissions("guardian_003")
+        assert "view_reports" in view_only_perms
+        assert "view_progress" in view_only_perms
+        assert "edit_tasks" not in view_only_perms
+        
+        # task-edit?
+        task_edit_perms = guardian_rbac.get_guardian_permissions("guardian_002")
+        assert "view_reports" in task_edit_perms
+        assert "edit_tasks" in task_edit_perms
+        assert "send_messages" not in task_edit_perms
+        
+        # chat-send?
+        chat_send_perms = guardian_rbac.get_guardian_permissions("guardian_001")
+        assert "view_reports" in chat_send_perms
+        assert "edit_tasks" in chat_send_perms
+        assert "send_messages" in chat_send_perms
+        assert "emergency_contact" in chat_send_perms
+    
+    def test_permission_check(self):
+        """?"""
+        # view-only guardianは
+        assert guardian_rbac.check_permission("guardian_003", "view_reports") is True
+        # view-only guardianは
+        assert guardian_rbac.check_permission("guardian_003", "edit_tasks") is False
+        
+        # chat-send guardianは
+        assert guardian_rbac.check_permission("guardian_001", "view_reports") is True
+        assert guardian_rbac.check_permission("guardian_001", "edit_tasks") is True
+        assert guardian_rbac.check_permission("guardian_001", "send_messages") is True
+
+class TestGuardianDashboard:
+    """Guardian?"""
+    
+    def setup_method(self):
+        """?"""
+        # ?JWT?
+        self.token = guardian_auth.create_guardian_jwt(
+            "guardian_001",
+            ["view_reports", "view_progress", "edit_tasks", "send_messages"]
+        )
+        self.headers = {"Authorization": f"Bearer {self.token}"}
+    
+    def test_dashboard_access_with_valid_token(self):
+        """?"""
+        response = client.get("/dashboard", headers=self.headers)
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["guardian_id"] == "guardian_001"
+        assert "managed_users" in data
+        assert "dashboard_summary" in data
+        assert len(data["managed_users"]) > 0
+    
+    def test_dashboard_access_without_token(self):
+        """?"""
+        response = client.get("/dashboard")
+        assert response.status_code == 403
+    
+    def test_dashboard_access_with_invalid_token(self):
+        """無"""
+        invalid_headers = {"Authorization": "Bearer invalid_token"}
+        response = client.get("/dashboard", headers=invalid_headers)
+        assert response.status_code == 422
+    
+    def test_dashboard_access_insufficient_permissions(self):
+        """?"""
+        # view-only?
+        view_only_token = guardian_auth.create_guardian_jwt(
+            "guardian_003",
+            ["view_reports", "view_progress"]
+        )
+        view_only_headers = {"Authorization": f"Bearer {view_only_token}"}
+        
+        response = client.get("/dashboard", headers=view_only_headers)
+        assert response.status_code == 200  # view_reportsが
+    
+    def test_user_progress_access(self):
+        """ユーザー"""
+        response = client.get("/users/user_001/progress", headers=self.headers)
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["user_id"] == "user_001"
+        assert "current_level" in data
+        assert "crystal_progress" in data
+        assert "recent_tasks" in data
+        assert "mood_history" in data
+        assert "story_progress" in data
+
+class TestWeeklyReports:
+    """?"""
+    
+    def setup_method(self):
+        """?"""
+        self.token = guardian_auth.create_guardian_jwt(
+            "guardian_001",
+            ["view_reports", "view_progress"]
+        )
+        self.headers = {"Authorization": f"Bearer {self.token}"}
+    
+    def test_weekly_report_generation(self):
+        """?"""
+        response = client.get(
+            "/reports/weekly/user_001?week_start=2024-01-15",
+            headers=self.headers
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert "report_url" in data
+        assert "generated_at" in data
+        assert "file_size" in data
+    
+    def test_weekly_report_invalid_date(self):
+        """無"""
+        response = client.get(
+            "/reports/weekly/user_001?week_start=invalid-date",
+            headers=self.headers
+        )
+        
+        assert response.status_code == 400
+        assert "無" in response.json()["detail"]
+    
+    def test_weekly_report_insufficient_permissions(self):
+        """?"""
+        # ?
+        no_perm_token = guardian_auth.create_guardian_jwt(
+            "guardian_no_perm",
+            []
+        )
+        no_perm_headers = {"Authorization": f"Bearer {no_perm_token}"}
+        
+        response = client.get(
+            "/reports/weekly/user_001?week_start=2024-01-15",
+            headers=no_perm_headers
+        )
+        
+        assert response.status_code == 403
+        assert "レベル" in response.json()["detail"]
+
+class TestReportGenerator:
+    """レベル"""
+    
+    @pytest.mark.asyncio
+    async def test_report_service_generation(self):
+        """レベル"""
+        user_id = "user_001"
+        guardian_id = "guardian_001"
+        week_start = datetime(2024, 1, 15)
+        
+        pdf_content = await report_service.generate_weekly_report(
+            user_id, guardian_id, week_start
+        )
+        
+        assert isinstance(pdf_content, bytes)
+        assert len(pdf_content) > 0
+        # PDFヘルパー
+        assert pdf_content.startswith(b'%PDF')
+    
+    @pytest.mark.asyncio
+    async def test_user_weekly_data_retrieval(self):
+        """ユーザー"""
+        user_id = "user_001"
+        week_start = datetime(2024, 1, 15)
+        
+        user_data = await report_service.get_user_weekly_data(user_id, week_start)
+        
+        assert user_data["user_id"] == user_id
+        assert "total_tasks_completed" in user_data
+        assert "total_xp_earned" in user_data
+        assert "mood_average" in user_data
+        assert "crystal_progress" in user_data
+        assert "task_breakdown" in user_data
+    
+    @pytest.mark.asyncio
+    async def test_guardian_data_retrieval(self):
+        """Guardianデフォルト"""
+        guardian_id = "guardian_001"
+        
+        guardian_data = await report_service.get_guardian_data(guardian_id)
+        
+        assert guardian_data["guardian_id"] == guardian_id
+        assert "name" in guardian_data
+        assert "relationship" in guardian_data
+
+class TestIntegration:
+    """?"""
+    
+    def test_full_authentication_flow(self):
+        """?"""
+        # 1. Magic Link?
+        magic_response = client.post("/auth/magic-link", json={
+            "email": "integration@example.com",
+            "guardian_id": "guardian_integration"
+        })
+        assert magic_response.status_code == 200
+        
+        # 2. Magic Linkか
+        magic_link = magic_response.json()["magic_link"]
+        token = magic_link.split("token=")[1]
+        
+        auth_response = client.get(f"/auth/magic?token={token}")
+        assert auth_response.status_code == 200
+        
+        # 3. JWT?
+        jwt_token = auth_response.json()["access_token"]
+        headers = {"Authorization": f"Bearer {jwt_token}"}
+        
+        dashboard_response = client.get("/dashboard", headers=headers)
+        assert dashboard_response.status_code == 200
+        
+        # 4. レベル
+        report_response = client.get(
+            "/reports/weekly/user_001?week_start=2024-01-15",
+            headers=headers
+        )
+        assert report_response.status_code == 200
+    
+    def test_permission_enforcement_across_endpoints(self):
+        """エラー"""
+        # view-only?
+        view_only_token = guardian_auth.create_guardian_jwt(
+            "guardian_view_only",
+            ["view_reports", "view_progress"]
+        )
+        view_only_headers = {"Authorization": f"Bearer {view_only_token}"}
+        
+        # ?
+        dashboard_response = client.get("/dashboard", headers=view_only_headers)
+        assert dashboard_response.status_code == 200
+        
+        # ユーザー
+        progress_response = client.get(
+            "/users/user_001/progress", 
+            headers=view_only_headers
+        )
+        assert progress_response.status_code == 200
+        
+        # レベル
+        report_response = client.get(
+            "/reports/weekly/user_001?week_start=2024-01-15",
+            headers=view_only_headers
+        )
+        assert report_response.status_code == 200
+
+def run_tests():
+    """?"""
+    pytest.main([__file__, "-v"])
+
+if __name__ == "__main__":
+    run_tests()

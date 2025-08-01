@@ -1,0 +1,130 @@
+{
+  "timestamp": "2025-07-30T15:51:44.404549",
+  "task": "27.3 パフォーマンスとスケーラビリティの基本確認",
+  "results": {
+    "api_response_times": {
+      "/health": {
+        "avg_response_time": 0.0028231600008439273,
+        "max_response_time": 0.004198299953714013,
+        "min_response_time": 0.0018813000060617924,
+        "success_rate": 1.0,
+        "meets_sla": true,
+        "sla_threshold": 0.5
+      },
+      "/api/user/test_user/dashboard": {
+        "avg_response_time": 0.10492809999850579,
+        "max_response_time": 0.14260830002604052,
+        "min_response_time": 0.07727179996436462,
+        "success_rate": 1.0,
+        "meets_sla": true,
+        "sla_threshold": 0.5
+      },
+      "/api/user/test_user/tasks": {
+        "avg_response_time": 0.07898311001481488,
+        "max_response_time": 0.10875940002733842,
+        "min_response_time": 0.046315800049342215,
+        "success_rate": 1.0,
+        "meets_sla": true,
+        "sla_threshold": 0.5
+      },
+      "/api/user/test_user/mandala": {
+        "avg_response_time": 0.13780418999376706,
+        "max_response_time": 0.22073279996402562,
+        "min_response_time": 0.0610543999937363,
+        "success_rate": 1.0,
+        "meets_sla": true,
+        "sla_threshold": 0.5
+      }
+    },
+    "concurrent_10_users": {
+      "concurrent_users": 10,
+      "total_requests": 640,
+      "successful_requests": 640,
+      "error_rate": 0.0,
+      "avg_response_time": 0.03607732390610181,
+      "max_response_time": 2.054474200005643,
+      "requests_per_second": 42.666666666666664,
+      "system_resources": {
+        "avg_cpu": 23.46,
+        "max_cpu": 47.5,
+        "avg_memory": 90.13333333333334,
+        "max_memory": 94.1
+      },
+      "meets_requirements": true,
+      "requirements": {
+        "max_avg_response": 1.0,
+        "max_error_rate": 0.1,
+        "max_cpu": 90
+      }
+    },
+    "concurrent_25_users": {
+      "concurrent_users": 25,
+      "total_requests": 1575,
+      "successful_requests": 1575,
+      "error_rate": 0.0,
+      "avg_response_time": 0.038422450031900396,
+      "max_response_time": 2.063020500005223,
+      "requests_per_second": 105.0,
+      "system_resources": {
+        "avg_cpu": 29.166666666666668,
+        "max_cpu": 37.7,
+        "avg_memory": 89.88,
+        "max_memory": 91.6
+      },
+      "meets_requirements": true,
+      "requirements": {
+        "max_avg_response": 1.0,
+        "max_error_rate": 0.1,
+        "max_cpu": 90
+      }
+    },
+    "concurrent_50_users": {
+      "concurrent_users": 50,
+      "total_requests": 3100,
+      "successful_requests": 3100,
+      "error_rate": 0.0,
+      "avg_response_time": 0.043028799225745214,
+      "max_response_time": 2.146441999997478,
+      "requests_per_second": 206.66666666666666,
+      "system_resources": {
+        "avg_cpu": 36.77333333333333,
+        "max_cpu": 46.9,
+        "avg_memory": 91.80666666666667,
+        "max_memory": 92.3
+      },
+      "meets_requirements": true,
+      "requirements": {
+        "max_avg_response": 1.0,
+        "max_error_rate": 0.1,
+        "max_cpu": 90
+      }
+    },
+    "resource_monitoring": {
+      "monitoring_duration": 20,
+      "sample_count": 14,
+      "cpu": {
+        "avg": 23.635714285714286,
+        "max": 39.5,
+        "min": 16.8
+      },
+      "memory": {
+        "avg": 91.16428571428571,
+        "max": 91.9,
+        "min": 90.3,
+        "avg_used_mb": 7220.583984375
+      },
+      "disk_percent": 74.0,
+      "resource_healthy": true,
+      "thresholds": {
+        "max_cpu": 85,
+        "max_memory": 95
+      }
+    }
+  },
+  "success": true,
+  "summary": {
+    "total_tests": 5,
+    "test_completed": true,
+    "grade": "A"
+  }
+}

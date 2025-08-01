@@ -1,0 +1,286 @@
+"""
+[UNICODE_30D0]CBT[UNICODE_7D71]
+"""
+
+import unittest
+from unittest.mock import patch, MagicMock
+import sys
+import os
+
+# [UNICODE_30D1]
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+
+from main import InnerDemonBattle, DemonType, BattleResult
+from battle_rewards import BattleRewardSystem, ItemRarity
+
+class TestBattleRewardsIntegration(unittest.TestCase):
+    """[UNICODE_30D0]"""
+    
+    def setUp(self):
+        """[UNICODE_30C6]"""
+        self.battle_system = InnerDemonBattle()
+        self.reward_system = BattleRewardSystem()
+        self.test_user_id = "test_user_123"
+    
+    def test_victory_rewards_calculation(self):
+        """[UNICODE_52DD]"""
+        # [UNICODE_9AD8]
+        powerful_actions = ["routine_task_completion"] * 5
+        
+        with patch('random.uniform', return_value=1.0):
+            result = self.battle_system.initiate_battle(
+                self.test_user_id,
+                DemonType.PROCRASTINATION_DRAGON,
+                powerful_actions
+            )
+        
+        self.assertEqual(result["result"], BattleResult.VICTORY.value)
+        
+        # [UNICODE_5831]
+        self.assertIn("rewards", result)
+        rewards = result["rewards"]
+        
+        # [UNICODE_57FA]XP[UNICODE_304C]
+        self.assertGreaterEqual(rewards["coins"], 150)  # [UNICODE_57FA]150[UNICODE_4EE5]
+        self.assertGreaterEqual(rewards["xp"], 75)      # [UNICODE_57FA]75[UNICODE_4EE5]
+        
+        # [UNICODE_30A2]
+        self.assertIn("items", rewards)
+        self.assertGreater(len(rewards["items"]), 0)
+        
+        # CBT[UNICODE_632F]
+        self.assertIn("cbt_reflection_prompt", result)
+        self.assertIsInstance(result["cbt_reflection_prompt"], str)
+        self.assertGreater(len(result["cbt_reflection_prompt"]), 20)
+    
+    def test_defeat_rewards_calculation(self):
+        """[UNICODE_6557]"""
+        # [UNICODE_5F31]
+        weak_actions = ["unrelated_action"]
+        
+        with patch('random.uniform', return_value=1.0):
+            self.battle_system.initiate_battle(
+                self.test_user_id,
+                DemonType.ANXIETY_SHADOW,
+                weak_actions
+            )
+            
+            # 10[UNICODE_30BF]
+            for _ in range(10):
+                result = self.battle_system.continue_battle(self.test_user_id, weak_actions)
+        
+        self.assertEqual(result["result"], BattleResult.DEFEAT.value)
+        
+        # [UNICODE_6170]
+        self.assertIn("consolation_reward", result)
+        consolation = result["consolation_reward"]
+        
+        # [UNICODE_6170]25%[UNICODE_7A0B]
+        self.assertLessEqual(consolation["coins"], 30)  # 120[UNICODE_306E]25%
+        self.assertLessEqual(consolation["xp"], 15)     # 60[UNICODE_306E]25%
+        
+        # [UNICODE_6170]
+        self.assertIn("items", consolation)
+        
+        # CBT[UNICODE_632F]
+        self.assertIn("cbt_reflection_prompt", result)
+        self.assertIsInstance(result["cbt_reflection_prompt"], str)
+        self.assertGreater(len(result["cbt_reflection_prompt"]), 20)
+    
+    def test_performance_multiplier_calculation(self):
+        """[UNICODE_30D1]"""
+        battle_performance = {
+            "turns_taken": 2,      # [UNICODE_77ED]
+            "damage_efficiency": 0.9,  # [UNICODE_9AD8]
+            "weakness_hits": 4     # [UNICODE_5F31]
+        }
+        
+        multiplier = self.reward_system._calculate_performance_multiplier(battle_performance)
+        
+        # [UNICODE_9AD8]1.0[UNICODE_4EE5]
+        self.assertGreaterEqual(multiplier, 1.0)
+        # [UNICODE_6700]2.0[UNICODE_3092]
+        self.assertLessEqual(multiplier, 2.0)
+    
+    def test_item_rarity_distribution(self):
+        """[UNICODE_30A2]"""
+        # [UNICODE_9AD8]
+        high_performance_items = self.reward_system._generate_battle_items(
+            "procrastination_dragon", 1.8
+        )
+        
+        # [UNICODE_4F4E]
+        low_performance_items = self.reward_system._generate_battle_items(
+            "procrastination_dragon", 1.0
+        )
+        
+        # [UNICODE_9AD8]
+        self.assertGreaterEqual(len(high_performance_items), len(low_performance_items))
+    
+    def test_cbt_reflection_generation(self):
+        """CBT[UNICODE_632F]"""
+        battle_performance = {
+            "turns_taken": 3,
+            "damage_efficiency": 0.7,
+            "weakness_hits": 2
+        }
+        
+        # [UNICODE_5404]CBT[UNICODE_632F]
+        demon_types = ["procrastination_dragon", "anxiety_shadow", "depression_void", "social_fear_goblin"]
+        
+        for demon_type in demon_types:
+            # [UNICODE_52DD]
+            victory_prompt = self.reward_system._generate_cbt_reflection(demon_type, battle_performance)
+            self.assertIsInstance(victory_prompt, str)
+            self.assertGreater(len(victory_prompt), 20)
+            
+            # [UNICODE_6557]
+            defeat_prompt = self.reward_system._generate_defeat_cbt_reflection(demon_type, battle_performance)
+            self.assertIsInstance(defeat_prompt, str)
+            self.assertGreater(len(defeat_prompt), 20)
+    
+    def test_therapeutic_message_generation(self):
+        """[UNICODE_6CBB]"""
+        demon_types = ["procrastination_dragon", "anxiety_shadow", "depression_void", "social_fear_goblin"]
+        
+        for demon_type in demon_types:
+            # [UNICODE_30B5]
+            support_message = self.reward_system._generate_support_message(demon_type)
+            self.assertIsInstance(support_message, str)
+            self.assertGreater(len(support_message), 20)
+            
+            # [UNICODE_6CBB]
+            self.assertTrue(
+                any(keyword in support_message for keyword in 
+                    ["[UNICODE_6311]", "[UNICODE_52C7]", "[UNICODE_6210]", "[UNICODE_4E00]", "[UNICODE_3064]", "[UNICODE_5E0C]", "[UNICODE_5149]", "[UNICODE_6226]", "[UNICODE_8CA0]", "[UNICODE_7D9A]"])
+            )
+    
+    def test_item_therapeutic_effects(self):
+        """[UNICODE_30A2]"""
+        # [UNICODE_5404]
+        for demon_type, items in self.reward_system.item_pool.items():
+            for item in items:
+                # [UNICODE_6CBB]
+                self.assertIsInstance(item.therapeutic_effect, str)
+                self.assertGreaterEqual(len(item.therapeutic_effect), 3)
+                
+                # [UNICODE_30B9]
+                self.assertIsInstance(item.stat_bonus, dict)
+                self.assertGreater(len(item.stat_bonus), 0)
+                
+                # [UNICODE_30DC]
+                for stat, bonus in item.stat_bonus.items():
+                    self.assertGreaterEqual(bonus, 1)
+                    self.assertLessEqual(bonus, 10)
+    
+    def test_consolation_items_generation(self):
+        """[UNICODE_6170]"""
+        demon_types = ["procrastination_dragon", "anxiety_shadow", "depression_void", "social_fear_goblin"]
+        
+        for demon_type in demon_types:
+            consolation_items = self.reward_system._generate_consolation_items(demon_type)
+            
+            # [UNICODE_6170]
+            self.assertGreater(len(consolation_items), 0)
+            
+            # [UNICODE_30B3]
+            for item in consolation_items:
+                self.assertEqual(item.rarity, ItemRarity.COMMON)
+    
+    def test_weakness_hits_counting(self):
+        """[UNICODE_5F31]"""
+        user_actions = ["routine_task_completion", "pomodoro_usage", "unrelated_action", "routine_task_completion"]
+        weaknesses = ["routine_task_completion", "pomodoro_usage", "small_step_action"]
+        
+        hits = self.battle_system._count_weakness_hits(user_actions, weaknesses)
+        
+        # [UNICODE_6B63]
+        self.assertEqual(hits, 3)  # routine_task_completion x2, pomodoro_usage x1
+    
+    def test_battle_performance_tracking(self):
+        """[UNICODE_30D0]"""
+        actions = ["routine_task_completion", "pomodoro_usage"]
+        
+        with patch('random.uniform', return_value=1.0):
+            result = self.battle_system.initiate_battle(
+                self.test_user_id,
+                DemonType.PROCRASTINATION_DRAGON,
+                actions
+            )
+        
+        # [UNICODE_30D0]
+        if result["result"] == BattleResult.VICTORY.value:
+            self.assertIn("battle_performance", result)
+            performance = result["battle_performance"]
+            
+            self.assertIn("turns_taken", performance)
+            self.assertIn("damage_efficiency", performance)
+            self.assertIn("weakness_hits", performance)
+            
+            # [UNICODE_5024]
+            self.assertGreaterEqual(performance["turns_taken"], 1)
+            self.assertGreaterEqual(performance["damage_efficiency"], 0.0)
+            self.assertLessEqual(performance["damage_efficiency"], 1.0)
+            self.assertGreaterEqual(performance["weakness_hits"], 0)
+    
+    def test_integrated_battle_flow(self):
+        """[UNICODE_7D71]"""
+        # [UNICODE_5F37]
+        powerful_actions = ["small_social_task"] * 4  # [UNICODE_793E]
+        
+        with patch('random.uniform', return_value=1.0):
+            # [UNICODE_30D0]
+            result = self.battle_system.initiate_battle(
+                self.test_user_id,
+                DemonType.SOCIAL_FEAR_GOBLIN,  # [UNICODE_6700]
+                powerful_actions
+            )
+            
+            # [UNICODE_7D99]
+            if result["result"] == BattleResult.ONGOING.value:
+                additional_actions = ["communication_practice"] * 3
+                result = self.battle_system.continue_battle(self.test_user_id, additional_actions)
+        
+        # [UNICODE_52DD]
+        self.assertIn(result["result"], [BattleResult.VICTORY.value, BattleResult.DEFEAT.value, BattleResult.ONGOING.value])
+        
+        # [UNICODE_9069]CBT[UNICODE_8981]
+        if result["result"] == BattleResult.VICTORY.value:
+            self.assertIn("rewards", result)
+            self.assertIn("cbt_reflection_prompt", result)
+        elif result["result"] == BattleResult.DEFEAT.value:
+            self.assertIn("consolation_reward", result)
+            self.assertIn("cbt_reflection_prompt", result)
+        else:
+            # [UNICODE_7D99]
+            self.assertIn("suggested_actions", result)
+            self.assertIn("encouragement", result)
+
+class TestBattleRewardSystem(unittest.TestCase):
+    """[UNICODE_30D0]"""
+    
+    def setUp(self):
+        """[UNICODE_30C6]"""
+        self.reward_system = BattleRewardSystem()
+    
+    def test_item_pool_initialization(self):
+        """[UNICODE_30A2]"""
+        # 4[UNICODE_7A2E]
+        expected_demons = ["procrastination_dragon", "anxiety_shadow", "depression_void", "social_fear_goblin"]
+        
+        for demon_type in expected_demons:
+            self.assertIn(demon_type, self.reward_system.item_pool)
+            items = self.reward_system.item_pool[demon_type]
+            
+            # [UNICODE_5404]
+            rarities = [item.rarity for item in items]
+            self.assertIn(ItemRarity.COMMON, rarities)
+            self.assertIn(ItemRarity.LEGENDARY, rarities)
+    
+    def test_rarity_rates_sum(self):
+        """[UNICODE_30EC]"""
+        total_rate = sum(self.reward_system.rarity_rates.values())
+        self.assertAlmostEqual(total_rate, 1.0, places=2)
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1,0 +1,160 @@
+# IAM Conditions設定
+apiVersion: iam.googleapis.com/v1
+kind: Policy
+metadata:
+  resource: projects/PROJECT_ID
+spec:
+  bindings:
+  
+  # サービスアカウント基本権限
+  - role: roles/run.invoker
+    members:
+    - serviceAccount:therapeutic-app-service-account@PROJECT_ID.iam.gserviceaccount.com
+    condition:
+      title: "Production Cloud Run Access"
+      description: "Allow Cloud Run access only from production environment"
+      expression: |
+        request.time.getHours() >= 0 && request.time.getHours() <= 23 &&
+        has(request.auth.claims.environment) && 
+        request.auth.claims.environment == "production"
+  
+  # Firestore権限（時間制限付き）
+  - role: roles/datastore.user
+    members:
+    - serviceAccount:therapeutic-app-service-account@PROJECT_ID.iam.gserviceaccount.com
+    condition:
+      title: "Firestore Access with Time Restriction"
+      description: "Allow Firestore access with rate limiting"
+      expression: |
+        request.time.getHours() >= 0 && request.time.getHours() <= 23 &&
+        has(request.auth.claims.service) && 
+        request.auth.claims.service == "therapeutic-app"
+  
+  # Cloud Storage権限（リソース制限付き）
+  - role: roles/storage.objectAdmin
+    members:
+    - serviceAccount:therapeutic-app-service-account@PROJECT_ID.iam.gserviceaccount.com
+    condition:
+      title: "Storage Access to Specific Bucket"
+      description: "Allow access only to therapeutic app storage bucket"
+      expression: |
+        resource.name.startsWith("projects/_/buckets/therapeutic-app-storage-prod") &&
+        has(request.auth.claims.service) && 
+        request.auth.claims.service == "therapeutic-app"
+  
+  # Secret Manager権限（特定シークレットのみ）
+  - role: roles/secretmanager.secretAccessor
+    members:
+    - serviceAccount:therapeutic-app-service-account@PROJECT_ID.iam.gserviceaccount.com
+    condition:
+      title: "Secret Access Restriction"
+      description: "Allow access only to therapeutic app secrets"
+      expression: |
+        (resource.name.contains("openai-api-key") ||
+         resource.name.contains("line-channel-secret") ||
+         resource.name.contains("jwt-secret") ||
+         resource.name.contains("stripe-secret-key")) &&
+        request.time.getHours() >= 0 && request.time.getHours() <= 23
+  
+  # Guardian権限（地域・時間制限）
+  - role: roles/iam.serviceAccountTokenCreator
+    members:
+    - group:therapeutic-app-guardians@PROJECT_DOMAIN
+    condition:
+      title: "Guardian Access Restriction"
+      description: "Allow guardian access only from Japan during business hours"
+      expression: |
+        origin.region_code == "JP" &&
+        request.time.getHours() >= 9 && request.time.getHours() <= 18 &&
+        has(request.auth.claims.guardian_verified) && 
+        request.auth.claims.guardian_verified == true
+  
+  # 監視・ログ権限
+  - role: roles/monitoring.metricWriter
+    members:
+    - serviceAccount:therapeutic-app-service-account@PROJECT_ID.iam.gserviceaccount.com
+    condition:
+      title: "Monitoring Write Access"
+      description: "Allow writing monitoring metrics"
+      expression: |
+        has(request.auth.claims.service) && 
+        request.auth.claims.service == "therapeutic-app"
+  
+  - role: roles/logging.logWriter
+    members:
+    - serviceAccount:therapeutic-app-service-account@PROJECT_ID.iam.gserviceaccount.com
+    condition:
+      title: "Logging Write Access"
+      description: "Allow writing application logs"
+      expression: |
+        has(request.auth.claims.service) && 
+        request.auth.claims.service == "therapeutic-app"
+  
+  # 開発者アクセス（制限付き）
+  - role: roles/viewer
+    members:
+    - group:therapeutic-app-developers@PROJECT_DOMAIN
+    condition:
+      title: "Developer Read Access"
+      description: "Allow developers read access during business hours"
+      expression: |
+        request.time.getHours() >= 9 && request.time.getHours() <= 18 &&
+        request.time.getDayOfWeek() >= 1 && request.time.getDayOfWeek() <= 5 &&
+        has(request.auth.claims.employee_id)
+  
+  # 緊急時アクセス
+  - role: roles/editor
+    members:
+    - group:therapeutic-app-oncall@PROJECT_DOMAIN
+    condition:
+      title: "Emergency Access"
+      description: "Allow emergency access with approval"
+      expression: |
+        has(request.auth.claims.emergency_approved) && 
+        request.auth.claims.emergency_approved == true &&
+        request.time > timestamp("2024-01-01T00:00:00Z")
+
+---
+# サービスアカウント設定
+apiVersion: iam.googleapis.com/v1
+kind: ServiceAccount
+metadata:
+  name: therapeutic-app-service-account
+  project: PROJECT_ID
+spec:
+  displayName: "Therapeutic Gamification App Service Account"
+  description: "Service account for therapeutic gamification application"
+  
+---
+# カスタムロール定義
+apiVersion: iam.googleapis.com/v1
+kind: Role
+metadata:
+  name: therapeutic.app.operator
+  project: PROJECT_ID
+spec:
+  title: "Therapeutic App Operator"
+  description: "Custom role for therapeutic app operations"
+  stage: GA
+  includedPermissions:
+  # Firestore権限
+  - firestore.documents.create
+  - firestore.documents.delete
+  - firestore.documents.get
+  - firestore.documents.list
+  - firestore.documents.update
+  # Cloud Storage権限
+  - storage.objects.create
+  - storage.objects.delete
+  - storage.objects.get
+  - storage.objects.list
+  - storage.objects.update
+  # Secret Manager権限
+  - secretmanager.versions.access
+  # 監視権限
+  - monitoring.metricDescriptors.create
+  - monitoring.metricDescriptors.get
+  - monitoring.metricDescriptors.list
+  - monitoring.timeSeries.create
+  # ログ権限
+  - logging.logEntries.create

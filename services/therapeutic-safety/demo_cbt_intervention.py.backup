@@ -1,0 +1,188 @@
+#!/usr/bin/env python3
+"""
+CBT[UNICODE_30D9]
+Task 9.2[UNICODE_306E]
+"""
+
+import asyncio
+import sys
+import os
+
+# [UNICODE_30D1]
+current_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(current_dir)
+
+from main import CBTInterventionEngine, TherapeuticSafetyService
+
+def demo_negative_pattern_detection():
+    """[UNICODE_5426]"""
+    print("=== [UNICODE_5426] ===")
+    
+    cbt_engine = CBTInterventionEngine()
+    
+    test_cases = [
+        "[UNICODE_3044]",
+        "[UNICODE_3053]",
+        "[UNICODE_30C1]",
+        "[UNICODE_307F]",
+        "[UNICODE_4E0D]"
+    ]
+    
+    for i, content in enumerate(test_cases, 1):
+        print(f"\n[UNICODE_3010] {i}[UNICODE_3011]")
+        print(f"[UNICODE_5165]: {content}")
+        
+        patterns = cbt_engine.detect_negative_thought_patterns(content)
+        
+        if patterns:
+            print("[UNICODE_691C]:")
+            for pattern in patterns:
+                print(f"  [UNICODE_2022] {pattern['name']} ([UNICODE_4FE1]: {pattern['confidence']:.2f}, [UNICODE_91CD]: {pattern['severity']})")
+        else:
+            print("  [UNICODE_8A8D]")
+
+def demo_story_break_dialog():
+    """[UNICODE_30B9]"""
+    print("\n=== [UNICODE_30B9] ===")
+    
+    cbt_engine = CBTInterventionEngine()
+    
+    user_context = {
+        "character_name": "[UNICODE_30E6]",
+        "recent_mood": 2
+    }
+    
+    test_content = "[UNICODE_3044]"
+    print(f"[UNICODE_5165]: {test_content}")
+    
+    patterns = cbt_engine.detect_negative_thought_patterns(test_content)
+    story_break = cbt_engine.generate_story_break_dialog(patterns, user_context)
+    
+    if story_break["intervention_needed"]:
+        print("\n[UNICODE_3010]")
+        print(story_break["dialog"])
+        print(f"\n[UNICODE_4E3B]: {story_break['primary_distortion']}")
+        print(f"[UNICODE_4FE1]: {story_break['confidence']:.2f}")
+    else:
+        print("[UNICODE_4ECB]")
+
+def demo_cognitive_reframing():
+    """[UNICODE_8A8D]"""
+    print("\n=== [UNICODE_8A8D] ===")
+    
+    cbt_engine = CBTInterventionEngine()
+    
+    test_cases = [
+        ("[UNICODE_3044]", "all_or_nothing"),
+        ("[UNICODE_3053]", "catastrophizing"),
+        ("[UNICODE_5168]", "personalization")
+    ]
+    
+    for thought, distortion_type in test_cases:
+        print(f"\n[UNICODE_3010]")
+        print(f"[UNICODE_5143]: {thought}")
+        
+        reframing = cbt_engine.generate_cognitive_reframing(thought, distortion_type)
+        
+        print(f"[UNICODE_8A8D]: {reframing['distortion_type']}")
+        print(f"[UNICODE_4F7F]: {reframing['technique']}")
+        
+        print("[UNICODE_518D]:")
+        for i, reframed in enumerate(reframing['reframed_thoughts'], 1):
+            print(f"  {i}. {reframed}")
+        
+        print("[UNICODE_632F]:")
+        for i, question in enumerate(reframing['reflection_questions'], 1):
+            print(f"  {i}. {question}")
+
+async def demo_comprehensive_intervention():
+    """[UNICODE_5305]CBT[UNICODE_4ECB]"""
+    print("\n=== [UNICODE_5305]CBT[UNICODE_4ECB] ===")
+    
+    safety_service = TherapeuticSafetyService()
+    
+    user_context = {
+        "uid": "demo_user",
+        "character_name": "[UNICODE_30E6]",
+        "recent_mood": 1,
+        "recent_mood_history": [1, 2, 1]
+    }
+    
+    test_content = "[UNICODE_3082]"
+    print(f"[UNICODE_5165]: {test_content}")
+    
+    result = await safety_service.comprehensive_safety_analysis(test_content, user_context)
+    
+    print("\n[UNICODE_3010]")
+    safety = result["safety_analysis"]
+    print(f"[UNICODE_30B3]: {'[UNICODE_5B89]' if safety['content_safe'] else '[UNICODE_5371]'}")
+    print(f"[UNICODE_8105]: {safety['threat_level']}")
+    print(f"[UNICODE_30A8]: {'[UNICODE_306F]' if safety['escalation_required'] else '[UNICODE_3044]'}")
+    
+    print("\n[UNICODE_3010]CBT[UNICODE_5206]")
+    cbt = result["cbt_analysis"]
+    print(f"[UNICODE_4ECB]: {'[UNICODE_306F]' if cbt['intervention_recommended'] else '[UNICODE_3044]'}")
+    print(f"[UNICODE_91CD]: {cbt['severity']}")
+    
+    if cbt["detected_patterns"]:
+        print("[UNICODE_691C]:")
+        for pattern in cbt["detected_patterns"]:
+            print(f"  [UNICODE_2022] {pattern['name']} ([UNICODE_4FE1]: {pattern['confidence']:.2f})")
+    
+    print("\n[UNICODE_3010]")
+    therapeutic = result["therapeutic_response"]
+    print(f"[UNICODE_5FDC]: {therapeutic['response_type']}")
+    print(f"[UNICODE_4ECB]: {'[UNICODE_306F]' if therapeutic['intervention_needed'] else '[UNICODE_3044]'}")
+    print("\n[UNICODE_5FDC]:")
+    print(therapeutic["message"])
+    
+    print(f"\n[UNICODE_3010]")
+    print(f"[UNICODE_63A8]: {result['recommended_action']}")
+
+def demo_intervention_effectiveness():
+    """[UNICODE_4ECB]"""
+    print("\n=== [UNICODE_4ECB] ===")
+    
+    cbt_engine = CBTInterventionEngine()
+    
+    original_content = "[UNICODE_3044]"
+    reframed_content = "[UNICODE_6642]"
+    
+    print(f"[UNICODE_5143]: {original_content}")
+    print(f"[UNICODE_518D]: {reframed_content}")
+    
+    effectiveness = cbt_engine.evaluate_intervention_effectiveness(
+        original_content, reframed_content
+    )
+    
+    print(f"\n[UNICODE_3010]")
+    print(f"[UNICODE_5143]: {effectiveness['original_severity']:.2f}")
+    print(f"[UNICODE_518D]: {effectiveness['reframed_severity']:.2f}")
+    print(f"[UNICODE_6539]: {effectiveness['improvement_rate']:.1%}")
+    print(f"[UNICODE_6E1B]: {effectiveness['patterns_reduced']}")
+    print(f"[UNICODE_4ECB]: {'[UNICODE_52B9]' if effectiveness['intervention_effective'] else '[UNICODE_8981]'}")
+
+async def main():
+    """[UNICODE_30E1]"""
+    print("[UNICODE_1F9E0] CBT[UNICODE_30D9] [UNICODE_30C7]")
+    print("Task 9.2: [UNICODE_5426]")
+    print("=" * 80)
+    
+    # [UNICODE_5404]
+    demo_negative_pattern_detection()
+    demo_story_break_dialog()
+    demo_cognitive_reframing()
+    await demo_comprehensive_intervention()
+    demo_intervention_effectiveness()
+    
+    print("\n" + "=" * 80)
+    print("[UNICODE_1F389] CBT[UNICODE_30D9]")
+    print("[UNICODE_3053]:")
+    print("[UNICODE_2022] [UNICODE_5426]")
+    print("[UNICODE_2022] [UNICODE_6587]")
+    print("[UNICODE_2022] CBT[UNICODE_6280]")
+    print("[UNICODE_2022] [UNICODE_5305]")
+    print("[UNICODE_2022] [UNICODE_4ECB]")
+
+if __name__ == "__main__":
+    asyncio.run(main())

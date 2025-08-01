@@ -1,0 +1,384 @@
+"""
+Mandala API[UNICODE_7D71]
+
+[UNICODE_30BB]API[UNICODE_5B9F]
+
+Requirements: 4.1, 4.3
+"""
+
+import pytest
+import sys
+import os
+from fastapi.testclient import TestClient
+
+# Add project root to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+from services.mandala.main import app
+from shared.interfaces.mandala_system import MandalaSystemInterface, CellStatus
+
+
+class TestMandalaAPI:
+    """Mandala API[UNICODE_7D71]"""
+    
+    def setup_method(self):
+        """[UNICODE_30C6]"""
+        self.client = TestClient(app)
+        self.test_uid = "test_user_001"
+        self.mandala_interface = MandalaSystemInterface()
+    
+    def test_health_check(self):
+        """[UNICODE_30D8]"""
+        response = self.client.get("/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "healthy"
+        assert data["service"] == "mandala"
+    
+    def test_get_mandala_grid_new_user(self):
+        """[UNICODE_65B0]Mandala[UNICODE_30B0]"""
+        response = self.client.get(f"/mandala/{self.test_uid}/grid")
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data["uid"] == self.test_uid
+        assert data["total_cells"] == 81
+        assert data["unlocked_count"] == 0
+        assert len(data["grid"]) == 9
+        assert len(data["grid"][0]) == 9
+        
+        # [UNICODE_4E2D]
+        core_value_positions = [(4, 4), (3, 4), (5, 4), (4, 3), (4, 5), (3, 3), (5, 5), (3, 5), (5, 3)]
+        for x, y in core_value_positions:
+            cell = data["grid"][x][y]
+            assert cell["status"] == "core_value"
+            assert "quest_title" in cell
+            assert "therapeutic_focus" in cell
+    
+    def test_unlock_cell_success(self):
+        """[UNICODE_30BB]"""
+        # [UNICODE_4E2D]
+        unlock_request = {
+            "x": 4,
+            "y": 2,  # [UNICODE_4E2D](4,3)[UNICODE_306B]
+            "quest_title": "[UNICODE_671D]",
+            "quest_description": "5[UNICODE_5206]",
+            "xp_reward": 25,
+            "difficulty": 2,
+            "therapeutic_focus": "Mindfulness"
+        }
+        
+        response = self.client.post(f"/mandala/{self.test_uid}/unlock", json=unlock_request)
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data["success"] is True
+        assert "[UNICODE_30BB]" in data["message"]
+        assert data["unlocked_count"] == 1
+        assert data["cell_info"] is not None
+        assert data["cell_info"]["quest_title"] == "[UNICODE_671D]"
+    
+    def test_unlock_cell_invalid_coordinates(self):
+        """[UNICODE_7121]"""
+        unlock_request = {
+            "x": 10,  # [UNICODE_7121]
+            "y": 5,
+            "quest_title": "[UNICODE_7121]",
+            "quest_description": "[UNICODE_7121]",
+            "xp_reward": 25,
+            "difficulty": 2
+        }
+        
+        response = self.client.post(f"/mandala/{self.test_uid}/unlock", json=unlock_request)
+        assert response.status_code == 422  # Validation error
+    
+    def test_unlock_cell_no_adjacent_unlocked(self):
+        """[UNICODE_96A3]"""
+        unlock_request = {
+            "x": 0,
+            "y": 0,  # [UNICODE_4E2D]
+            "quest_title": "[UNICODE_5B64]",
+            "quest_description": "[UNICODE_96A3]",
+            "xp_reward": 25,
+            "difficulty": 2
+        }
+        
+        response = self.client.post(f"/mandala/{self.test_uid}/unlock", json=unlock_request)
+        assert response.status_code == 400
+        
+        data = response.json()
+        assert "[UNICODE_30A2]" in data["detail"]
+    
+    def test_unlock_core_value_cell(self):
+        """[UNICODE_4E2D]"""
+        unlock_request = {
+            "x": 4,
+            "y": 4,  # [UNICODE_4E2D]
+            "quest_title": "[UNICODE_7121]",
+            "quest_description": "[UNICODE_4E2D]",
+            "xp_reward": 25,
+            "difficulty": 2
+        }
+        
+        response = self.client.post(f"/mandala/{self.test_uid}/unlock", json=unlock_request)
+        assert response.status_code == 400
+        
+        data = response.json()
+        assert "[UNICODE_65E2]" in data["detail"]
+    
+    def test_complete_cell_success(self):
+        """[UNICODE_30BB]"""
+        # [UNICODE_307E]
+        unlock_request = {
+            "x": 4,
+            "y": 2,
+            "quest_title": "[UNICODE_671D]",
+            "quest_description": "10[UNICODE_5206]",
+            "xp_reward": 30,
+            "difficulty": 2
+        }
+        
+        unlock_response = self.client.post(f"/mandala/{self.test_uid}/unlock", json=unlock_request)
+        assert unlock_response.status_code == 200
+        
+        # [UNICODE_30BB]
+        complete_request = {
+            "x": 4,
+            "y": 2
+        }
+        
+        response = self.client.post(f"/mandala/{self.test_uid}/complete", json=complete_request)
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data["success"] is True
+        assert "[UNICODE_30BB]" in data["message"]
+        assert data["xp_earned"] == 30
+        assert data["completion_time"] is not None
+    
+    def test_complete_locked_cell(self):
+        """[UNICODE_30ED]"""
+        complete_request = {
+            "x": 0,
+            "y": 0  # [UNICODE_30ED]
+        }
+        
+        response = self.client.post(f"/mandala/{self.test_uid}/complete", json=complete_request)
+        assert response.status_code == 400
+        
+        data = response.json()
+        assert "[UNICODE_30BB]" in data["detail"]
+    
+    def test_complete_core_value_cell(self):
+        """[UNICODE_4E2D]"""
+        complete_request = {
+            "x": 4,
+            "y": 4  # [UNICODE_4E2D]
+        }
+        
+        response = self.client.post(f"/mandala/{self.test_uid}/complete", json=complete_request)
+        assert response.status_code == 400
+        
+        data = response.json()
+        assert "[UNICODE_4E2D]" in data["detail"]
+    
+    def test_get_daily_reminder(self):
+        """[UNICODE_65E5]"""
+        response = self.client.get(f"/mandala/{self.test_uid}/reminder")
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert "reminder" in data
+        assert "[UNICODE_1F48E]" in data["reminder"]  # [UNICODE_4FA1]
+    
+    def test_get_mandala_status(self):
+        """Mandala[UNICODE_30B9]"""
+        response = self.client.get(f"/mandala/{self.test_uid}/status")
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data["uid"] == self.test_uid
+        assert data["total_cells"] == 81
+        assert "unlocked_count" in data
+        assert "completed_count" in data
+        assert "completion_rate" in data
+        assert "core_values_count" in data
+        assert "last_updated" in data
+        assert "available_unlocks" in data
+    
+    def test_unlock_validation_missing_fields(self):
+        """[UNICODE_5FC5]"""
+        unlock_request = {
+            "x": 4,
+            "y": 2
+            # quest_title, quest_description, xp_reward, difficulty [UNICODE_304C]
+        }
+        
+        response = self.client.post(f"/mandala/{self.test_uid}/unlock", json=unlock_request)
+        assert response.status_code == 422  # Validation error
+    
+    def test_unlock_validation_invalid_difficulty(self):
+        """[UNICODE_7121]"""
+        unlock_request = {
+            "x": 4,
+            "y": 2,
+            "quest_title": "[UNICODE_30C6]",
+            "quest_description": "[UNICODE_30C6]",
+            "xp_reward": 25,
+            "difficulty": 10  # [UNICODE_7121]1-5[UNICODE_306E]
+        }
+        
+        response = self.client.post(f"/mandala/{self.test_uid}/unlock", json=unlock_request)
+        assert response.status_code == 422  # Validation error
+    
+    def test_unlock_validation_invalid_xp_reward(self):
+        """[UNICODE_7121]XP[UNICODE_5831]"""
+        unlock_request = {
+            "x": 4,
+            "y": 2,
+            "quest_title": "[UNICODE_30C6]",
+            "quest_description": "[UNICODE_30C6]",
+            "xp_reward": 2000,  # [UNICODE_7121]XP[UNICODE_5831]1-1000[UNICODE_306E]
+            "difficulty": 3
+        }
+        
+        response = self.client.post(f"/mandala/{self.test_uid}/unlock", json=unlock_request)
+        assert response.status_code == 422  # Validation error
+    
+    def test_unlock_validation_invalid_therapeutic_focus(self):
+        """[UNICODE_7121]"""
+        unlock_request = {
+            "x": 4,
+            "y": 2,
+            "quest_title": "[UNICODE_30C6]",
+            "quest_description": "[UNICODE_30C6]",
+            "xp_reward": 25,
+            "difficulty": 2,
+            "therapeutic_focus": "InvalidFocus"  # [UNICODE_7121]
+        }
+        
+        response = self.client.post(f"/mandala/{self.test_uid}/unlock", json=unlock_request)
+        assert response.status_code == 400
+        
+        data = response.json()
+        assert "[UNICODE_6CBB]" in data["detail"]
+    
+    def test_progressive_unlock_pattern(self):
+        """[UNICODE_6BB5]"""
+        # [UNICODE_4E2D]
+        unlock_positions = [
+            (4, 2),  # [UNICODE_4E2D](4,3)[UNICODE_306B]
+            (4, 1),  # (4,2)[UNICODE_306B]
+            (3, 2),  # (4,2)[UNICODE_306B]
+            (5, 2)   # (4,2)[UNICODE_306B]
+        ]
+        
+        for i, (x, y) in enumerate(unlock_positions):
+            unlock_request = {
+                "x": x,
+                "y": y,
+                "quest_title": f"[UNICODE_6BB5]{i+1}",
+                "quest_description": f"[UNICODE_6BB5]{i+1}",
+                "xp_reward": 20 + i * 5,
+                "difficulty": 1 + i % 3
+            }
+            
+            response = self.client.post(f"/mandala/{self.test_uid}/unlock", json=unlock_request)
+            assert response.status_code == 200
+            
+            data = response.json()
+            assert data["success"] is True
+            assert data["unlocked_count"] == i + 1
+    
+    def test_grid_state_persistence(self):
+        """[UNICODE_30B0]"""
+        # [UNICODE_30BB]
+        unlock_request = {
+            "x": 4,
+            "y": 2,
+            "quest_title": "[UNICODE_6C38]",
+            "quest_description": "[UNICODE_72B6]",
+            "xp_reward": 35,
+            "difficulty": 3
+        }
+        
+        unlock_response = self.client.post(f"/mandala/{self.test_uid}/unlock", json=unlock_request)
+        assert unlock_response.status_code == 200
+        
+        # [UNICODE_30B0]
+        grid_response = self.client.get(f"/mandala/{self.test_uid}/grid")
+        assert grid_response.status_code == 200
+        
+        data = grid_response.json()
+        assert data["unlocked_count"] == 1
+        
+        cell = data["grid"][4][2]
+        assert cell["status"] == "unlocked"
+        assert cell["quest_title"] == "[UNICODE_6C38]"
+        assert cell["xp_reward"] == 35
+        assert cell["difficulty"] == 3
+
+
+def test_mandala_system_integration():
+    """Mandala[UNICODE_30B7]"""
+    interface = MandalaSystemInterface()
+    test_uid = "integration_test_user"
+    
+    # [UNICODE_30B0]
+    grid = interface.get_or_create_grid(test_uid)
+    assert grid.uid == test_uid
+    assert grid.total_cells == 81
+    assert grid.unlocked_count == 0
+    
+    # [UNICODE_4E2D]
+    core_value_positions = [(4, 4), (3, 4), (5, 4), (4, 3), (4, 5), (3, 3), (5, 5), (3, 5), (5, 3)]
+    for x, y in core_value_positions:
+        cell = grid.get_cell(x, y)
+        assert cell is not None
+        assert cell.status == CellStatus.CORE_VALUE
+    
+    # [UNICODE_30BB]
+    quest_data = {
+        "quest_title": "[UNICODE_7D71]",
+        "quest_description": "[UNICODE_30B7]",
+        "xp_reward": 40,
+        "difficulty": 2,
+        "therapeutic_focus": "Self-Discipline"
+    }
+    
+    success = interface.unlock_cell_for_user(test_uid, 4, 2, quest_data)
+    assert success is True
+    
+    # [UNICODE_30A2]
+    updated_grid = interface.get_or_create_grid(test_uid)
+    assert updated_grid.unlocked_count == 1
+    
+    unlocked_cell = updated_grid.get_cell(4, 2)
+    assert unlocked_cell is not None
+    assert unlocked_cell.status == CellStatus.UNLOCKED
+    assert unlocked_cell.quest_title == "[UNICODE_7D71]"
+    
+    # [UNICODE_30BB]
+    complete_success = interface.complete_cell_for_user(test_uid, 4, 2)
+    assert complete_success is True
+    
+    # [UNICODE_5B8C]
+    completed_grid = interface.get_or_create_grid(test_uid)
+    completed_cell = completed_grid.get_cell(4, 2)
+    assert completed_cell.status == CellStatus.COMPLETED
+    assert completed_cell.completion_time is not None
+    
+    # API[UNICODE_5FDC]
+    api_response = interface.get_grid_api_response(test_uid)
+    assert api_response["uid"] == test_uid
+    assert api_response["unlocked_count"] == 1
+    assert len(api_response["grid"]) == 9
+    
+    # [UNICODE_65E5]
+    reminder = interface.get_daily_reminder_for_user(test_uid)
+    assert "[UNICODE_1F48E]" in reminder
+    assert len(reminder) > 0
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

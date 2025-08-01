@@ -1,0 +1,428 @@
+"""
+コア
+"""
+
+import unittest
+from datetime import datetime, timedelta
+from services.gdpr_compliance.audit_logging import (
+    AuditLoggingSystem, ComplianceMonitoringSystem, DPIAAssistant,
+    AuditEventType, ComplianceStatus, RiskLevel
+)
+
+
+class TestComplianceMonitoringIntegration(unittest.TestCase):
+    """コア"""
+    
+    def setUp(self):
+        self.audit_system = AuditLoggingSystem()
+        self.compliance_system = ComplianceMonitoringSystem(self.audit_system)
+        self.dpia_assistant = DPIAAssistant()
+        
+        # ?
+        self.test_user_id = "test_user_compliance_001"
+        self._setup_test_audit_logs()
+    
+    def _setup_test_audit_logs(self):
+        """?"""
+        # ?
+        self.audit_system.log_data_access(
+            user_id=self.test_user_id,
+            actor_id="system",
+            data_categories=["therapeutic_data"],
+            action_description="治療",
+            ip_address="192.168.1.100",
+            legal_basis="?",
+            processing_purpose="治療",
+            data_volume=1024
+        )
+        
+        # ?
+        for i in range(15):  # ?
+            log_entry = self.audit_system._create_audit_log(
+                event_type=AuditEventType.DATA_ACCESS,
+                user_id=self.test_user_id,
+                actor_id="unknown",
+                data_categories=["user_profile"],
+                action_description="?",
+                ip_address="192.168.1.200",
+                success=False,
+                error_message="?"
+            )
+        
+        # ?
+        self.audit_system.log_consent_event(
+            user_id=self.test_user_id,
+            event_type=AuditEventType.CONSENT_GRANTED,
+            consent_scope="therapeutic_support",
+            legal_basis="?",
+            ip_address="192.168.1.100"
+        )
+        
+        # ?
+        self.audit_system.log_rights_request(
+            user_id=self.test_user_id,
+            right_type="access",
+            request_id="req_001",
+            ip_address="192.168.1.100"
+        )
+        
+        # デフォルト
+        self.audit_system.log_data_export(
+            user_id=self.test_user_id,
+            export_format="json",
+            data_categories=["profile_data", "therapeutic_data"],
+            export_size=2048,
+            checksum="abc123def456",
+            ip_address="192.168.1.100"
+        )
+        
+        # ?
+        self.audit_system.log_security_incident(
+            user_id=self.test_user_id,
+            incident_type="unauthorized_access",
+            severity="medium",
+            description="?",
+            ip_address="192.168.1.200"
+        )
+    
+    def test_complete_compliance_monitoring_flow(self):
+        """?"""
+        # 1. ?
+        initial_dashboard = self.compliance_system.get_compliance_dashboard()
+        self.assertEqual(initial_dashboard["active_violations"], 0)
+        
+        # 2. コア
+        compliance_result = self.compliance_system.run_compliance_check()
+        
+        self.assertIn("check_timestamp", compliance_result)
+        self.assertGreater(compliance_result["rules_checked"], 0)
+        self.assertIn("overall_status", compliance_result)
+        self.assertIn("rule_results", compliance_result)
+        
+        # 3. ?
+        if compliance_result["violations_found"] > 0:
+            self.assertGreater(len(self.compliance_system.violations), 0)
+        
+        # 4. ?
+        updated_dashboard = self.compliance_system.get_compliance_dashboard()
+        self.assertIsNotNone(updated_dashboard["last_check"])
+    
+    def test_audit_log_analysis(self):
+        """?"""
+        # 1. ユーザー
+        user_logs = self.audit_system.get_user_audit_logs(self.test_user_id)
+        self.assertGreater(len(user_logs), 0)
+        
+        # 2. ?
+        access_logs = self.audit_system.get_user_audit_logs(
+            self.test_user_id,
+            event_types=[AuditEventType.DATA_ACCESS]
+        )
+        self.assertGreater(len(access_logs), 0)
+        
+        # 3. ?
+        today = datetime.now()
+        yesterday = today - timedelta(days=1)
+        
+        recent_logs = self.audit_system.get_user_audit_logs(
+            self.test_user_id,
+            start_date=yesterday,
+            end_date=today
+        )
+        self.assertGreater(len(recent_logs), 0)
+        
+        # 4. ?
+        summary = self.audit_system.get_audit_summary()
+        
+        self.assertIn("total_events", summary)
+        self.assertIn("unique_users", summary)
+        self.assertIn("event_types", summary)
+        self.assertIn("success_rate", summary)
+        self.assertGreater(summary["total_events"], 0)
+    
+    def test_data_retention_compliance_check(self):
+        """デフォルト"""
+        # ?
+        old_log_entry = self.audit_system._create_audit_log(
+            event_type=AuditEventType.DATA_ACCESS,
+            user_id=self.test_user_id,
+            actor_id="system",
+            data_categories=["old_data"],
+            action_description="?"
+        )
+        
+        # ログ
+        for log in self.audit_system.audit_logs:
+            if log.log_id == old_log_entry:
+                log.timestamp = datetime.now() - timedelta(days=3000)  # 8?
+                break
+        
+        # デフォルト
+        rule_id = "data_retention_check"
+        result = self.compliance_system.run_compliance_check([rule_id])
+        
+        self.assertIn(rule_id, result["rule_results"])
+        rule_result = result["rule_results"][rule_id]
+        
+        # ?
+        if rule_result["status"] != ComplianceStatus.COMPLIANT.value:
+            self.assertGreater(len(rule_result["violations"]), 0)
+    
+    def test_access_control_compliance_check(self):
+        """アプリ"""
+        # アプリ
+        rule_id = "access_control_check"
+        result = self.compliance_system.run_compliance_check([rule_id])
+        
+        self.assertIn(rule_id, result["rule_results"])
+        rule_result = result["rule_results"][rule_id]
+        
+        # ?
+        self.assertIn(rule_result["status"], [
+            ComplianceStatus.WARNING.value,
+            ComplianceStatus.VIOLATION.value
+        ])
+        
+        if rule_result["status"] != ComplianceStatus.COMPLIANT.value:
+            self.assertGreater(len(rule_result["violations"]), 0)
+    
+    def test_violation_management(self):
+        """?"""
+        # 1. コア
+        result = self.compliance_system.run_compliance_check()
+        
+        # 2. ?
+        if result["violations_found"] > 0:
+            violations = self.compliance_system.violations
+            self.assertGreater(len(violations), 0)
+            
+            # 3. ?
+            violation = violations[0]
+            success = self.compliance_system.resolve_violation(
+                violation.violation_id,
+                "?"
+            )
+            
+            self.assertTrue(success)
+            self.assertTrue(violation.resolved)
+            self.assertIsNotNone(violation.resolved_at)
+            self.assertEqual(violation.resolution_notes, "?")
+    
+    def test_compliance_dashboard_functionality(self):
+        """コア"""
+        # コア
+        self.compliance_system.run_compliance_check()
+        
+        # ?
+        dashboard = self.compliance_system.get_compliance_dashboard()
+        
+        # ?
+        required_fields = [
+            "overall_status", "total_rules", "enabled_rules",
+            "active_violations", "critical_violations", "high_violations",
+            "medium_violations", "low_violations", "violations_by_rule",
+            "remediation_required", "overdue_remediations"
+        ]
+        
+        for field in required_fields:
+            self.assertIn(field, dashboard)
+        
+        # ?
+        self.assertGreaterEqual(dashboard["total_rules"], 0)
+        self.assertGreaterEqual(dashboard["enabled_rules"], 0)
+        self.assertGreaterEqual(dashboard["active_violations"], 0)
+        
+        # ?
+        valid_statuses = [status.value for status in ComplianceStatus]
+        self.assertIn(dashboard["overall_status"], valid_statuses)
+    
+    def test_audit_log_export(self):
+        """?"""
+        # JSON?
+        json_export = self.audit_system.export_audit_logs(format="json")
+        self.assertIsInstance(json_export, str)
+        self.assertGreater(len(json_export), 0)
+        
+        # JSONの
+        import json
+        try:
+            parsed_logs = json.loads(json_export)
+            self.assertIsInstance(parsed_logs, list)
+            if parsed_logs:
+                self.assertIn("log_id", parsed_logs[0])
+                self.assertIn("event_type", parsed_logs[0])
+                self.assertIn("user_id", parsed_logs[0])
+        except json.JSONDecodeError:
+            self.fail("Exported JSON is not valid")
+        
+        # ?
+        start_date = datetime.now() - timedelta(hours=1)
+        end_date = datetime.now()
+        
+        filtered_export = self.audit_system.export_audit_logs(
+            format="json",
+            start_date=start_date,
+            end_date=end_date
+        )
+        
+        self.assertIsInstance(filtered_export, str)
+    
+    def test_dpia_necessity_assessment(self):
+        """DPIA?"""
+        # ?
+        high_risk_processing = {
+            "automated_decision_making": True,
+            "sensitive_data": True,
+            "vulnerable_individuals": True,
+            "large_scale_processing": False
+        }
+        
+        # DPIA?
+        assessment = self.dpia_assistant.assess_dpia_necessity(high_risk_processing)
+        
+        self.assertIn("dpia_required", assessment)
+        self.assertIn("risk_score", assessment)
+        self.assertIn("identified_risks", assessment)
+        self.assertIn("recommendation", assessment)
+        
+        # ?DPIAが
+        self.assertTrue(assessment["dpia_required"])
+        self.assertGreater(assessment["risk_score"], 0)
+        self.assertGreater(len(assessment["identified_risks"]), 0)
+        
+        # ?
+        low_risk_processing = {
+            "automated_decision_making": False,
+            "sensitive_data": False,
+            "vulnerable_individuals": False,
+            "large_scale_processing": False
+        }
+        
+        low_risk_assessment = self.dpia_assistant.assess_dpia_necessity(low_risk_processing)
+        self.assertFalse(low_risk_assessment["dpia_required"])
+    
+    def test_dpia_template_generation(self):
+        """DPIA?"""
+        # デフォルト
+        template = self.dpia_assistant.generate_dpia_template()
+        
+        self.assertIn("template_name", template)
+        self.assertIn("sections", template)
+        self.assertIn("risk_categories", template)
+        self.assertIn("generated_at", template)
+        self.assertIn("completion_checklist", template)
+        
+        # ?
+        self.assertIsInstance(template["sections"], list)
+        self.assertGreater(len(template["sections"]), 0)
+        self.assertIsInstance(template["risk_categories"], list)
+        self.assertGreater(len(template["risk_categories"]), 0)
+        
+        # ?
+        self.assertIsInstance(template["completion_checklist"], list)
+        self.assertGreater(len(template["completion_checklist"]), 0)
+    
+    def test_log_cleanup_functionality(self):
+        """ログ"""
+        # ?
+        initial_log_count = len(self.audit_system.audit_logs)
+        
+        # ?
+        old_log_entry = self.audit_system._create_audit_log(
+            event_type=AuditEventType.DATA_ACCESS,
+            user_id=self.test_user_id,
+            actor_id="system",
+            data_categories=["test_data"],
+            action_description="?"
+        )
+        
+        # ログ
+        for log in self.audit_system.audit_logs:
+            if log.log_id == old_log_entry:
+                log.timestamp = datetime.now() - timedelta(days=3000)  # 8?
+                break
+        
+        # ?
+        cleaned_count = self.audit_system.cleanup_old_logs()
+        
+        # ?
+        self.assertGreater(cleaned_count, 0)
+        final_log_count = len(self.audit_system.audit_logs)
+        self.assertLess(final_log_count, initial_log_count + 1)  # +1は
+    
+    def test_security_incident_monitoring(self):
+        """?"""
+        # ?
+        incident_logs = [
+            log for log in self.audit_system.audit_logs
+            if log.event_type == AuditEventType.SECURITY_INCIDENT
+        ]
+        
+        self.assertGreater(len(incident_logs), 0)
+        
+        # ?
+        incident_log = incident_logs[0]
+        self.assertEqual(incident_log.event_type, AuditEventType.SECURITY_INCIDENT)
+        self.assertFalse(incident_log.success)  # ?
+        self.assertIn("incident_type", incident_log.metadata)
+        self.assertIn("severity", incident_log.metadata)
+    
+    def test_comprehensive_compliance_reporting(self):
+        """?"""
+        # ?
+        full_check_result = self.compliance_system.run_compliance_check()
+        
+        # ?
+        audit_summary = self.audit_system.get_audit_summary()
+        
+        # コア
+        compliance_dashboard = self.compliance_system.get_compliance_dashboard()
+        
+        # ?
+        comprehensive_report = {
+            "report_generated_at": datetime.now().isoformat(),
+            "compliance_check_result": full_check_result,
+            "audit_summary": audit_summary,
+            "compliance_dashboard": compliance_dashboard,
+            "recommendations": self._generate_recommendations(
+                full_check_result, audit_summary, compliance_dashboard
+            )
+        }
+        
+        # レベル
+        self.assertIn("report_generated_at", comprehensive_report)
+        self.assertIn("compliance_check_result", comprehensive_report)
+        self.assertIn("audit_summary", comprehensive_report)
+        self.assertIn("compliance_dashboard", comprehensive_report)
+        self.assertIn("recommendations", comprehensive_report)
+        
+        # ?
+        recommendations = comprehensive_report["recommendations"]
+        self.assertIsInstance(recommendations, list)
+    
+    def _generate_recommendations(self, compliance_result: dict, 
+                                audit_summary: dict, dashboard: dict) -> list:
+        """?"""
+        recommendations = []
+        
+        # ?
+        if compliance_result["violations_found"] > 0:
+            recommendations.append("検証")
+        
+        # ?
+        if audit_summary["success_rate"] < 0.95:
+            recommendations.append("システム")
+        
+        # ?
+        if dashboard["critical_violations"] > 0:
+            recommendations.append("?")
+        
+        # ?
+        if dashboard["overdue_remediations"] > 0:
+            recommendations.append("?")
+        
+        return recommendations
+
+
+if __name__ == '__main__':
+    unittest.main()

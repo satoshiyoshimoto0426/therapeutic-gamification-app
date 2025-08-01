@@ -1,0 +1,48 @@
+{
+  "timestamp": "20250730_113101",
+  "test_type": "simple_integration_test",
+  "test_results": {
+    "service_health": {
+      "auth": true,
+      "core_game": true,
+      "task_mgmt": true,
+      "mandala": true
+    },
+    "authentication": {
+      "success": true,
+      "token_received": true,
+      "guardian_id": "test_guardian_001",
+      "permission_level": "task_edit"
+    },
+    "core_game": {
+      "success": true,
+      "xp_added": true,
+      "user_id": "test_user_001",
+      "total_xp": 50,
+      "player_level": 1,
+      "xp_gained": 0
+    },
+    "task_management": {
+      "success": false,
+      "error": "Task creation failed: 422",
+      "response": "{\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"title\"],\"msg\":\"Field required\",\"input\":{\"task_type\":\"routine\",\"difficulty\":2,\"description\":\"統合テスト用タスク\",\"habit_tag\":\"integration_test\"}}]}"
+    },
+    "mandala": {
+      "success": false,
+      "error": "Mandala grid fetch failed: 500",
+      "response": "{\"detail\":\"?: MandalaSystemInterface.get_grid_api_response() missing 1 required positional argument: 'chapter_type'\"}"
+    },
+    "data_flow": {
+      "success": true,
+      "data_flow_working": true,
+      "initial_xp": 80,
+      "updated_xp": 130,
+      "xp_increased": true,
+      "xp_difference": 50
+    }
+  },
+  "summary": {
+    "total_tests": 6,
+    "passed_tests": 4
+  }
+}

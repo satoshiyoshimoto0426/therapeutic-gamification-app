@@ -1,0 +1,242 @@
+#!/usr/bin/env python3
+"""
+[UNICODE_6C17]
+Simple validation script for mood tracking service (no dependencies)
+"""
+
+def calculate_mood_coefficient_simple(mood_score: int, recent_scores: list = None) -> float:
+    """
+    [UNICODE_6C17]
+    Simple version of mood coefficient calculation
+    """
+    # Base coefficient mapping: 1->0.8, 2->0.9, 3->1.0, 4->1.1, 5->1.2
+    base_coefficient = 0.6 + (mood_score * 0.1)
+    
+    # Apply trend adjustment if recent scores available
+    if recent_scores and len(recent_scores) >= 3:
+        recent_avg = sum(recent_scores[-3:]) / len(recent_scores[-3:])
+        trend_factor = (recent_avg - 3.0) * 0.05  # -0.1 to +0.1 adjustment
+        base_coefficient += trend_factor
+    
+    # Ensure coefficient stays within bounds
+    return max(0.8, min(1.2, base_coefficient))
+
+def analyze_mood_trend_simple(mood_scores: list) -> str:
+    """
+    [UNICODE_6C17]
+    Simple version of mood trend analysis
+    """
+    if len(mood_scores) < 3:
+        return "stable"
+    
+    # Calculate trend using simple slope
+    n = len(mood_scores)
+    x_values = list(range(n))
+    
+    # Simple linear regression
+    x_mean = sum(x_values) / n
+    y_mean = sum(mood_scores) / n
+    
+    numerator = sum((x - x_mean) * (y - y_mean) for x, y in zip(x_values, mood_scores))
+    denominator = sum((x - x_mean) ** 2 for x in x_values)
+    
+    if denominator == 0:
+        return "stable"
+    
+    slope = numerator / denominator
+    
+    if slope > 0.1:
+        return "improving"
+    elif slope < -0.1:
+        return "declining"
+    else:
+        return "stable"
+
+def validate_coefficient_calculation():
+    """[UNICODE_6C17]"""
+    print("=== [UNICODE_6C17] ===")
+    
+    # [UNICODE_57FA]
+    test_cases = [
+        (1, 0.8, "[UNICODE_6700]"),
+        (2, 0.9, "[UNICODE_4F4E]"),
+        (3, 1.0, "[UNICODE_666E]"),
+        (4, 1.1, "[UNICODE_826F]"),
+        (5, 1.2, "[UNICODE_6700]")
+    ]
+    
+    all_passed = True
+    for mood_score, expected, description in test_cases:
+        result = calculate_mood_coefficient_simple(mood_score)
+        passed = abs(result - expected) < 0.001
+        status = "[UNICODE_2713]" if passed else "[UNICODE_2717]"
+        print(f"{status} {description}: {mood_score} -> {result} ([UNICODE_671F]: {expected})")
+        if not passed:
+            all_passed = False
+    
+    # [UNICODE_30C8]
+    print("\n--- [UNICODE_30C8] ---")
+    
+    base_coeff = calculate_mood_coefficient_simple(3)
+    improving_coeff = calculate_mood_coefficient_simple(3, [1, 2, 3])
+    declining_coeff = calculate_mood_coefficient_simple(3, [5, 4, 3])
+    
+    print(f"[UNICODE_57FA] ([UNICODE_6C17]3): {base_coeff}")
+    print(f"[UNICODE_6539] (1->2->3): {improving_coeff}")
+    print(f"[UNICODE_60AA] (5->4->3): {declining_coeff}")
+    
+    # [UNICODE_6539]
+    if improving_coeff > base_coeff:
+        print("[UNICODE_2713] [UNICODE_6539]")
+    else:
+        print("[UNICODE_2717] [UNICODE_6539]")
+        all_passed = False
+    
+    # [UNICODE_60AA]
+    if declining_coeff < base_coeff:
+        print("[UNICODE_2713] [UNICODE_60AA]")
+    else:
+        print("[UNICODE_2717] [UNICODE_60AA]")
+        all_passed = False
+    
+    return all_passed
+
+def validate_trend_analysis():
+    """[UNICODE_30C8]"""
+    print("\n=== [UNICODE_30C8] ===")
+    
+    # [UNICODE_30C8]
+    trend_cases = [
+        ([1, 2, 3, 4, 5], "improving", "[UNICODE_660E]"),
+        ([5, 4, 3, 2, 1], "declining", "[UNICODE_660E]"),
+        ([3, 3, 3, 3, 3], "stable", "[UNICODE_5B8C]"),
+        ([2, 3, 4, 3, 4], "improving", "[UNICODE_7DE9]"),
+        ([4, 3, 2, 3, 2], "declining", "[UNICODE_7DE9]"),
+        ([3, 2, 4, 2, 3], "stable", "[UNICODE_5909]"),
+        ([1, 5], "stable", "[UNICODE_30C7]"),
+        ([3], "stable", "[UNICODE_5358]")
+    ]
+    
+    all_passed = True
+    for scores, expected_trend, description in trend_cases:
+        result = analyze_mood_trend_simple(scores)
+        passed = result == expected_trend
+        status = "[UNICODE_2713]" if passed else "[UNICODE_2717]"
+        print(f"{status} {description}: {scores} -> {result} ([UNICODE_671F]: {expected_trend})")
+        if not passed:
+            all_passed = False
+    
+    return all_passed
+
+def validate_boundary_conditions():
+    """[UNICODE_5883]"""
+    print("\n=== [UNICODE_5883] ===")
+    
+    # [UNICODE_6975]
+    extreme_cases = [
+        (1, [1, 1, 1, 1, 1], "[UNICODE_4E00]"),
+        (5, [5, 5, 5, 5, 5], "[UNICODE_4E00]"),
+        (1, [5, 4, 3, 2, 1], "[UNICODE_6025]"),
+        (5, [1, 2, 3, 4, 5], "[UNICODE_6025]")
+    ]
+    
+    all_passed = True
+    for mood_score, recent_scores, description in extreme_cases:
+        coeff = calculate_mood_coefficient_simple(mood_score, recent_scores)
+        in_bounds = 0.8 <= coeff <= 1.2
+        status = "[UNICODE_2713]" if in_bounds else "[UNICODE_2717]"
+        print(f"{status} {description}: [UNICODE_6C17]{mood_score} -> [UNICODE_4FC2]{coeff:.3f} ([UNICODE_7BC4]: {in_bounds})")
+        if not in_bounds:
+            all_passed = False
+    
+    return all_passed
+
+def validate_xp_impact_scenarios():
+    """XP[UNICODE_5F71]"""
+    print("\n=== XP[UNICODE_5F71] ===")
+    
+    # [UNICODE_5B9F]XP[UNICODE_8A08]
+    base_xp = 100
+    scenarios = [
+        {
+            "name": "[UNICODE_843D]",
+            "mood_score": 2,
+            "recent_scores": [2, 2, 2],
+            "expected_reduction": True
+        },
+        {
+            "name": "[UNICODE_666E]",
+            "mood_score": 3,
+            "recent_scores": [3, 3, 3],
+            "expected_reduction": False
+        },
+        {
+            "name": "[UNICODE_8ABF]",
+            "mood_score": 4,
+            "recent_scores": [4, 4, 4],
+            "expected_reduction": False
+        },
+        {
+            "name": "[UNICODE_56DE]",
+            "mood_score": 4,
+            "recent_scores": [2, 3, 4],
+            "expected_reduction": False
+        }
+    ]
+    
+    all_passed = True
+    for scenario in scenarios:
+        coeff = calculate_mood_coefficient_simple(
+            scenario["mood_score"], 
+            scenario["recent_scores"]
+        )
+        
+        final_xp = int(base_xp * coeff)
+        is_reduced = final_xp < base_xp
+        
+        expected_reduction = scenario["expected_reduction"]
+        passed = is_reduced == expected_reduction
+        status = "[UNICODE_2713]" if passed else "[UNICODE_2717]"
+        
+        print(f"{status} {scenario['name']}: [UNICODE_57FA]XP{base_xp} [UNICODE_00D7] [UNICODE_4FC2]{coeff:.3f} = {final_xp}XP")
+        if not passed:
+            all_passed = False
+    
+    return all_passed
+
+def main():
+    """[UNICODE_30E1]"""
+    print("[UNICODE_6C17]")
+    print("=" * 50)
+    
+    results = []
+    
+    try:
+        results.append(validate_coefficient_calculation())
+        results.append(validate_trend_analysis())
+        results.append(validate_boundary_conditions())
+        results.append(validate_xp_impact_scenarios())
+        
+        print("\n" + "=" * 50)
+        
+        if all(results):
+            print("[UNICODE_2713] [UNICODE_5168]")
+            print("\n[UNICODE_5B9F]:")
+            print("[UNICODE_2022] 1-5[UNICODE_30B9]")
+            print("[UNICODE_2022] 0.8-1.2[UNICODE_7BC4]")
+            print("[UNICODE_2022] [UNICODE_30C8]")
+            print("[UNICODE_2022] [UNICODE_5883]")
+            print("[UNICODE_2022] XP[UNICODE_4E57]")
+            return True
+        else:
+            failed_count = sum(1 for r in results if not r)
+            print(f"[UNICODE_2717] {failed_count}[UNICODE_500B]")
+            return False
+            
+    except Exception as e:
+        print(f"\n[UNICODE_2717] [UNICODE_691C]: {e}")
+        return False
+
+if __name__ == "__main__":
+    success = main()
+    exit(0 if success else 1)

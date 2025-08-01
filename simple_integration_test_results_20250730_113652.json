@@ -1,0 +1,49 @@
+{
+  "timestamp": "20250730_113652",
+  "test_type": "simple_integration_test",
+  "test_results": {
+    "service_health": {
+      "auth": true,
+      "core_game": true,
+      "task_mgmt": true,
+      "mandala": true
+    },
+    "authentication": {
+      "success": true,
+      "token_received": true,
+      "guardian_id": "test_guardian_001",
+      "permission_level": "task_edit"
+    },
+    "core_game": {
+      "success": true,
+      "xp_added": true,
+      "user_id": "test_user_001",
+      "total_xp": 440,
+      "player_level": 1,
+      "xp_gained": 0
+    },
+    "task_management": {
+      "success": true,
+      "task_created": true,
+      "task_id": "task_test_user_001_5545a0c8",
+      "task_type": "routine"
+    },
+    "mandala": {
+      "success": false,
+      "error": "Mandala grid fetch failed: 500",
+      "response": "{\"detail\":\"Mandalaグリッド取得エラー: 'MandalaValidator' object has no attribute 'validate_api_response_data'\"}"
+    },
+    "data_flow": {
+      "success": true,
+      "data_flow_working": true,
+      "initial_xp": 470,
+      "updated_xp": 520,
+      "xp_increased": true,
+      "xp_difference": 50
+    }
+  },
+  "summary": {
+    "total_tests": 6,
+    "passed_tests": 5
+  }
+}

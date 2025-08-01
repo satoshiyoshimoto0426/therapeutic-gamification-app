@@ -1,0 +1,112 @@
+"""
+Self-Efficacy Gauge Service [UNICODE_7C21]
+
+[UNICODE_30D6]
+"""
+
+import asyncio
+from main import efficacy_engine, EfficacyUpdateRequest
+
+async def test_basic_functionality():
+    """[UNICODE_57FA]"""
+    print("Self-Efficacy Gauge Service [UNICODE_7C21]")
+    print("=" * 50)
+    
+    user_id = "simple_test_user"
+    therapeutic_focus = "Self-Discipline"
+    
+    # 1. [UNICODE_521D]
+    print("1. [UNICODE_521D]")
+    request = EfficacyUpdateRequest(
+        user_id=user_id,
+        therapeutic_focus=therapeutic_focus,
+        task_completed=True,
+        task_difficulty=3,
+        mood_rating=4,
+        reflection_quality=4
+    )
+    
+    result = await efficacy_engine.update_efficacy_gauge(request)
+    print(f"   [UNICODE_2713] [UNICODE_521D]: {result['efficacy_increase']:.2f}% [UNICODE_5897]")
+    print(f"   [UNICODE_2713] [UNICODE_7D99]: {result['gauge'].consecutive_days}[UNICODE_65E5]")
+    
+    # 2. 7[UNICODE_65E5]
+    print("\n2. 7[UNICODE_65E5]")
+    for day in range(2, 8):
+        request.task_difficulty = 2 + (day % 3)
+        request.mood_rating = 3 + (day % 3)
+        
+        result = await efficacy_engine.update_efficacy_gauge(request)
+        
+        if day == 7:
+            print(f"   [UNICODE_2713] 7[UNICODE_65E5]: {result['gauge'].consecutive_days}[UNICODE_65E5]")
+            print(f"   [UNICODE_2713] [UNICODE_52B9]: {result['gauge'].current_level.value}")
+            print(f"   [UNICODE_2713] [UNICODE_30DE]: {len(result['milestone_rewards'])}[UNICODE_500B]")
+            if result['milestone_rewards']:
+                print(f"   [UNICODE_2713] [UNICODE_5831]: {result['milestone_rewards'][0]['milestone'].title}")
+    
+    # 3. 21[UNICODE_65E5]
+    print("\n3. 21[UNICODE_65E5]")
+    for day in range(8, 22):
+        request.task_difficulty = 2 + (day % 3)
+        request.mood_rating = 3 + (day % 3)
+        
+        result = await efficacy_engine.update_efficacy_gauge(request)
+        
+        if day == 14:
+            print(f"   [UNICODE_2713] 14[UNICODE_65E5]: [UNICODE_30DE] {len(result['milestone_rewards'])}[UNICODE_500B]")
+        elif day == 21:
+            print(f"   [UNICODE_2713] 21[UNICODE_65E5]: {result['gauge'].consecutive_days}[UNICODE_65E5]")
+            print(f"   [UNICODE_2713] [UNICODE_52B9]: {result['gauge'].current_level.value}")
+            print(f"   [UNICODE_2713] [UNICODE_52B9]: {result['gauge'].current_percentage:.1f}%")
+            print(f"   [UNICODE_2713] [UNICODE_30DE]: {len(result['milestone_rewards'])}[UNICODE_500B]")
+            print(f"   [UNICODE_2713] [UNICODE_30D1]: {len(result['newly_unlocked_skills'])}[UNICODE_500B]")
+            
+            if result['milestone_rewards']:
+                for reward in result['milestone_rewards']:
+                    print(f"       - {reward['milestone'].title}: {reward['milestone'].description}")
+            
+            if result['newly_unlocked_skills']:
+                for skill in result['newly_unlocked_skills']:
+                    print(f"       - {skill.name}: {skill.description}")
+            
+            print(f"   [UNICODE_2713] [UNICODE_304A]: {result['celebration_message']}")
+    
+    # 4. [UNICODE_30C0]
+    print("\n4. [UNICODE_30C0]")
+    dashboard = await efficacy_engine.get_efficacy_dashboard(user_id)
+    
+    print(f"   [UNICODE_2713] [UNICODE_5168]: {dashboard['overall_efficacy_level'].value}")
+    print(f"   [UNICODE_2713] [UNICODE_5E73]: {dashboard['average_efficacy_percentage']:.1f}%")
+    print(f"   [UNICODE_2713] [UNICODE_6700]: {dashboard['max_consecutive_days']}[UNICODE_65E5]")
+    print(f"   [UNICODE_2713] [UNICODE_7DCF]: {dashboard['total_passive_skills']}[UNICODE_500B]")
+    print(f"   [UNICODE_2713] [UNICODE_52B9]: {dashboard['efficacy_trend']}")
+    print(f"   [UNICODE_2713] [UNICODE_30E2]: {dashboard['motivational_message']}")
+    
+    # 5. [UNICODE_30DE]
+    print("\n5. [UNICODE_30DE]")
+    milestones = efficacy_engine.milestones
+    print(f"   [UNICODE_2713] [UNICODE_7DCF]: {len(milestones)}[UNICODE_500B]")
+    
+    for milestone in milestones[:5]:  # [UNICODE_6700]5[UNICODE_3064]
+        print(f"       - {milestone.day}[UNICODE_65E5]: {milestone.title}")
+    
+    # 6. [UNICODE_30D1]
+    print("\n6. [UNICODE_30D1]")
+    skills = efficacy_engine.passive_skills_pool
+    print(f"   [UNICODE_2713] [UNICODE_7DCF]: {len(skills)}[UNICODE_500B]")
+    
+    for skill in skills[:5]:  # [UNICODE_6700]5[UNICODE_3064]
+        print(f"       - {skill.name} ({skill.unlock_requirement}[UNICODE_65E5]): {skill.description}")
+    
+    print("\n" + "=" * 50)
+    print("[UNICODE_2713] Self-Efficacy Gauge Service [UNICODE_7C21]")
+    print("\n[UNICODE_30D6]:")
+    print("- 21[UNICODE_65E5] [UNICODE_2713]")
+    print("- [UNICODE_30D1] [UNICODE_2713]")
+    print("- [UNICODE_6CBB] [UNICODE_2713]")
+    print("- [UNICODE_9577] [UNICODE_2713]")
+    print("- [UNICODE_30DE] [UNICODE_2713]")
+
+if __name__ == "__main__":
+    asyncio.run(test_basic_functionality())

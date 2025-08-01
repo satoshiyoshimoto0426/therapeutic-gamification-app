@@ -1,0 +1,287 @@
+"""
+Complete Mobile Mandala System Test
+
+[UNICODE_30E2]Mandala[UNICODE_30B7]
+"""
+
+import sys
+import os
+from unittest.mock import Mock
+
+# Add project root to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+from services.mandala.mobile_mandala_complete import MobileMandalaSystem
+from shared.interfaces.mobile_types import (
+    DeviceType, ScreenOrientation, TouchEventType, SwipeDirection,
+    MobileViewport, TouchEvent, SwipeEvent, PinchEvent,
+    ADHDMobileSettings
+)
+from shared.interfaces.mandala_system import MandalaSystemInterface
+
+
+def test_complete_mobile_mandala_functionality():
+    """[UNICODE_5B8C]Mandala[UNICODE_6A5F]"""
+    print("[UNICODE_1F9EA] [UNICODE_5B8C]Mandala[UNICODE_30B7]")
+    
+    # [UNICODE_30E2]
+    mock_mandala_interface = Mock(spec=MandalaSystemInterface)
+    mock_mandala_interface.get_grid_api_response.return_value = {
+        "uid": "test_user",
+        "grid": [[None for _ in range(9)] for _ in range(9)],
+        "unlocked_count": 5,
+        "total_cells": 81
+    }
+    
+    # [UNICODE_30E2]
+    mock_grid = Mock()
+    mock_grid.get_cell.return_value = None
+    mock_grid.can_unlock.return_value = False
+    mock_mandala_interface.get_or_create_grid.return_value = mock_grid
+    
+    # [UNICODE_30E2]
+    mobile_system = MobileMandalaSystem(mock_mandala_interface)
+    
+    print("[UNICODE_2705] [UNICODE_30B7]")
+    
+    # 1. [UNICODE_753B]
+    print("\n[UNICODE_1F4F1] [UNICODE_753B]")
+    
+    viewports = [
+        ("[UNICODE_5C0F]", MobileViewport(width=320, height=568, orientation=ScreenOrientation.PORTRAIT)),
+        ("[UNICODE_6A19]", MobileViewport(width=375, height=667, orientation=ScreenOrientation.PORTRAIT)),
+        ("[UNICODE_5927]", MobileViewport(width=414, height=896, orientation=ScreenOrientation.PORTRAIT)),
+        ("[UNICODE_30BF]", MobileViewport(width=768, height=1024, orientation=ScreenOrientation.PORTRAIT)),
+    ]
+    
+    for name, viewport in viewports:
+        config = mobile_system.calculate_grid_size_for_screen(viewport)
+        print(f"  {name}: [UNICODE_30BB]={config.cell_size}px, [UNICODE_30BA]={config.zoom_enabled}")
+    
+    # 2. [UNICODE_30B0]
+    print("\n[UNICODE_1F3AF] [UNICODE_30B0]")
+    
+    uid = "test_user"
+    standard_viewport = MobileViewport(width=375, height=667, orientation=ScreenOrientation.PORTRAIT)
+    layout = mobile_system.create_mobile_grid_layout(uid, standard_viewport)
+    
+    print(f"  [UNICODE_30EC]: {layout.cell_size}x{layout.cell_size}px [UNICODE_30BB]")
+    print(f"  [UNICODE_8868]: {len(layout.visible_cells)}[UNICODE_500B]")
+    print(f"  [UNICODE_521D]: {layout.zoom_level}[UNICODE_500D]")
+    
+    # 3. [UNICODE_30BF]
+    print("\n[UNICODE_1F446] [UNICODE_30BF]")
+    
+    touch_events = [
+        ("[UNICODE_30BF]", TouchEvent(event_type=TouchEventType.TAP, x=100.0, y=100.0, timestamp=1234567890)),
+        ("[UNICODE_30ED]", TouchEvent(event_type=TouchEventType.LONG_PRESS, x=150.0, y=150.0, timestamp=1234567891)),
+        ("[UNICODE_30C0]", TouchEvent(event_type=TouchEventType.DOUBLE_TAP, x=200.0, y=200.0, timestamp=1234567892)),
+    ]
+    
+    for name, event in touch_events:
+        response = mobile_system.handle_touch_event(uid, event)
+        print(f"  {name}: [UNICODE_6210]={response.success}, [UNICODE_30D5]={response.feedback_type}")
+    
+    # 4. [UNICODE_30B9]
+    print("\n[UNICODE_1F448] [UNICODE_30B9]")
+    
+    swipe_directions = [
+        ("[UNICODE_5DE6]", SwipeDirection.LEFT),
+        ("[UNICODE_53F3]", SwipeDirection.RIGHT),
+        ("[UNICODE_4E0A]", SwipeDirection.UP),
+        ("[UNICODE_4E0B]", SwipeDirection.DOWN),
+    ]
+    
+    for name, direction in swipe_directions:
+        swipe_event = SwipeEvent(
+            direction=direction,
+            distance=50.0,
+            velocity=100.0,
+            start_x=200.0,
+            start_y=300.0,
+            end_x=150.0 if direction == SwipeDirection.LEFT else 250.0,
+            end_y=250.0 if direction == SwipeDirection.UP else 350.0
+        )
+        
+        response = mobile_system.handle_swipe_event(uid, swipe_event)
+        print(f"  {name}[UNICODE_30B9]: [UNICODE_6210]={response.success}")
+    
+    # [UNICODE_30D1]
+    updated_layout = mobile_system.grid_layouts[uid]
+    print(f"  [UNICODE_6700]: X={updated_layout.pan_offset_x:.1f}, Y={updated_layout.pan_offset_y:.1f}")
+    
+    # 5. [UNICODE_30D4]
+    print("\n[UNICODE_1F50D] [UNICODE_30D4]")
+    
+    pinch_scales = [1.5, 0.8, 2.5, 0.3]  # [UNICODE_6700]2[UNICODE_3064]
+    
+    for scale in pinch_scales:
+        pinch_event = PinchEvent(
+            scale=scale,
+            center_x=200.0,
+            center_y=300.0,
+            velocity=0.1
+        )
+        
+        response = mobile_system.handle_pinch_event(uid, pinch_event)
+        current_zoom = mobile_system.grid_layouts[uid].zoom_level
+        print(f"  [UNICODE_30B9]{scale}: [UNICODE_6210]={response.success}, [UNICODE_73FE]={current_zoom:.1f}[UNICODE_500D]")
+    
+    # 6. ADHD[UNICODE_914D]
+    print("\n[UNICODE_1F9E0] ADHD[UNICODE_914D]")
+    
+    adhd_settings = ADHDMobileSettings(
+        large_touch_targets=True,
+        reduced_animations=True,
+        high_contrast_mode=True,
+        focus_mode_available=True
+    )
+    
+    success = mobile_system.update_adhd_settings(uid, adhd_settings)
+    print(f"  ADHD[UNICODE_8A2D]: [UNICODE_6210]={success}")
+    
+    # [UNICODE_96C6]
+    focus_layout = mobile_system.get_focus_mode_layout(uid)
+    if focus_layout:
+        print(f"  [UNICODE_96C6]: [UNICODE_30BB]={focus_layout.cell_size}px, [UNICODE_8868]={len(focus_layout.visible_cells)}[UNICODE_500B]")
+    else:
+        print("  [UNICODE_96C6]: [UNICODE_5229]")
+    
+    # 7. [UNICODE_30E2]
+    print("\n[UNICODE_1F4F1] [UNICODE_30E2]")
+    
+    mobile_response = mobile_system.get_mobile_optimized_grid_data(uid, standard_viewport)
+    print(f"  [UNICODE_30EC]")
+    print(f"  [UNICODE_30C7]: {mobile_response.mobile_config['device_type']}")
+    print(f"  [UNICODE_30D1]: {len(mobile_response.performance_hints)}[UNICODE_9805]")
+    print(f"  [UNICODE_30A2]: [UNICODE_30BF]={mobile_response.accessibility_metadata['touch_target_size']}px")
+    
+    # 8. [UNICODE_30D3]
+    print("\n[UNICODE_1F504] [UNICODE_30D3]")
+    
+    reset_response = mobile_system.reset_grid_view(uid)
+    print(f"  [UNICODE_30D3]: [UNICODE_6210]={reset_response.success}")
+    
+    # [UNICODE_30EA]
+    reset_layout = mobile_system.grid_layouts[uid]
+    print(f"  [UNICODE_30EA]: [UNICODE_30BA]={reset_layout.zoom_level}[UNICODE_500D], [UNICODE_30D1]X={reset_layout.pan_offset_x}, [UNICODE_30D1]Y={reset_layout.pan_offset_y}")
+    
+    print("\n[UNICODE_2705] [UNICODE_5B8C]Mandala[UNICODE_30B7]")
+    return True
+
+
+def test_edge_cases():
+    """[UNICODE_30A8]"""
+    print("\n[UNICODE_26A0]  [UNICODE_30A8]")
+    
+    mock_mandala_interface = Mock(spec=MandalaSystemInterface)
+    mobile_system = MobileMandalaSystem(mock_mandala_interface)
+    
+    # 1. [UNICODE_7121]
+    print("  [UNICODE_7121]")
+    
+    viewport = MobileViewport(width=375, height=667, orientation=ScreenOrientation.PORTRAIT)
+    mobile_system.create_mobile_grid_layout("edge_test", viewport)
+    
+    invalid_touch = TouchEvent(
+        event_type=TouchEventType.TAP,
+        x=-100.0,  # [UNICODE_7121]
+        y=-100.0,
+        timestamp=1234567890
+    )
+    
+    response = mobile_system.handle_touch_event("edge_test", invalid_touch)
+    print(f"    [UNICODE_7121]: [UNICODE_6210]={response.success}")
+    
+    # 2. [UNICODE_30BA]
+    print("  [UNICODE_30BA]")
+    
+    # [UNICODE_6700]
+    extreme_pinch = PinchEvent(
+        scale=10.0,  # [UNICODE_6975]
+        center_x=200.0,
+        center_y=200.0,
+        velocity=0.1
+    )
+    
+    mobile_system.handle_pinch_event("edge_test", extreme_pinch)
+    layout = mobile_system.grid_layouts["edge_test"]
+    print(f"    [UNICODE_6975]: {layout.zoom_level}[UNICODE_500D] ([UNICODE_5236])")
+    
+    # 3. [UNICODE_5B58]
+    print("  [UNICODE_5B58]")
+    
+    reset_response = mobile_system.reset_grid_view("nonexistent_user")
+    print(f"    [UNICODE_5B58]: [UNICODE_6210]={reset_response.success}")
+    
+    print("[UNICODE_2705] [UNICODE_30A8]")
+
+
+def test_device_specific_optimizations():
+    """[UNICODE_30C7]"""
+    print("\n[UNICODE_1F4F1] [UNICODE_30C7]")
+    
+    mock_mandala_interface = Mock(spec=MandalaSystemInterface)
+    mock_mandala_interface.get_grid_api_response.return_value = {
+        "uid": "test_user",
+        "grid": [[None for _ in range(9)] for _ in range(9)],
+        "unlocked_count": 5,
+        "total_cells": 81
+    }
+    
+    mobile_system = MobileMandalaSystem(mock_mandala_interface)
+    
+    # [UNICODE_30C7]
+    devices = [
+        ("iPhone SE", 320, 568, DeviceType.MOBILE_SMALL),
+        ("iPhone 12", 390, 844, DeviceType.MOBILE_STANDARD),
+        ("iPhone 12 Pro Max", 428, 926, DeviceType.MOBILE_LARGE),
+        ("iPad", 768, 1024, DeviceType.TABLET_PORTRAIT),
+        ("iPad Pro", 1024, 1366, DeviceType.TABLET_LANDSCAPE),
+    ]
+    
+    for device_name, width, height, expected_type in devices:
+        viewport = MobileViewport(width=width, height=height, orientation=ScreenOrientation.PORTRAIT)
+        config = mobile_system.calculate_grid_size_for_screen(viewport)
+        
+        print(f"  {device_name}: [UNICODE_30BF]={config.device_type}, [UNICODE_30BB]={config.cell_size}px, [UNICODE_30BA]={config.zoom_enabled}")
+        
+        # [UNICODE_671F]
+        if config.device_type in [DeviceType.MOBILE_SMALL, DeviceType.MOBILE_STANDARD, DeviceType.MOBILE_LARGE, DeviceType.TABLET_PORTRAIT, DeviceType.TABLET_LANDSCAPE]:
+            print(f"    [UNICODE_2705] [UNICODE_9069]")
+        else:
+            print(f"    [UNICODE_26A0]  [UNICODE_4E88]: {config.device_type}")
+    
+    print("[UNICODE_2705] [UNICODE_30C7]")
+
+
+def main():
+    """[UNICODE_30E1]"""
+    print("[UNICODE_1F680] [UNICODE_30E2]Mandala[UNICODE_30B7] [UNICODE_5B8C]")
+    print("=" * 60)
+    
+    try:
+        # [UNICODE_5B8C]
+        test_complete_mobile_mandala_functionality()
+        
+        # [UNICODE_30A8]
+        test_edge_cases()
+        
+        # [UNICODE_30C7]
+        test_device_specific_optimizations()
+        
+        print("\n" + "=" * 60)
+        print("[UNICODE_1F389] [UNICODE_5168]Mandala[UNICODE_30B7]")
+        
+    except Exception as e:
+        print(f"\n[UNICODE_274C] [UNICODE_30C6]: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return False
+    
+    return True
+
+
+if __name__ == "__main__":
+    success = main()
+    sys.exit(0 if success else 1)

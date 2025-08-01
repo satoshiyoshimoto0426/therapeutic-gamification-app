@@ -1,0 +1,382 @@
+"""
+Data integrity validation functions for core models
+Ensures consistency and business rule compliance across all data models
+"""
+
+from typing import Dict, List, Optional, Any, Tuple
+from datetime import datetime, timedelta
+from .core_types import (
+    UserProfile, TaskRecord, StoryState, MoodLog, GrowthNoteEntry,
+    TaskType, TaskStatus, ChapterType, JobClass, ItemRarity
+)
+from ..utils.validators import validate_mood_score, validate_difficulty_level
+from ..utils.exceptions import ValidationError, DailyTaskLimitExceededError
+
+class DataIntegrityValidator:
+    """Validates data integrity and business rules"""
+    
+    @staticmethod
+    def validate_user_profile_consistency(profile: UserProfile) -> Dict[str, Any]:
+        """
+        Validate UserProfile data consistency
+        
+        Args:
+            profile: UserProfile to validate
+            
+        Returns:
+            Validation result with details
+        """
+        errors = []
+        warnings = []
+        
+        # Check level consistency
+        if profile.player_level < 1:
+            errors.append("[UNICODE_30D7]1[UNICODE_4EE5]")
+        
+        if profile.yu_level < 1:
+            errors.append("[UNICODE_30E6]1[UNICODE_4EE5]")
+        
+        # Check XP consistency
+        if profile.total_xp < 0:
+            errors.append("[UNICODE_7DCF]XP[UNICODE_306F]0[UNICODE_4EE5]")
+        
+        # Check crystal gauges
+        for attr, value in profile.crystal_gauges.items():
+            if not (0 <= value <= 100):
+                errors.append(f"[UNICODE_30AF]: {attr}={value}")
+        
+        # Check ADHD task limit
+        if not (8 <= profile.daily_task_limit <= 24):
+            warnings.append(f"[UNICODE_65E5]: {profile.daily_task_limit}")
+        
+        # Check level difference for resonance events
+        level_diff = abs(profile.player_level - profile.yu_level)
+        if level_diff >= 5:
+            warnings.append(f"[UNICODE_30EC]: {level_diff}")
+        
+        return {
+            "valid": len(errors) == 0,
+            "errors": errors,
+            "warnings": warnings,
+            "level_difference": level_diff,
+            "resonance_available": level_diff >= 5
+        }
+    
+    @staticmethod
+    def validate_task_business_rules(
+        task: TaskRecord, 
+        user_profile: UserProfile,
+        existing_tasks: List[TaskRecord]
+    ) -> Dict[str, Any]:
+        """
+        Validate task against business rules
+        
+        Args:
+            task: Task to validate
+            user_profile: User's profile
+            existing_tasks: User's existing tasks
+            
+        Returns:
+            Validation result
+        """
+        errors = []
+        warnings = []
+        
+        # Check daily task limit (ADHD consideration)
+        today = datetime.now().date()
+        today_tasks = [
+            t for t in existing_tasks 
+            if t.created_at.date() == today and t.status != TaskStatus.COMPLETED
+        ]
+        
+        if len(today_tasks) >= user_profile.daily_task_limit:
+            errors.append(f"[UNICODE_65E5]: {len(today_tasks)}/{user_profile.daily_task_limit}")
+        
+        # Check due date
+        if task.due_date and task.due_date < datetime.now():
+            warnings.append("[UNICODE_671F]")
+        
+        # Check difficulty vs user level
+        if task.difficulty > user_profile.player_level and user_profile.player_level < 5:
+            warnings.append("[UNICODE_30BF]")
+        
+        # Check ADHD support settings
+        if user_profile.adhd_profile and not task.adhd_support:
+            warnings.append("ADHD[UNICODE_652F]")
+        
+        return {
+            "valid": len(errors) == 0,
+            "errors": errors,
+            "warnings": warnings,
+            "daily_task_count": len(today_tasks),
+            "remaining_tasks": max(0, user_profile.daily_task_limit - len(today_tasks))
+        }
+    
+    @staticmethod
+    def validate_xp_calculation_integrity(
+        task: TaskRecord,
+        mood_score: int,
+        adhd_assist: float,
+        expected_xp: int
+    ) -> Dict[str, Any]:
+        """
+        Validate XP calculation integrity
+        
+        Args:
+            task: Task being completed
+            mood_score: Mood score at completion
+            adhd_assist: ADHD assistance multiplier
+            expected_xp: Expected XP amount
+            
+        Returns:
+            Validation result
+        """
+        errors = []
+        
+        # Validate inputs
+        if not validate_difficulty_level(task.difficulty):
+            errors.append("[UNICODE_30BF]")
+        
+        if not validate_mood_score(mood_score):
+            errors.append("[UNICODE_6C17]")
+        
+        if not (1.0 <= adhd_assist <= 1.3):
+            errors.append("ADHD[UNICODE_652F]")
+        
+        # Calculate expected XP
+        if len(errors) == 0:
+            mood_coefficient = 0.6 + (mood_score * 0.1)  # 1->0.8, 5->1.2
+            calculated_xp = int(task.difficulty * 10 * mood_coefficient * adhd_assist)
+            
+            if abs(calculated_xp - expected_xp) > 1:  # Allow for rounding differences
+                errors.append(f"XP[UNICODE_8A08]: [UNICODE_671F]={expected_xp}, [UNICODE_8A08]={calculated_xp}")
+        
+        return {
+            "valid": len(errors) == 0,
+            "errors": errors,
+            "calculated_xp": calculated_xp if len(errors) == 0 else None
+        }
+    
+    @staticmethod
+    def validate_story_progression_consistency(
+        story_state: StoryState,
+        user_profile: UserProfile
+    ) -> Dict[str, Any]:
+        """
+        Validate story progression consistency
+        
+        Args:
+            story_state: User's story state
+            user_profile: User's profile
+            
+        Returns:
+            Validation result
+        """
+        errors = []
+        warnings = []
+        
+        # Check chapter consistency
+        if story_state.current_chapter not in story_state.unlocked_chapters:
+            errors.append("[UNICODE_73FE]")
+        
+        # Check node consistency
+        if story_state.current_node not in story_state.unlocked_nodes:
+            errors.append("[UNICODE_73FE]")
+        
+        # Check completion consistency
+        completed_count = len(story_state.completed_nodes)
+        unlocked_count = len(story_state.unlocked_nodes)
+        
+        if completed_count > unlocked_count:
+            errors.append("[UNICODE_5B8C]")
+        
+        # Check level progression consistency
+        expected_min_level = max(1, completed_count // 10)  # Rough estimate
+        if user_profile.player_level < expected_min_level:
+            warnings.append("[UNICODE_30D7]")
+        
+        return {
+            "valid": len(errors) == 0,
+            "errors": errors,
+            "warnings": warnings,
+            "progression_ratio": completed_count / max(1, unlocked_count)
+        }
+    
+    @staticmethod
+    def validate_growth_note_consistency(
+        entry: GrowthNoteEntry,
+        previous_entries: List[GrowthNoteEntry]
+    ) -> Dict[str, Any]:
+        """
+        Validate growth note entry consistency
+        
+        Args:
+            entry: New growth note entry
+            previous_entries: Previous entries for comparison
+            
+        Returns:
+            Validation result
+        """
+        errors = []
+        warnings = []
+        insights = []
+        
+        # Check daily limit
+        today = entry.entry_date.date()
+        today_entries = [e for e in previous_entries if e.entry_date.date() == today]
+        
+        if len(today_entries) > 0:
+            errors.append("[UNICODE_4ECA]")
+        
+        # Analyze content quality
+        total_length = len(entry.current_problems + entry.ideal_world + 
+                          entry.ideal_emotions + entry.tomorrow_actions)
+        
+        if total_length < 50:
+            warnings.append("[UNICODE_632F]")
+        elif total_length > 1800:
+            warnings.append("[UNICODE_632F]")
+        
+        # Check for improvement patterns
+        if len(previous_entries) >= 7:  # At least a week of data
+            recent_entries = sorted(previous_entries, key=lambda x: x.entry_date)[-7:]
+            
+            # Analyze emotional tone trends
+            positive_count = sum(1 for e in recent_entries if e.emotional_tone == "positive")
+            if positive_count >= 5:
+                insights.append("[UNICODE_6700]")
+            elif positive_count <= 2:
+                insights.append("[UNICODE_30B5]")
+        
+        return {
+            "valid": len(errors) == 0,
+            "errors": errors,
+            "warnings": warnings,
+            "insights": insights,
+            "content_length": total_length,
+            "streak_eligible": len(errors) == 0
+        }
+    
+    @staticmethod
+    def validate_crystal_gauge_progression(
+        current_gauges: Dict[str, int],
+        previous_gauges: Dict[str, int],
+        completed_tasks: List[TaskRecord]
+    ) -> Dict[str, Any]:
+        """
+        Validate crystal gauge progression logic
+        
+        Args:
+            current_gauges: Current crystal gauge values
+            previous_gauges: Previous crystal gauge values
+            completed_tasks: Recently completed tasks
+            
+        Returns:
+            Validation result
+        """
+        errors = []
+        warnings = []
+        progressions = {}
+        
+        # Check each attribute
+        for attr in current_gauges.keys():
+            current_val = current_gauges[attr]
+            previous_val = previous_gauges.get(attr, 0)
+            progression = current_val - previous_val
+            
+            progressions[attr] = progression
+            
+            # Validate progression bounds
+            if progression < 0:
+                errors.append(f"[UNICODE_30AF]: {attr}")
+            elif progression > 50:  # Reasonable daily limit
+                warnings.append(f"[UNICODE_30AF]: {attr}={progression}")
+        
+        # Check total progression vs completed tasks
+        total_progression = sum(progressions.values())
+        task_count = len(completed_tasks)
+        
+        if total_progression > task_count * 10:  # Rough heuristic
+            warnings.append("[UNICODE_30AF]")
+        
+        return {
+            "valid": len(errors) == 0,
+            "errors": errors,
+            "warnings": warnings,
+            "progressions": progressions,
+            "total_progression": total_progression
+        }
+
+class BusinessRuleValidator:
+    """Validates business rules and constraints"""
+    
+    @staticmethod
+    def validate_therapeutic_safety_rules(content: str, user_profile: UserProfile) -> Dict[str, Any]:
+        """
+        Validate content against therapeutic safety rules
+        
+        Args:
+            content: Content to validate
+            user_profile: User's profile for context
+            
+        Returns:
+            Validation result
+        """
+        from ..utils.validators import validate_therapeutic_content_safety
+        
+        # Basic safety check
+        safety_result = validate_therapeutic_content_safety(content)
+        
+        # Additional checks for vulnerable users
+        risk_factors = []
+        if user_profile.adhd_profile:
+            risk_factors.append("ADHD")
+        
+        # Age-based considerations (if available)
+        # Additional therapeutic safety logic would go here
+        
+        return {
+            "safe": safety_result["safe"],
+            "confidence": safety_result["confidence"],
+            "flags": safety_result["flags"],
+            "risk_factors": risk_factors,
+            "requires_review": not safety_result["safe"] or len(risk_factors) > 0
+        }
+    
+    @staticmethod
+    def validate_adhd_accommodation_rules(
+        task: TaskRecord,
+        user_profile: UserProfile
+    ) -> Dict[str, Any]:
+        """
+        Validate ADHD accommodation rules
+        
+        Args:
+            task: Task to validate
+            user_profile: User's profile
+            
+        Returns:
+            Validation result
+        """
+        recommendations = []
+        
+        if user_profile.adhd_profile:
+            # Check task complexity
+            if task.difficulty >= 4 and not task.adhd_support.get("pomodoro_enabled"):
+                recommendations.append("[UNICODE_9AD8]Pomodoro[UNICODE_6280]")
+            
+            # Check due date pressure
+            if task.due_date:
+                time_until_due = task.due_date - datetime.now()
+                if time_until_due.days <= 1:
+                    recommendations.append("[UNICODE_7DE0]")
+            
+            # Check task description length
+            if len(task.description) > 200:
+                recommendations.append("[UNICODE_30BF]")
+        
+        return {
+            "accommodations_needed": len(recommendations) > 0,
+            "recommendations": recommendations,
+            "adhd_friendly": len(recommendations) == 0
+        }

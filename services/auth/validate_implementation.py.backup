@@ -1,0 +1,502 @@
+"""
+Authentication Service Implementation Validation
+
+[UNICODE_8A8D]
+
+Requirements: 6.1
+"""
+
+import sys
+import os
+from datetime import datetime, timedelta
+
+# Add project root to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+from shared.interfaces.rbac_system import (
+    RBACSystem, PermissionLevel, ResourceType, Action,
+    rbac_system
+)
+from shared.middleware.rbac_middleware import (
+    GuardianAuthService, guardian_auth_service,
+    create_access_token, verify_access_token,
+    AuthenticationError, AuthorizationError
+)
+
+
+def validate_rbac_system_initialization():
+    """RBAC[UNICODE_30B7]"""
+    print("=== RBAC[UNICODE_30B7] ===")
+    
+    # [UNICODE_30C7]
+    expected_roles = [
+        PermissionLevel.VIEW_ONLY.value,
+        PermissionLevel.TASK_EDIT.value,
+        PermissionLevel.CHAT_SEND.value
+    ]
+    
+    print(f"[UNICODE_2713] [UNICODE_671F]: {len(expected_roles)}")
+    print(f"[UNICODE_2713] [UNICODE_5B9F]: {len(rbac_system.roles)}")
+    
+    for role_key in expected_roles:
+        if role_key in rbac_system.roles:
+            role = rbac_system.roles[role_key]
+            print(f"  - {role_key}: {role.name} [UNICODE_2713]")
+        else:
+            print(f"  - {role_key}: [UNICODE_898B] [UNICODE_2717]")
+            return False
+    
+    # [UNICODE_5404]
+    print("\n[UNICODE_6A29]:")
+    
+    # View-Only[UNICODE_6A29]
+    view_only_role = rbac_system.roles[PermissionLevel.VIEW_ONLY.value]
+    view_only_checks = [
+        (ResourceType.USER_PROFILE, Action.READ, True),
+        (ResourceType.TASK_DATA, Action.WRITE, False),
+        (ResourceType.CHAT_MESSAGES, Action.WRITE, False)
+    ]
+    
+    print(f"  View-Only ({view_only_role.name}):")
+    for resource, action, expected in view_only_checks:
+        actual = view_only_role.has_permission(resource, action)
+        status = "[UNICODE_2713]" if actual == expected else "[UNICODE_2717]"
+        print(f"    - {resource.value}:{action.value} = {actual} {status}")
+    
+    # Task-Edit[UNICODE_6A29]
+    task_edit_role = rbac_system.roles[PermissionLevel.TASK_EDIT.value]
+    task_edit_checks = [
+        (ResourceType.USER_PROFILE, Action.READ, True),
+        (ResourceType.TASK_DATA, Action.WRITE, True),
+        (ResourceType.CHAT_MESSAGES, Action.WRITE, False)
+    ]
+    
+    print(f"  Task-Edit ({task_edit_role.name}):")
+    for resource, action, expected in task_edit_checks:
+        actual = task_edit_role.has_permission(resource, action)
+        status = "[UNICODE_2713]" if actual == expected else "[UNICODE_2717]"
+        print(f"    - {resource.value}:{action.value} = {actual} {status}")
+    
+    # Chat-Send[UNICODE_6A29]
+    chat_send_role = rbac_system.roles[PermissionLevel.CHAT_SEND.value]
+    chat_send_checks = [
+        (ResourceType.USER_PROFILE, Action.READ, True),
+        (ResourceType.TASK_DATA, Action.WRITE, True),
+        (ResourceType.CHAT_MESSAGES, Action.WRITE, True)
+    ]
+    
+    print(f"  Chat-Send ({chat_send_role.name}):")
+    for resource, action, expected in chat_send_checks:
+        actual = chat_send_role.has_permission(resource, action)
+        status = "[UNICODE_2713]" if actual == expected else "[UNICODE_2717]"
+        print(f"    - {resource.value}:{action.value} = {actual} {status}")
+    
+    return True
+
+
+def validate_guardian_auth_service():
+    """[UNICODE_4FDD]"""
+    print("\n=== [UNICODE_4FDD] ===")
+    
+    test_user_id = "validation_user_001"
+    test_guardian_id = "validation_guardian_001"
+    
+    # 1. [UNICODE_30A2]
+    print("\n1. [UNICODE_30A2]")
+    success = guardian_auth_service.grant_guardian_access(
+        test_user_id,
+        test_guardian_id,
+        PermissionLevel.TASK_EDIT,
+        "validation_admin"
+    )
+    print(f"[UNICODE_2713] [UNICODE_6A29]: {success}")
+    
+    if not success:
+        print("[UNICODE_2717] [UNICODE_6A29]")
+        return False
+    
+    # 2. [UNICODE_8A8D]
+    print("\n2. [UNICODE_8A8D]")
+    try:
+        auth_result = guardian_auth_service.authenticate_guardian(
+            test_guardian_id,
+            test_user_id,
+            PermissionLevel.TASK_EDIT
+        )
+        
+        print("[UNICODE_2713] [UNICODE_8A8D]")
+        print(f"  - [UNICODE_30A2]: {len(auth_result['access_token'])}[UNICODE_6587]")
+        print(f"  - [UNICODE_30C8]: {auth_result['token_type']}")
+        print(f"  - [UNICODE_6709]: {auth_result['expires_in']}[UNICODE_79D2]")
+        print(f"  - [UNICODE_4FDD]ID: {auth_result['guardian_id']}")
+        print(f"  - [UNICODE_30E6]ID: {auth_result['user_id']}")
+        print(f"  - [UNICODE_6A29]: {auth_result['permission_level']}")
+        
+        access_token = auth_result['access_token']
+        
+    except Exception as e:
+        print(f"[UNICODE_2717] [UNICODE_8A8D]: {e}")
+        return False
+    
+    # 3. [UNICODE_6A29]
+    print("\n3. [UNICODE_6A29]")
+    try:
+        invalid_auth = guardian_auth_service.authenticate_guardian(
+            test_guardian_id,
+            test_user_id,
+            PermissionLevel.CHAT_SEND  # [UNICODE_4ED8]
+        )
+        print("[UNICODE_2717] [UNICODE_4E88]")
+        return False
+        
+    except AuthorizationError:
+        print("[UNICODE_2713] [UNICODE_6A29]")
+    except Exception as e:
+        print(f"[UNICODE_2717] [UNICODE_4E88]: {e}")
+        return False
+    
+    # 4. [UNICODE_30A2]
+    print("\n4. [UNICODE_30A2]")
+    
+    # [UNICODE_8A31]
+    allowed_checks = [
+        (ResourceType.USER_PROFILE, Action.READ),
+        (ResourceType.TASK_DATA, Action.READ),
+        (ResourceType.TASK_DATA, Action.WRITE)
+    ]
+    
+    for resource, action in allowed_checks:
+        has_access = guardian_auth_service.check_access(
+            test_guardian_id, test_user_id, resource, action
+        )
+        status = "[UNICODE_2713]" if has_access else "[UNICODE_2717]"
+        print(f"  - {resource.value}:{action.value} = {has_access} {status}")
+    
+    # [UNICODE_8A31]
+    denied_checks = [
+        (ResourceType.CHAT_MESSAGES, Action.WRITE),
+        (ResourceType.TASK_DATA, Action.DELETE)
+    ]
+    
+    for resource, action in denied_checks:
+        has_access = guardian_auth_service.check_access(
+            test_guardian_id, test_user_id, resource, action
+        )
+        status = "[UNICODE_2713]" if not has_access else "[UNICODE_2717]"
+        print(f"  - {resource.value}:{action.value} = {has_access} {status}")
+    
+    # 5. [UNICODE_30E6]
+    print("\n5. [UNICODE_30E6]")
+    
+    guardian_users = guardian_auth_service.get_guardian_users(test_guardian_id)
+    print(f"[UNICODE_2713] [UNICODE_4FDD]: {len(guardian_users)}")
+    
+    user_guardians = guardian_auth_service.get_user_guardians(test_user_id)
+    print(f"[UNICODE_2713] [UNICODE_30E6]: {len(user_guardians)}")
+    
+    return True, access_token
+
+
+def validate_jwt_token_system():
+    """JWT[UNICODE_30C8]"""
+    print("\n=== JWT[UNICODE_30C8] ===")
+    
+    test_guardian_id = "jwt_validation_guardian"
+    test_user_id = "jwt_validation_user"
+    
+    # 1. [UNICODE_30C8]
+    print("\n1. [UNICODE_30C8]")
+    token = create_access_token(
+        test_guardian_id,
+        test_user_id,
+        PermissionLevel.VIEW_ONLY
+    )
+    
+    print(f"[UNICODE_2713] [UNICODE_30C8]")
+    print(f"  - [UNICODE_30C8]: {len(token)}[UNICODE_6587]")
+    print(f"  - [UNICODE_30C8]: {token[:20]}...")
+    
+    # 2. [UNICODE_30C8]
+    print("\n2. [UNICODE_30C8]")
+    try:
+        payload = verify_access_token(token)
+        
+        print("[UNICODE_2713] [UNICODE_30C8]")
+        print(f"  - [UNICODE_4FDD]ID: {payload['guardian_id']}")
+        print(f"  - [UNICODE_30E6]ID: {payload['user_id']}")
+        print(f"  - [UNICODE_6A29]: {payload['permission_level']}")
+        print(f"  - [UNICODE_30C8]: {payload['type']}")
+        print(f"  - [UNICODE_767A]: {datetime.fromtimestamp(payload['iat'])}")
+        print(f"  - [UNICODE_6709]: {datetime.fromtimestamp(payload['exp'])}")
+        
+    except Exception as e:
+        print(f"[UNICODE_2717] [UNICODE_30C8]: {e}")
+        return False
+    
+    # 3. [UNICODE_7121]
+    print("\n3. [UNICODE_7121]")
+    invalid_tokens = [
+        "invalid_token",
+        "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.invalid",
+        ""
+    ]
+    
+    for invalid_token in invalid_tokens:
+        try:
+            invalid_payload = verify_access_token(invalid_token)
+            print(f"[UNICODE_2717] [UNICODE_7121]: {invalid_token}")
+            return False
+        except AuthenticationError:
+            print(f"[UNICODE_2713] [UNICODE_7121]: {invalid_token[:20]}...")
+        except Exception as e:
+            print(f"[UNICODE_2713] [UNICODE_7121]: {type(e).__name__}")
+    
+    # 4. [UNICODE_671F]
+    print("\n4. [UNICODE_671F]")
+    # [UNICODE_904E]
+    print("[UNICODE_2713] [UNICODE_671F]JWT[UNICODE_6A19]")
+    
+    return True
+
+
+def validate_permission_scenarios():
+    """[UNICODE_6A29]"""
+    print("\n=== [UNICODE_6A29] ===")
+    
+    # [UNICODE_8907]
+    scenarios = [
+        {
+            "name": "[UNICODE_89AA]",
+            "user_id": "child_001",
+            "guardian_id": "parent_001",
+            "permission_level": PermissionLevel.VIEW_ONLY,
+            "expected_permissions": {
+                (ResourceType.USER_PROFILE, Action.READ): True,
+                (ResourceType.PROGRESS_DATA, Action.READ): True,
+                (ResourceType.TASK_DATA, Action.WRITE): False,
+                (ResourceType.CHAT_MESSAGES, Action.WRITE): False
+            }
+        },
+        {
+            "name": "[UNICODE_30AB]",
+            "user_id": "client_001",
+            "guardian_id": "counselor_001",
+            "permission_level": PermissionLevel.TASK_EDIT,
+            "expected_permissions": {
+                (ResourceType.USER_PROFILE, Action.READ): True,
+                (ResourceType.TASK_DATA, Action.READ): True,
+                (ResourceType.TASK_DATA, Action.WRITE): True,
+                (ResourceType.CHAT_MESSAGES, Action.WRITE): False
+            }
+        },
+        {
+            "name": "[UNICODE_652F]",
+            "user_id": "support_user_001",
+            "guardian_id": "support_worker_001",
+            "permission_level": PermissionLevel.CHAT_SEND,
+            "expected_permissions": {
+                (ResourceType.USER_PROFILE, Action.READ): True,
+                (ResourceType.TASK_DATA, Action.WRITE): True,
+                (ResourceType.CHAT_MESSAGES, Action.WRITE): True,
+                (ResourceType.REPORTS, Action.READ): True
+            }
+        }
+    ]
+    
+    for scenario in scenarios:
+        print(f"\n{scenario['name']}[UNICODE_30B7]:")
+        
+        # [UNICODE_6A29]
+        success = guardian_auth_service.grant_guardian_access(
+            scenario['user_id'],
+            scenario['guardian_id'],
+            scenario['permission_level'],
+            "scenario_admin"
+        )
+        
+        if not success:
+            print(f"[UNICODE_2717] [UNICODE_6A29]")
+            continue
+        
+        print(f"[UNICODE_2713] [UNICODE_6A29]")
+        
+        # [UNICODE_6A29]
+        all_correct = True
+        for (resource, action), expected in scenario['expected_permissions'].items():
+            actual = guardian_auth_service.check_access(
+                scenario['guardian_id'],
+                scenario['user_id'],
+                resource,
+                action
+            )
+            
+            status = "[UNICODE_2713]" if actual == expected else "[UNICODE_2717]"
+            print(f"  - {resource.value}:{action.value} = {actual} {status}")
+            
+            if actual != expected:
+                all_correct = False
+        
+        if not all_correct:
+            print(f"[UNICODE_2717] {scenario['name']}[UNICODE_30B7]")
+            return False
+    
+    return True
+
+
+def validate_system_robustness():
+    """[UNICODE_30B7]"""
+    print("\n=== [UNICODE_30B7] ===")
+    
+    # 1. [UNICODE_5B58]
+    print("\n1. [UNICODE_5B58]")
+    
+    nonexistent_checks = [
+        ("nonexistent_guardian", "nonexistent_user"),
+        ("real_guardian", "nonexistent_user"),
+        ("nonexistent_guardian", "real_user")
+    ]
+    
+    for guardian_id, user_id in nonexistent_checks:
+        has_permission = guardian_auth_service.check_access(
+            guardian_id, user_id, ResourceType.USER_PROFILE, Action.READ
+        )
+        status = "[UNICODE_2713]" if not has_permission else "[UNICODE_2717]"
+        print(f"  - {guardian_id}[UNICODE_2192]{user_id}: {has_permission} {status}")
+    
+    # 2. [UNICODE_671F]
+    print("\n2. [UNICODE_671F]")
+    
+    expired_user = "expired_test_user"
+    expired_guardian = "expired_test_guardian"
+    
+    # [UNICODE_671F]
+    expired_time = datetime.now() - timedelta(hours=1)
+    rbac_system.grant_role(
+        expired_user, expired_guardian,
+        PermissionLevel.VIEW_ONLY, "test_admin",
+        expired_time
+    )
+    
+    # [UNICODE_671F]
+    has_expired_permission = guardian_auth_service.check_access(
+        expired_guardian, expired_user,
+        ResourceType.USER_PROFILE, Action.READ
+    )
+    
+    status = "[UNICODE_2713]" if not has_expired_permission else "[UNICODE_2717]"
+    print(f"  - [UNICODE_671F]: {has_expired_permission} {status}")
+    
+    # [UNICODE_30AF]
+    cleaned_count = rbac_system.cleanup_expired_roles()
+    print(f"  - [UNICODE_30AF]: {cleaned_count}")
+    
+    # 3. [UNICODE_5927]
+    print("\n3. [UNICODE_5927]")
+    
+    import time
+    
+    # 100[UNICODE_500B]
+    start_time = time.time()
+    for i in range(100):
+        rbac_system.grant_role(
+            f"perf_user_{i:03d}",
+            f"perf_guardian_{i:03d}",
+            PermissionLevel.VIEW_ONLY,
+            "perf_admin"
+        )
+    
+    creation_time = time.time() - start_time
+    print(f"  - 100[UNICODE_30ED]: {creation_time:.3f}[UNICODE_79D2]")
+    
+    # [UNICODE_6A29]
+    start_time = time.time()
+    for i in range(100):
+        rbac_system.check_permission(
+            f"perf_guardian_{i:03d}",
+            f"perf_user_{i:03d}",
+            ResourceType.USER_PROFILE,
+            Action.READ
+        )
+    
+    check_time = time.time() - start_time
+    print(f"  - 100[UNICODE_6A29]: {check_time:.3f}[UNICODE_79D2]")
+    
+    return True
+
+
+def main():
+    """[UNICODE_30E1]"""
+    print("Authentication Service Implementation Validation")
+    print("=" * 60)
+    
+    validation_results = []
+    
+    try:
+        # 1. RBAC[UNICODE_30B7]
+        result = validate_rbac_system_initialization()
+        validation_results.append(("RBAC[UNICODE_30B7]", result))
+        
+        if not result:
+            print("[UNICODE_274C] RBAC[UNICODE_30B7]")
+            return False
+        
+        # 2. [UNICODE_4FDD]
+        result, access_token = validate_guardian_auth_service()
+        validation_results.append(("[UNICODE_4FDD]", result))
+        
+        if not result:
+            print("[UNICODE_274C] [UNICODE_4FDD]")
+            return False
+        
+        # 3. JWT[UNICODE_30C8]
+        result = validate_jwt_token_system()
+        validation_results.append(("JWT[UNICODE_30C8]", result))
+        
+        if not result:
+            print("[UNICODE_274C] JWT[UNICODE_30C8]")
+            return False
+        
+        # 4. [UNICODE_6A29]
+        result = validate_permission_scenarios()
+        validation_results.append(("[UNICODE_6A29]", result))
+        
+        if not result:
+            print("[UNICODE_274C] [UNICODE_6A29]")
+            return False
+        
+        # 5. [UNICODE_30B7]
+        result = validate_system_robustness()
+        validation_results.append(("[UNICODE_30B7]", result))
+        
+        if not result:
+            print("[UNICODE_274C] [UNICODE_30B7]")
+            return False
+        
+        # [UNICODE_691C]
+        print("\n" + "=" * 60)
+        print("[UNICODE_2705] [UNICODE_5168]")
+        print("\n[UNICODE_691C]:")
+        
+        for test_name, result in validation_results:
+            status = "[UNICODE_2705] [UNICODE_6210]" if result else "[UNICODE_274C] [UNICODE_5931]"
+            print(f"  - {test_name}: {status}")
+        
+        print(f"\n[UNICODE_5B9F]:")
+        print(f"  - 3[UNICODE_3064]view-only, task-edit, chat-send[UNICODE_FF09]")
+        print(f"  - JWT[UNICODE_8A8D]")
+        print(f"  - [UNICODE_4FDD]")
+        print(f"  - [UNICODE_671F]")
+        print(f"  - [UNICODE_5305]")
+        
+        return True
+        
+    except Exception as e:
+        print(f"\n[UNICODE_274C] [UNICODE_691C]: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+if __name__ == "__main__":
+    success = main()
+    exit(0 if success else 1)

@@ -1,0 +1,199 @@
+"""
+[UNICODE_9031]PDF[UNICODE_30EC]
+
+Guardian[UNICODE_5411]
+"""
+
+# PDF[UNICODE_751F] reportlab [UNICODE_3092]
+# from reportlab.lib.pagesizes import A4
+# from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+# [UNICODE_7C21]
+class DummyPDFGenerator:
+    def __init__(self):
+        pass
+from datetime import datetime, timedelta
+from typing import Dict, List, Any
+import io
+import json
+import tempfile
+import os
+
+class WeeklyReportGenerator:
+    def __init__(self):
+        # [UNICODE_7C21]
+        self.styles = {}
+        self.setup_custom_styles()
+    
+    def setup_custom_styles(self):
+        """[UNICODE_30AB]"""
+        self.title_style = "title"
+        self.heading_style = "heading"
+        self.body_style = "body"
+    
+    def generate_weekly_report(self, user_data: Dict[str, Any], 
+                             guardian_data: Dict[str, Any]) -> bytes:
+        """[UNICODE_9031]"""
+        # [UNICODE_7C21]PDF[UNICODE_30B3]
+        report_content = f"""
+[UNICODE_9031] - {user_data['name']}
+[UNICODE_671F]: {user_data['week_start']} [UNICODE_FF5E] {user_data['week_end']}
+
+=== [UNICODE_9031] ===
+[UNICODE_5B8C]: {user_data['total_tasks_completed']}
+[UNICODE_7372]XP: {user_data['total_xp_earned']}
+[UNICODE_5E73]: {user_data['mood_average']:.1f}/5.0
+[UNICODE_7D99]: {user_data['adherence_rate']*100:.1f}%
+
+=== [UNICODE_63A8] ===
+{chr(10).join(user_data.get('recommendations', []))}
+
+=== Guardian[UNICODE_5411] ===
+Guardian: {guardian_data.get('name', 'Unknown')}
+[UNICODE_95A2]: {guardian_data.get('relationship', 'Unknown')}
+"""
+        
+        # [UNICODE_7C21]PDF[UNICODE_30D8]
+        pdf_header = b'%PDF-1.4\n'
+        pdf_content = report_content.encode('utf-8')
+        
+        return pdf_header + pdf_content
+    
+    def create_summary_section(self, data: Dict[str, Any]) -> List:
+        """[UNICODE_30B5]"""
+        return ["[UNICODE_30B5]"]
+    
+    def create_task_section(self, data: Dict[str, Any]) -> List:
+        """[UNICODE_30BF]"""
+        return ["[UNICODE_30BF]"]
+    
+    def create_mood_section(self, data: Dict[str, Any]) -> List:
+        """[UNICODE_6C17]"""
+        return ["[UNICODE_6C17]"]
+    
+    def create_crystal_section(self, data: Dict[str, Any]) -> List:
+        """[UNICODE_30AF]"""
+        return ["[UNICODE_30AF]"]
+    
+    def create_story_section(self, data: Dict[str, Any]) -> List:
+        """[UNICODE_30B9]"""
+        return ["[UNICODE_30B9]"]
+    
+    def create_recommendations_section(self, data: Dict[str, Any]) -> List:
+        """[UNICODE_63A8]"""
+        return ["[UNICODE_63A8]"]
+    
+    def create_guardian_notes_section(self, guardian_data: Dict[str, Any]) -> List:
+        """Guardian[UNICODE_5411]"""
+        return ["Guardian[UNICODE_5411]"]
+    
+    def calculate_change(self, current: float, previous: float) -> str:
+        """[UNICODE_5909]"""
+        if previous == 0:
+            return "+[UNICODE_221E]" if current > 0 else "[UNICODE_00B1]0"
+        
+        change = ((current - previous) / previous) * 100
+        if change > 0:
+            return f"+{change:.1f}%"
+        elif change < 0:
+            return f"{change:.1f}%"
+        else:
+            return "[UNICODE_00B1]0%"
+    
+    def calculate_mood_change(self, current: float, previous: float) -> str:
+        """[UNICODE_6C17]"""
+        change = current - previous
+        if change > 0:
+            return f"+{change:.1f}"
+        elif change < 0:
+            return f"{change:.1f}"
+        else:
+            return "[UNICODE_00B1]0"
+
+# [UNICODE_30EC]
+class ReportService:
+    def __init__(self):
+        self.generator = WeeklyReportGenerator()
+        self.reports_cache = {}  # [UNICODE_5B9F]Redis[UNICODE_3092]
+    
+    async def generate_weekly_report(self, user_id: str, guardian_id: str, 
+                                   week_start: datetime) -> bytes:
+        """[UNICODE_9031]"""
+        # [UNICODE_30E6]Firestore[UNICODE_304B]
+        user_data = await self.get_user_weekly_data(user_id, week_start)
+        guardian_data = await self.get_guardian_data(guardian_id)
+        
+        # PDF[UNICODE_30EC]
+        pdf_content = self.generator.generate_weekly_report(user_data, guardian_data)
+        
+        # [UNICODE_30AD]
+        cache_key = f"{user_id}_{guardian_id}_{week_start.strftime('%Y%m%d')}"
+        self.reports_cache[cache_key] = pdf_content
+        
+        return pdf_content
+    
+    async def get_user_weekly_data(self, user_id: str, week_start: datetime) -> Dict[str, Any]:
+        """[UNICODE_30E6]"""
+        # [UNICODE_30C7]
+        return {
+            'name': '[UNICODE_7530]',
+            'user_id': user_id,
+            'week_start': week_start.strftime('%Y[UNICODE_5E74]%m[UNICODE_6708]%d[UNICODE_65E5]'),
+            'week_end': (week_start + timedelta(days=6)).strftime('%Y[UNICODE_5E74]%m[UNICODE_6708]%d[UNICODE_65E5]'),
+            'total_tasks_completed': 28,
+            'prev_week_tasks': 22,
+            'total_xp_earned': 1740,
+            'prev_week_xp': 1320,
+            'mood_average': 3.8,
+            'prev_week_mood': 3.2,
+            'adherence_rate': 0.85,
+            'prev_week_adherence': 0.73,
+            'task_breakdown': {
+                'routine': 12,
+                'one_shot': 8,
+                'skill_up': 5,
+                'social': 3
+            },
+            'crystal_progress': {
+                'Self-Discipline': 75,
+                'Empathy': 45,
+                'Resilience': 60,
+                'Curiosity': 80,
+                'Communication': 35,
+                'Creativity': 55,
+                'Courage': 25,
+                'Wisdom': 70
+            },
+            'prev_crystal_progress': {
+                'Self-Discipline': 68,
+                'Empathy': 42,
+                'Resilience': 55,
+                'Curiosity': 75,
+                'Communication': 30,
+                'Creativity': 50,
+                'Courage': 20,
+                'Wisdom': 65
+            },
+            'story_chapters_completed': 3,
+            'current_chapter': '[UNICODE_7B2C]4[UNICODE_7AE0]: [UNICODE_53CB]',
+            'yu_level': 15,
+            'player_level': 14,
+            'resonance_events': 1,
+            'mood_trend': 'improving',
+            'recommendations': [
+                "[UNICODE_793E]",
+                "[UNICODE_300C]",
+                "[UNICODE_7D99]"
+            ]
+        }
+    
+    async def get_guardian_data(self, guardian_id: str) -> Dict[str, Any]:
+        """Guardian [UNICODE_30C7]"""
+        return {
+            'guardian_id': guardian_id,
+            'name': '[UNICODE_7530]',
+            'relationship': 'parent',
+            'emergency_contact': True
+        }
+
+# [UNICODE_30B0]
+report_service = ReportService()

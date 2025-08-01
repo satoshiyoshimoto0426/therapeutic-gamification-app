@@ -1,0 +1,350 @@
+#!/usr/bin/env python3
+"""
+Comprehensive tests for AI Story Generation Engine
+Tests DeepSeek R1 integration, content safety, and therapeutic story generation
+"""
+
+import pytest
+import asyncio
+from datetime import datetime, timedelta
+from unittest.mock import Mock, patch, AsyncMock
+import sys
+import os
+
+# Add shared modules to path
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'shared'))
+
+from interfaces.core_types import ChapterType
+
+class TestDeepSeekR1Integration:
+    """Test DeepSeek R1 API integration"""
+    
+    @pytest.mark.asyncio
+    async def test_mock_deepseek_response(self):
+        """Test mock DeepSeek R1 response generation"""
+        from main import DeepSeekR1Client
+        
+        client = DeepSeekR1Client(api_key="mock_key_for_testing")
+        
+        response = await client.generate_story(
+            prompt="Generate an opening story",
+            system_message="You are a therapeutic storyteller",
+            temperature=0.7
+        )
+        
+        assert "content" in response
+        assert "generation_time_ms" in response
+        assert "model" in response
+        assert len(response["content"]) > 0
+        print("[UNICODE_2705] Mock DeepSeek R1 response generation: PASS")
+    
+    @pytest.mark.asyncio
+    async def test_contextual_story_generation(self):
+        """Test contextual story generation based on prompts"""
+        from main import DeepSeekR1Client
+        
+        client = DeepSeekR1Client(api_key="mock_key_for_testing")
+        
+        # Test opening story
+        opening_response = await client.generate_story("Generate an opening story")
+        assert "[UNICODE_65B0]" in opening_response["content"] or "[UNICODE_6249]" in opening_response["content"]
+        
+        # Test challenge story
+        challenge_response = await client.generate_story("Generate a challenge story")
+        assert "[UNICODE_30C9]" in challenge_response["content"] or "[UNICODE_969C]" in challenge_response["content"]
+        
+        print("[UNICODE_2705] Contextual story generation: PASS")
+
+class TestContentSafety:
+    """Test content safety filtering system"""
+    
+    @pytest.mark.asyncio
+    async def test_safe_content_evaluation(self):
+        """Test evaluation of safe therapeutic content"""
+        from main import ContentSafetyFilter
+        
+        safety_filter = ContentSafetyFilter()
+        
+        safe_content = "[UNICODE_3042]"
+        
+        result = await safety_filter.evaluate_content(safe_content)
+        
+        assert result.is_safe == True
+        assert result.safety_score >= 0.8
+        assert result.therapeutic_appropriateness > 0.5
+        assert len(result.flagged_categories) == 0
+        print("[UNICODE_2705] Safe content evaluation: PASS")
+    
+    @pytest.mark.asyncio
+    async def test_harmful_content_detection(self):
+        """Test detection of potentially harmful content"""
+        from main import ContentSafetyFilter
+        
+        safety_filter = ContentSafetyFilter()
+        
+        harmful_content = "[UNICODE_3082]"
+        
+        result = await safety_filter.evaluate_content(harmful_content)
+        
+        assert result.is_safe == False
+        assert result.safety_score < 0.8
+        assert len(result.flagged_categories) > 0
+        assert "potentially_harmful" in result.flagged_categories
+        print("[UNICODE_2705] Harmful content detection: PASS")
+    
+    @pytest.mark.asyncio
+    async def test_therapeutic_appropriateness_scoring(self):
+        """Test therapeutic appropriateness scoring"""
+        from main import ContentSafetyFilter
+        
+        safety_filter = ContentSafetyFilter()
+        
+        therapeutic_content = "[UNICODE_6210]"
+        
+        result = await safety_filter.evaluate_content(therapeutic_content)
+        
+        assert result.therapeutic_appropriateness >= 0.8
+        assert result.is_safe == True
+        print("[UNICODE_2705] Therapeutic appropriateness scoring: PASS")
+
+class TestTherapeuticPrompts:
+    """Test therapeutic prompt template system"""
+    
+    def test_prompt_template_initialization(self):
+        """Test initialization of therapeutic prompt templates"""
+        from main import TherapeuticPromptManager
+        
+        prompt_manager = TherapeuticPromptManager()
+        
+        # Check that templates are loaded
+        assert len(prompt_manager.templates) > 0
+        
+        # Check self-discipline template
+        self_discipline_template = prompt_manager.get_template(ChapterType.SELF_DISCIPLINE)
+        assert self_discipline_template.chapter_type == ChapterType.SELF_DISCIPLINE
+        assert "habit_formation" in self_discipline_template.therapeutic_focus
+        assert len(self_discipline_template.safety_guidelines) > 0
+        print("[UNICODE_2705] Prompt template initialization: PASS")
+    
+    def test_prompt_formatting(self):
+        """Test prompt template formatting with context"""
+        from main import TherapeuticPromptManager
+        
+        prompt_manager = TherapeuticPromptManager()
+        template = prompt_manager.get_template(ChapterType.SELF_DISCIPLINE)
+        
+        context = {
+            "mood_level": 4,
+            "task_completion_rate": 0.8,
+            "companion_relationships": {"yu": 25},
+            "current_story_state": {"current_node": "challenge_1"}
+        }
+        
+        formatted_prompt = prompt_manager.format_prompt(template, context)
+        
+        assert "4" in formatted_prompt  # mood_level
+        assert "0.8" in formatted_prompt  # task_completion_rate
+        assert len(formatted_prompt) > len(template.prompt_template)
+        print("[UNICODE_2705] Prompt formatting: PASS")
+
+class TestFallbackSystem:
+    """Test fallback template system"""
+    
+    def test_fallback_template_initialization(self):
+        """Test initialization of fallback templates"""
+        from main import FallbackTemplateSystem
+        
+        fallback_system = FallbackTemplateSystem()
+        
+        assert "opening" in fallback_system.templates
+        assert "challenge" in fallback_system.templates
+        assert "companion" in fallback_system.templates
+        assert "reflection" in fallback_system.templates
+        
+        # Check that templates have content
+        assert len(fallback_system.templates["opening"]) > 0
+        assert len(fallback_system.templates["challenge"]) > 0
+        print("[UNICODE_2705] Fallback template initialization: PASS")
+    
+    def test_contextual_fallback_selection(self):
+        """Test contextual fallback content selection"""
+        from main import FallbackTemplateSystem
+        
+        fallback_system = FallbackTemplateSystem()
+        
+        # Test with high mood
+        high_mood_context = {"mood_level": 5}
+        content_high = fallback_system.get_fallback_content("opening", high_mood_context)
+        
+        # Test with low mood
+        low_mood_context = {"mood_level": 1}
+        content_low = fallback_system.get_fallback_content("opening", low_mood_context)
+        
+        assert len(content_high) > 0
+        assert len(content_low) > 0
+        # Content should be different based on mood
+        assert content_high != content_low
+        print("[UNICODE_2705] Contextual fallback selection: PASS")
+
+class TestStoryGeneration:
+    """Test end-to-end story generation"""
+    
+    @pytest.mark.asyncio
+    async def test_story_generation_request(self):
+        """Test complete story generation request"""
+        from main import StoryGenerationRequest, generate_story
+        from main import ChapterType
+        
+        # Mock user authentication
+        mock_user = {"uid": "test_user_123", "email": "test@example.com"}
+        
+        request = StoryGenerationRequest(
+            uid="test_user_123",
+            chapter_type=ChapterType.SELF_DISCIPLINE,
+            user_context={
+                "mood_score": 4,
+                "completion_rate": 0.7,
+                "social_interactions": {}
+            },
+            story_state={
+                "current_node": "opening",
+                "choice_history": []
+            },
+            generation_type="opening",
+            therapeutic_focus=["habit_formation", "goal_setting"],
+            companion_context={"yu": 20},
+            temperature=0.7
+        )
+        
+        # Mock background tasks
+        from unittest.mock import Mock
+        background_tasks = Mock()
+        
+        response = await generate_story(request, mock_user, background_tasks)
+        
+        assert response.story_id is not None
+        assert len(response.generated_content) > 0
+        assert response.safety_score >= 0.0
+        assert response.generation_time_ms > 0
+        assert len(response.next_choices) > 0
+        print("[UNICODE_2705] Story generation request: PASS")
+    
+    @pytest.mark.asyncio
+    async def test_story_generation_with_fallback(self):
+        """Test story generation with safety fallback"""
+        from main import StoryGenerationRequest, generate_story
+        from main import ChapterType
+        
+        mock_user = {"uid": "test_user_123", "email": "test@example.com"}
+        
+        # Create request that might trigger fallback
+        request = StoryGenerationRequest(
+            uid="test_user_123",
+            chapter_type=ChapterType.EMPATHY,
+            user_context={"mood_score": 1},  # Low mood
+            story_state={"current_node": "crisis"},
+            generation_type="challenge"
+        )
+        
+        from unittest.mock import Mock
+        background_tasks = Mock()
+        
+        response = await generate_story(request, mock_user, background_tasks)
+        
+        assert response.story_id is not None
+        assert len(response.generated_content) > 0
+        assert response.safety_score >= 0.8  # Should be safe after fallback
+        print("[UNICODE_2705] Story generation with fallback: PASS")
+
+class TestPerformanceMonitoring:
+    """Test performance monitoring and metrics"""
+    
+    @pytest.mark.asyncio
+    async def test_performance_metrics_logging(self):
+        """Test performance metrics logging"""
+        from main import log_performance_metrics, story_db
+        
+        initial_count = len(story_db.performance_metrics)
+        
+        test_metrics = {
+            "generation_time_ms": 1500,
+            "content_length": 300,
+            "safety_score": 0.95,
+            "fallback_used": False,
+            "chapter_type": "self_discipline"
+        }
+        
+        await log_performance_metrics(test_metrics)
+        
+        assert len(story_db.performance_metrics) == initial_count + 1
+        latest_metric = story_db.performance_metrics[-1]
+        assert latest_metric["generation_time_ms"] == 1500
+        assert "timestamp" in latest_metric
+        print("[UNICODE_2705] Performance metrics logging: PASS")
+    
+    @pytest.mark.asyncio
+    async def test_latency_requirement_monitoring(self):
+        """Test P95 latency requirement monitoring (3.5s)"""
+        from main import get_performance_metrics
+        
+        mock_user = {"uid": "test_user_123", "email": "test@example.com"}
+        
+        # Add some test metrics
+        from main import story_db
+        for i in range(10):
+            story_db.performance_metrics.append({
+                "generation_time_ms": 1000 + (i * 100),  # 1000-1900ms
+                "safety_score": 0.9,
+                "fallback_used": False,
+                "chapter_type": "test"
+            })
+        
+        metrics = await get_performance_metrics(mock_user)
+        
+        assert "p95_latency_requirement" in metrics
+        assert metrics["p95_latency_requirement"] == 3500  # 3.5 seconds
+        assert "p95_latency_actual" in metrics
+        assert metrics["average_generation_time_ms"] > 0
+        print("[UNICODE_2705] Latency requirement monitoring: PASS")
+
+class TestAPIEndpoints:
+    """Test API endpoint functionality"""
+    
+    @pytest.mark.asyncio
+    async def test_content_safety_evaluation_endpoint(self):
+        """Test content safety evaluation API endpoint"""
+        from main import evaluate_content_safety
+        
+        mock_user = {"uid": "test_user_123", "email": "test@example.com"}
+        
+        safe_content = {"content": "[UNICODE_5E0C]"}
+        
+        result = await evaluate_content_safety(safe_content, mock_user)
+        
+        assert result.is_safe == True
+        assert result.safety_score >= 0.8
+        assert result.therapeutic_appropriateness > 0.5
+        print("[UNICODE_2705] Content safety evaluation endpoint: PASS")
+    
+    @pytest.mark.asyncio
+    async def test_template_listing_endpoint(self):
+        """Test prompt template listing endpoint"""
+        from main import list_prompt_templates
+        
+        mock_user = {"uid": "test_user_123", "email": "test@example.com"}
+        
+        templates = await list_prompt_templates(mock_user)
+        
+        assert "templates" in templates
+        assert len(templates["templates"]) > 0
+        
+        # Check template structure
+        first_template = templates["templates"][0]
+        assert "template_id" in first_template
+        assert "chapter_type" in first_template
+        assert "therapeutic_focus" in first_template
+        assert "safety_guidelines" in first_template
+        print("[UNICODE_2705] Template listing endpoint: PASS")
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

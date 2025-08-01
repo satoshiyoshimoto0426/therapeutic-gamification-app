@@ -1,0 +1,454 @@
+"""
+Test suite for mobile-optimized LINE Bot UI implementation
+Tests mobile-friendly interfaces, touch interactions, and ADHD considerations
+"""
+
+import pytest
+import asyncio
+import json
+from unittest.mock import Mock, AsyncMock, patch
+from datetime import datetime
+import sys
+import os
+
+# Add the current directory to the path to import the main module
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+try:
+    from main import (
+        LineBotService,
+        create_mobile_optimized_heart_crystal_tasks,
+        create_task_bubble_mobile,
+        create_empty_task_bubble,
+        create_task_completion_success_message,
+        handle_mobile_task_completion,
+        get_user_id_from_line_id,
+        scheduled_morning_heart_crystal_tasks
+    )
+except ImportError as e:
+    print(f"Import error: {e}")
+    # Create mock implementations for testing
+    class LineBotService:
+        def __init__(self):
+            self.client = Mock()
+        
+        async def complete_task(self, user_id: str, task_id: str) -> bool:
+            return True
+    
+    def create_mobile_optimized_heart_crystal_tasks(tasks):
+        from linebot.models import FlexMessage, CarouselContainer, BubbleContainer
+        return FlexMessage(alt_text="[UNICODE_1F48E] [UNICODE_4ECA]", contents=CarouselContainer(contents=[]))
+    
+    def create_task_bubble_mobile(task):
+        from linebot.models import BoxComponent, TextComponent, ButtonComponent, PostbackAction
+        return BoxComponent(layout="vertical", contents=[])
+    
+    def create_empty_task_bubble():
+        from linebot.models import BoxComponent, TextComponent
+        return BoxComponent(layout="vertical", contents=[])
+    
+    def create_task_completion_success_message(title, xp):
+        from linebot.models import FlexMessage, BubbleContainer
+        return FlexMessage(alt_text=f"[UNICODE_30BF]{title}[UNICODE_300D] +{xp} XP", contents=BubbleContainer())
+    
+    async def handle_mobile_task_completion(line_user_id, user_id, task_id, reply_token):
+        pass
+    
+    def get_user_id_from_line_id(line_user_id):
+        return "user_123"
+    
+    async def scheduled_morning_heart_crystal_tasks():
+        pass
+
+class TestMobileOptimizedLINEBotUI:
+    """Test mobile-optimized LINE Bot UI components"""
+    
+    def setup_method(self):
+        """Setup test environment"""
+        self.sample_tasks = [
+            {
+                "id": "task_1",
+                "title": "[UNICODE_671D]",
+                "type": "routine",
+                "difficulty": 2,
+                "xp_reward": 20
+            },
+            {
+                "id": "task_2", 
+                "title": "[UNICODE_8AAD]30[UNICODE_5206]",
+                "type": "skill_up",
+                "difficulty": 3,
+                "xp_reward": 30
+            },
+            {
+                "id": "task_3",
+                "title": "[UNICODE_53CB]",
+                "type": "social", 
+                "difficulty": 4,
+                "xp_reward": 40
+            }
+        ]
+    
+    def test_mobile_optimized_heart_crystal_tasks_creation(self):
+        """Test creation of mobile-optimized 3x3 Mandala format tasks"""
+        # Test with normal task list
+        flex_message = create_mobile_optimized_heart_crystal_tasks(self.sample_tasks)
+        
+        assert flex_message.alt_text == "[UNICODE_1F48E] [UNICODE_4ECA]"
+        assert hasattr(flex_message.contents, 'contents')  # Should be CarouselContainer
+        
+        # Should have header + 3 rows = 4 bubbles
+        bubbles = flex_message.contents.contents
+        assert len(bubbles) == 4
+        
+        # First bubble should be header
+        header_bubble = bubbles[0]
+        header_text = header_bubble.body.contents[0].text
+        assert "[UNICODE_1F48E] [UNICODE_4ECA]" in header_text
+    
+    def test_mobile_optimized_heart_crystal_tasks_with_many_tasks(self):
+        """Test 3x3 grid limits tasks to 9 for mobile optimization"""
+        # Create 12 tasks
+        many_tasks = []
+        for i in range(12):
+            many_tasks.append({
+                "id": f"task_{i}",
+                "title": f"[UNICODE_30BF]{i}",
+                "type": "routine",
+                "difficulty": 1,
+                "xp_reward": 10
+            })
+        
+        flex_message = create_mobile_optimized_heart_crystal_tasks(many_tasks)
+        
+        # Should still have header + 3 rows = 4 bubbles (limited to 9 tasks)
+        bubbles = flex_message.contents.contents
+        assert len(bubbles) == 4
+    
+    def test_task_bubble_mobile_creation(self):
+        """Test individual mobile task bubble creation"""
+        task = self.sample_tasks[0]
+        bubble = create_task_bubble_mobile(task)
+        
+        # Should be BoxComponent with vertical layout
+        assert bubble.layout == "vertical"
+        assert bubble.backgroundColor == "#F8F9FA"
+        assert bubble.cornerRadius == "md"
+        
+        # Should have emoji, title, difficulty stars, and button
+        contents = bubble.contents
+        assert len(contents) == 4
+        
+        # Check emoji (first element)
+        assert contents[0].text == "[UNICODE_1F504]"  # routine task emoji
+        
+        # Check title truncation (second element)
+        title_text = contents[1].text
+        assert "[UNICODE_671D]" in title_text
+        
+        # Check difficulty stars (third element)
+        stars_text = contents[2].text
+        assert stars_text == "[UNICODE_2B50]"  # difficulty 2
+        
+        # Check completion button (fourth element)
+        button = contents[3]
+        assert button.action.data == "complete_task_task_1"
+    
+    def test_task_bubble_mobile_title_truncation(self):
+        """Test mobile task bubble title truncation for long titles"""
+        long_task = {
+            "id": "task_long",
+            "title": "[UNICODE_3053]",
+            "type": "routine",
+            "difficulty": 1,
+            "xp_reward": 10
+        }
+        
+        bubble = create_task_bubble_mobile(long_task)
+        title_text = bubble.contents[1].text
+        
+        # Should be truncated with "..."
+        assert len(title_text) <= 11  # 8 chars + "..."
+        assert title_text.endswith("...")
+    
+    def test_empty_task_bubble_creation(self):
+        """Test empty task slot creation for grid layout"""
+        empty_bubble = create_empty_task_bubble()
+        
+        assert empty_bubble.layout == "vertical"
+        assert empty_bubble.backgroundColor == "#F0F0F0"
+        
+        contents = empty_bubble.contents
+        assert len(contents) == 2
+        assert contents[0].text == "[UNICODE_1F4A4]"
+        assert contents[1].text == "[UNICODE_7A7A]"
+    
+    def test_task_completion_success_message(self):
+        """Test mobile-optimized task completion success message"""
+        task_title = "[UNICODE_671D]"
+        xp_earned = 25
+        
+        flex_message = create_task_completion_success_message(task_title, xp_earned)
+        
+        assert "[UNICODE_30BF] +25 XP" in flex_message.alt_text
+        
+        # Check bubble structure
+        bubble = flex_message.contents
+        assert bubble.body.backgroundColor == "#E8F5E8"  # Success green background
+        
+        # Check contents
+        contents = bubble.body.contents
+        success_text = contents[0].text
+        assert "[UNICODE_1F389] [UNICODE_30BF]" in success_text
+    
+    def test_task_type_emoji_mapping(self):
+        """Test correct emoji mapping for different task types"""
+        task_types = [
+            ("routine", "[UNICODE_1F504]"),
+            ("one_shot", "[UNICODE_26A1]"),
+            ("skill_up", "[UNICODE_1F4C8]"),
+            ("social", "[UNICODE_1F465]"),
+            ("unknown", "[UNICODE_1F4DD]")  # default
+        ]
+        
+        for task_type, expected_emoji in task_types:
+            task = {
+                "id": "test_task",
+                "title": "[UNICODE_30C6]",
+                "type": task_type,
+                "difficulty": 1,
+                "xp_reward": 10
+            }
+            
+            bubble = create_task_bubble_mobile(task)
+            emoji_text = bubble.contents[0].text
+            assert emoji_text == expected_emoji
+
+class TestMobileTaskCompletion:
+    """Test mobile-optimized task completion functionality"""
+    
+    @pytest.fixture
+    def mock_line_bot_service(self):
+        """Mock LINE Bot service"""
+        service = Mock()
+        service.complete_task = AsyncMock(return_value=True)
+        service.client = Mock()
+        service.client.get = AsyncMock()
+        return service
+    
+    @pytest.fixture
+    def mock_line_bot_api(self):
+        """Mock LINE Bot API"""
+        api = Mock()
+        api.reply_message = Mock()
+        api.push_message = Mock()
+        return api
+    
+    @pytest.mark.asyncio
+    async def test_handle_mobile_task_completion_success(self, mock_line_bot_service, mock_line_bot_api):
+        """Test successful mobile task completion handling"""
+        with patch('main.line_bot_service', mock_line_bot_service), \
+             patch('main.line_bot_api', mock_line_bot_api), \
+             patch('main.get_task_details') as mock_get_task:
+            
+            # Setup mocks
+            mock_get_task.return_value = {
+                "title": "[UNICODE_671D]",
+                "xp_reward": 25
+            }
+            
+            # Test task completion
+            await handle_mobile_task_completion(
+                line_user_id="line_user_123",
+                user_id="user_123", 
+                task_id="task_1",
+                reply_token="reply_token_123"
+            )
+            
+            # Verify task completion was called
+            mock_line_bot_service.complete_task.assert_called_once_with("user_123", "task_1")
+            
+            # Verify success message was sent
+            mock_line_bot_api.reply_message.assert_called_once()
+            
+            # Verify encouragement message was scheduled
+            mock_line_bot_api.push_message.assert_called_once()
+    
+    @pytest.mark.asyncio
+    async def test_handle_mobile_task_completion_failure(self, mock_line_bot_service, mock_line_bot_api):
+        """Test mobile task completion failure handling"""
+        with patch('main.line_bot_service', mock_line_bot_service), \
+             patch('main.line_bot_api', mock_line_bot_api), \
+             patch('main.get_task_details') as mock_get_task:
+            
+            # Setup failure scenario
+            mock_line_bot_service.complete_task.return_value = False
+            mock_get_task.return_value = {"title": "[UNICODE_30C6]", "xp_reward": 10}
+            
+            # Test task completion failure
+            await handle_mobile_task_completion(
+                line_user_id="line_user_123",
+                user_id="user_123",
+                task_id="task_1", 
+                reply_token="reply_token_123"
+            )
+            
+            # Verify error message was sent
+            mock_line_bot_api.reply_message.assert_called_once()
+            reply_args = mock_line_bot_api.reply_message.call_args[0]
+            error_message = reply_args[1].text
+            assert "[UNICODE_26A0]" in error_message
+            assert "[UNICODE_30A8]" in error_message
+
+class TestMobileScheduledTasks:
+    """Test mobile-optimized scheduled task delivery"""
+    
+    @pytest.fixture
+    def mock_firestore(self):
+        """Mock Firestore database"""
+        mock_db = Mock()
+        
+        # Mock user documents
+        mock_user_doc = Mock()
+        mock_user_doc.id = "user_123"
+        mock_user_doc.to_dict.return_value = {
+            "line_user_id": "line_user_123",
+            "status": "active"
+        }
+        
+        mock_collection = Mock()
+        mock_collection.where.return_value.stream.return_value = [mock_user_doc]
+        mock_db.collection.return_value = mock_collection
+        
+        return mock_db
+    
+    @pytest.mark.asyncio
+    async def test_scheduled_morning_heart_crystal_tasks(self, mock_firestore):
+        """Test scheduled morning Heart Crystal task delivery at 7:00 AM"""
+        with patch('main.db', mock_firestore), \
+             patch('main.send_mobile_optimized_morning_tasks') as mock_send_tasks:
+            
+            mock_send_tasks.return_value = None
+            
+            # Test scheduled task execution
+            await scheduled_morning_heart_crystal_tasks()
+            
+            # Verify tasks were sent to active users
+            mock_send_tasks.assert_called_once_with("line_user_123", "user_123")
+    
+    def test_get_user_id_from_line_id_existing_user(self):
+        """Test getting user_id from LINE user_id for existing user"""
+        mock_db = Mock()
+        mock_user_doc = Mock()
+        mock_user_doc.id = "user_123"
+        
+        mock_collection = Mock()
+        mock_collection.where.return_value.stream.return_value = [mock_user_doc]
+        mock_db.collection.return_value = mock_collection
+        
+        with patch('main.db', mock_db):
+            user_id = get_user_id_from_line_id("line_user_123")
+            assert user_id == "user_123"
+    
+    def test_get_user_id_from_line_id_new_user(self):
+        """Test creating new user when LINE user_id doesn't exist"""
+        mock_db = Mock()
+        
+        # Mock empty result for existing user query
+        mock_collection = Mock()
+        mock_collection.where.return_value.stream.return_value = []
+        
+        # Mock new document creation
+        mock_new_doc = Mock()
+        mock_new_doc.id = "new_user_123"
+        mock_collection.document.return_value = mock_new_doc
+        
+        mock_db.collection.return_value = mock_collection
+        
+        with patch('main.db', mock_db), \
+             patch('main.datetime') as mock_datetime:
+            
+            mock_datetime.now.return_value = datetime(2024, 1, 1, 7, 0, 0)
+            
+            user_id = get_user_id_from_line_id("new_line_user_123")
+            assert user_id == "new_user_123"
+            
+            # Verify new user document was created
+            mock_new_doc.set.assert_called_once()
+            user_data = mock_new_doc.set.call_args[0][0]
+            assert user_data["line_user_id"] == "new_line_user_123"
+            assert user_data["status"] == "active"
+
+class TestMobileADHDConsiderations:
+    """Test ADHD-friendly mobile optimizations"""
+    
+    def test_task_grid_limits_to_9_items(self):
+        """Test that task grid is limited to 9 items for cognitive load reduction"""
+        # Create 15 tasks
+        many_tasks = [
+            {
+                "id": f"task_{i}",
+                "title": f"[UNICODE_30BF]{i}",
+                "type": "routine",
+                "difficulty": 1,
+                "xp_reward": 10
+            }
+            for i in range(15)
+        ]
+        
+        flex_message = create_mobile_optimized_heart_crystal_tasks(many_tasks)
+        
+        # Should be limited to 9 tasks (3x3 grid)
+        # Header + 3 rows = 4 bubbles total
+        bubbles = flex_message.contents.contents
+        assert len(bubbles) == 4
+    
+    def test_task_title_truncation_for_readability(self):
+        """Test task title truncation for better mobile readability"""
+        long_title_task = {
+            "id": "task_1",
+            "title": "[UNICODE_3053]",
+            "type": "routine",
+            "difficulty": 1,
+            "xp_reward": 10
+        }
+        
+        bubble = create_task_bubble_mobile(long_title_task)
+        title_text = bubble.contents[1].text
+        
+        # Should be truncated for mobile readability
+        assert len(title_text) <= 11  # 8 chars + "..."
+        assert title_text.endswith("...")
+    
+    def test_touch_friendly_button_sizing(self):
+        """Test that buttons are sized appropriately for touch interaction"""
+        task = {
+            "id": "task_1",
+            "title": "[UNICODE_30C6]",
+            "type": "routine",
+            "difficulty": 1,
+            "xp_reward": 10
+        }
+        
+        bubble = create_task_bubble_mobile(task)
+        button = bubble.contents[3]  # Completion button
+        
+        # Button should have appropriate height for touch
+        assert button.height == "sm"
+        assert button.style == "primary"
+    
+    def test_visual_feedback_for_completion(self):
+        """Test visual feedback for task completion"""
+        success_message = create_task_completion_success_message("[UNICODE_30C6]", 25)
+        bubble = success_message.contents
+        
+        # Should have success color scheme
+        assert bubble.body.backgroundColor == "#E8F5E8"
+        
+        # Should have clear success indicator
+        success_text = bubble.body.contents[0].text
+        assert "[UNICODE_1F389]" in success_text
+        assert "[UNICODE_30BF]" in success_text
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

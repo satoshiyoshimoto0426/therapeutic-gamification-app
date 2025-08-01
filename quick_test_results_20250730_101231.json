@@ -1,0 +1,10 @@
+{
+  "timestamp": "20250730_101231",
+  "test_results": {
+    "service_health": true,
+    "core_game": false,
+    "task_mgmt": false,
+    "mandala": false
+  },
+  "success": false
+}

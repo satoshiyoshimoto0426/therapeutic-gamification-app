@@ -1,0 +1,494 @@
+#!/usr/bin/env python3
+"""
+Task-Story Integration Service Integration Tests
+
+[UNICODE_30BF]-[UNICODE_30B9]
+[UNICODE_30B9]
+[UNICODE_660E]Mandala[UNICODE_3078]
+
+Requirements: 1.4, 5.5
+"""
+
+import pytest
+import asyncio
+import json
+from datetime import datetime, timedelta
+from typing import Dict, List, Any
+import sys
+import os
+
+# Add project root to path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+from services.task_story_integration.main import (
+    app, ServiceIntegration, StoryChoiceHook, TaskCompletionHook,
+    MandalaReflectionData, TaskStorySync, integration_db
+)
+from shared.interfaces.core_types import ChapterType, TaskType
+from fastapi.testclient import TestClient
+
+# Test client
+client = TestClient(app)
+
+class TestTaskStoryIntegration:
+    """[UNICODE_30BF]-[UNICODE_30B9]"""
+    
+    def setup_method(self):
+        """[UNICODE_30C6]"""
+        # [UNICODE_30C7]
+        integration_db.story_choice_hooks.clear()
+        integration_db.task_story_syncs.clear()
+        integration_db.mandala_reflections.clear()
+    
+    def test_health_check(self):
+        """[UNICODE_30D8]"""
+        response = client.get("/health")
+        assert response.status_code == 200
+        assert response.json()["status"] == "healthy"
+        assert response.json()["service"] == "task-story-integration"
+    
+    def test_story_choice_to_task_conversion(self):
+        """[UNICODE_30B9]"""
+        
+        choice_data = {
+            "uid": "test_user_123",
+            "choice_id": "choice_001",
+            "choice_text": "[UNICODE_65B0]",
+            "habit_tag": "skill_development",
+            "task_template": {
+                "task_type": "SKILL_UP",
+                "title": "[UNICODE_30D7]",
+                "description": "[UNICODE_65B0]",
+                "difficulty": "MEDIUM",
+                "estimated_duration": 60
+            },
+            "mandala_impact": {
+                "attribute": "CURIOSITY",
+                "impact_strength": 1.5
+            },
+            "therapeutic_weight": 1.3
+        }
+        
+        response = client.post("/integration/story-choice-to-task", json=choice_data)
+        
+        assert response.status_code == 200
+        result = response.json()
+        
+        assert result["success"] is True
+        assert result["integration_type"] == "story_to_task"
+        assert "task_creation" in result
+        assert "choice_hook" in result
+        assert result["mandala_scheduled"] is True
+        
+        # [UNICODE_30BF]
+        task_creation = result["task_creation"]
+        assert task_creation["success"] is True
+        assert "task_id" in task_creation
+        assert task_creation["task_data"]["task_type"] == "SKILL_UP"
+        assert task_creation["task_data"]["habit_tag"] == "skill_development"
+    
+    def test_story_choice_to_task_with_inference(self):
+        """[UNICODE_63A8]"""
+        
+        choice_data = {
+            "uid": "test_user_123",
+            "choice_id": "choice_002",
+            "choice_text": "[UNICODE_53CB]",
+            "habit_tag": "social_connection"
+        }
+        
+        response = client.post("/integration/story-choice-to-task", json=choice_data)
+        
+        assert response.status_code == 200
+        result = response.json()
+        
+        assert result["success"] is True
+        task_creation = result["task_creation"]
+        
+        # [UNICODE_63A8]
+        assert task_creation["task_data"]["task_type"] == "SOCIAL"
+        assert "[UNICODE_4EBA]" in task_creation["task_data"]["title"]
+        assert task_creation["task_data"]["primary_crystal_attribute"] == "EMPATHY"
+        assert "COMMUNICATION" in task_creation["task_data"]["secondary_crystal_attributes"]
+    
+    def test_task_completion_sync(self):
+        """[UNICODE_30BF]"""
+        
+        completion_data = {
+            "uid": "test_user_123",
+            "task_id": "task_001",
+            "completion_data": {
+                "mood_score": 4,
+                "actual_duration": 45,
+                "notes": "[UNICODE_9806]",
+                "pomodoro_used": True
+            },
+            "story_progression_trigger": True,
+            "mandala_update_trigger": True,
+            "xp_calculation_data": {
+                "difficulty": "MEDIUM",
+                "task_type": "SKILL_UP"
+            }
+        }
+        
+        response = client.post("/integration/task-completion-sync", json=completion_data)
+        
+        assert response.status_code == 200
+        result = response.json()
+        
+        assert result["success"] is True
+        assert result["integration_type"] == "task_to_story"
+        assert "sync_result" in result
+        assert "task_sync" in result
+        
+        # [UNICODE_540C]
+        sync_result = result["sync_result"]
+        assert len(sync_result["sync_results"]) >= 4  # story, mandala, xp, crystal
+        
+        # [UNICODE_5404]
+        sync_types = [sr["type"] for sr in sync_result["sync_results"]]
+        assert "story_progression" in sync_types
+        assert "mandala_update" in sync_types
+        assert "xp_calculation" in sync_types
+        assert "crystal_growth" in sync_types
+    
+    def test_mandala_reflection_integration(self):
+        """Mandala[UNICODE_53CD]"""
+        
+        reflection_request = {
+            "uid": "test_user_123",
+            "story_choices": [
+                {
+                    "choice_id": "choice_003",
+                    "choice_text": "[UNICODE_7D99]",
+                    "habit_tag": "persistence",
+                    "mandala_impact": {
+                        "attribute": "SELF_DISCIPLINE",
+                        "impact_strength": 1.2
+                    },
+                    "therapeutic_weight": 1.1
+                },
+                {
+                    "choice_id": "choice_004",
+                    "choice_text": "[UNICODE_5275]",
+                    "habit_tag": "creativity",
+                    "mandala_impact": {
+                        "attribute": "CREATIVITY",
+                        "impact_strength": 1.4
+                    },
+                    "therapeutic_weight": 1.3
+                }
+            ],
+            "chapter_context": "self_discipline",
+            "therapeutic_focus": ["habit_formation", "creative_thinking"]
+        }
+        
+        response = client.post("/integration/mandala-reflection", json=reflection_request)
+        
+        assert response.status_code == 200
+        result = response.json()
+        
+        assert result["success"] is True
+        assert result["integration_type"] == "story_to_mandala"
+        assert "mandala_update" in result
+        assert "reflection_data" in result
+        
+        # Mandala[UNICODE_66F4]
+        mandala_update = result["mandala_update"]
+        assert "story_choices_processed" in mandala_update
+        assert mandala_update["story_choices_processed"] == 2
+        assert "mandala_updates" in mandala_update
+        assert len(mandala_update["mandala_updates"]) == 2
+    
+    def test_real_time_hooks_processing(self):
+        """[UNICODE_30EA]"""
+        
+        # [UNICODE_307E]
+        choice_data = {
+            "uid": "test_user_123",
+            "choice_id": "choice_005",
+            "choice_text": "[UNICODE_52C7]",
+            "habit_tag": "courage_action",
+            "task_template": {
+                "task_type": "ONE_SHOT",
+                "title": "[UNICODE_52C7]",
+                "description": "[UNICODE_6050]",
+                "difficulty": "MEDIUM"
+            }
+        }
+        
+        client.post("/integration/story-choice-to-task", json=choice_data)
+        
+        # [UNICODE_30EA]
+        hook_data = {
+            "uid": "test_user_123",
+            "chapter_context": "courage"
+        }
+        
+        response = client.post("/integration/process-real-time-hooks", json=hook_data)
+        
+        assert response.status_code == 200
+        result = response.json()
+        
+        assert result["success"] is True
+        assert result["processed_choices"] == 1
+        assert result["generated_tasks"] >= 1
+        assert result["mandala_reflection_scheduled"] is True
+        assert "tomorrow_tasks" in result
+    
+    def test_integration_status_retrieval(self):
+        """[UNICODE_7D71]"""
+        
+        uid = "test_user_123"
+        
+        # [UNICODE_30C6]
+        choice_data = {
+            "uid": uid,
+            "choice_id": "choice_006",
+            "choice_text": "[UNICODE_5B66]",
+            "habit_tag": "continuous_learning"
+        }
+        client.post("/integration/story-choice-to-task", json=choice_data)
+        
+        # [UNICODE_72B6]
+        response = client.get(f"/integration/status/{uid}")
+        
+        assert response.status_code == 200
+        result = response.json()
+        
+        assert result["uid"] == uid
+        assert result["story_choice_hooks"] >= 1
+        assert "recent_hooks" in result
+        assert "recent_syncs" in result
+        assert "recent_reflections" in result
+        assert "last_updated" in result
+    
+    def test_integration_analytics(self):
+        """[UNICODE_7D71]"""
+        
+        # [UNICODE_30C6]
+        test_data = [
+            {
+                "uid": "user_001",
+                "choice_id": "choice_007",
+                "choice_text": "[UNICODE_6311]",
+                "habit_tag": "challenge"
+            },
+            {
+                "uid": "user_002", 
+                "choice_id": "choice_008",
+                "choice_text": "[UNICODE_5354]",
+                "habit_tag": "cooperation"
+            }
+        ]
+        
+        for data in test_data:
+            client.post("/integration/story-choice-to-task", json=data)
+        
+        # [UNICODE_5206]
+        response = client.get("/integration/analytics")
+        
+        assert response.status_code == 200
+        result = response.json()
+        
+        assert "total_story_choice_hooks" in result
+        assert "total_task_story_syncs" in result
+        assert "total_mandala_reflections" in result
+        assert "sync_success_rate" in result
+        assert "active_users" in result
+        assert "integration_health" in result
+        
+        assert result["total_story_choice_hooks"] >= 2
+        assert result["active_users"] >= 2
+
+class TestServiceIntegration:
+    """ServiceIntegration[UNICODE_30AF]"""
+    
+    def setup_method(self):
+        """[UNICODE_30C6]"""
+        self.service = ServiceIntegration()
+    
+    @pytest.mark.asyncio
+    async def test_create_task_from_story_choice(self):
+        """[UNICODE_30B9]"""
+        
+        choice_hook = StoryChoiceHook(
+            choice_id="test_choice_001",
+            choice_text="[UNICODE_65B0]",
+            habit_tag="challenge_taking",
+            therapeutic_weight=1.2
+        )
+        
+        result = await self.service.create_task_from_story_choice("test_user", choice_hook)
+        
+        assert result["success"] is True
+        assert "task_id" in result
+        assert result["task_data"]["task_type"] == "SKILL_UP"
+        assert result["task_data"]["habit_tag"] == "challenge_taking"
+        assert result["task_data"]["linked_story_edge"] == "test_choice_001"
+    
+    @pytest.mark.asyncio
+    async def test_update_mandala_from_story_choices(self):
+        """[UNICODE_30B9]Mandala[UNICODE_66F4]"""
+        
+        story_choices = [
+            StoryChoiceHook(
+                choice_id="mandala_choice_001",
+                choice_text="[UNICODE_81EA]",
+                mandala_impact={"attribute": "SELF_DISCIPLINE", "impact_strength": 1.3},
+                therapeutic_weight=1.2
+            ),
+            StoryChoiceHook(
+                choice_id="mandala_choice_002", 
+                choice_text="[UNICODE_5275]",
+                mandala_impact={"attribute": "CREATIVITY", "impact_strength": 1.1},
+                therapeutic_weight=1.0
+            )
+        ]
+        
+        reflection_data = MandalaReflectionData(
+            uid="test_user",
+            story_choices=story_choices,
+            completion_date=datetime.utcnow(),
+            target_date=datetime.utcnow() + timedelta(days=1),
+            chapter_context=ChapterType.SELF_DISCIPLINE,
+            therapeutic_focus=["habit_formation", "creativity"]
+        )
+        
+        result = await self.service.update_mandala_from_story_choices(reflection_data)
+        
+        assert result["story_choices_processed"] == 2
+        assert "mandala_updates" in result
+        assert len(result["mandala_updates"]) == 2
+        assert "generated_tasks" in result
+    
+    @pytest.mark.asyncio
+    async def test_sync_task_completion_with_story(self):
+        """[UNICODE_30BF]"""
+        
+        completion_hook = TaskCompletionHook(
+            task_id="test_task_001",
+            uid="test_user",
+            completion_data={
+                "mood_score": 4,
+                "actual_duration": 30,
+                "notes": "[UNICODE_3046]",
+                "pomodoro_used": True
+            },
+            story_progression_trigger=True,
+            mandala_update_trigger=True,
+            xp_calculation_data={"difficulty": "MEDIUM"}
+        )
+        
+        result = await self.service.sync_task_completion_with_story(completion_hook)
+        
+        assert result["success"] is True
+        assert "sync_results" in result
+        assert len(result["sync_results"]) >= 4
+        
+        # [UNICODE_5404]
+        sync_types = [sr["type"] for sr in result["sync_results"]]
+        expected_types = ["story_progression", "mandala_update", "xp_calculation", "crystal_growth"]
+        for expected_type in expected_types:
+            assert expected_type in sync_types
+
+class TestTaskStoryDataModels:
+    """[UNICODE_30C7]"""
+    
+    def test_story_choice_hook_model(self):
+        """StoryChoiceHook[UNICODE_30E2]"""
+        
+        hook = StoryChoiceHook(
+            choice_id="test_choice",
+            choice_text="[UNICODE_30C6]",
+            real_task_id="task_123",
+            habit_tag="test_habit",
+            task_template={"task_type": "ROUTINE"},
+            mandala_impact={"attribute": "WISDOM", "impact": 1.0},
+            therapeutic_weight=1.5
+        )
+        
+        assert hook.choice_id == "test_choice"
+        assert hook.choice_text == "[UNICODE_30C6]"
+        assert hook.real_task_id == "task_123"
+        assert hook.habit_tag == "test_habit"
+        assert hook.therapeutic_weight == 1.5
+    
+    def test_task_completion_hook_model(self):
+        """TaskCompletionHook[UNICODE_30E2]"""
+        
+        hook = TaskCompletionHook(
+            task_id="test_task",
+            uid="test_user",
+            completion_data={"mood_score": 3},
+            story_progression_trigger=True,
+            mandala_update_trigger=False,
+            xp_calculation_data={"bonus": 10}
+        )
+        
+        assert hook.task_id == "test_task"
+        assert hook.uid == "test_user"
+        assert hook.story_progression_trigger is True
+        assert hook.mandala_update_trigger is False
+        assert hook.completion_data["mood_score"] == 3
+    
+    def test_mandala_reflection_data_model(self):
+        """MandalaReflectionData[UNICODE_30E2]"""
+        
+        choice_hook = StoryChoiceHook(
+            choice_id="reflection_choice",
+            choice_text="[UNICODE_53CD]"
+        )
+        
+        reflection = MandalaReflectionData(
+            uid="test_user",
+            story_choices=[choice_hook],
+            completion_date=datetime.utcnow(),
+            target_date=datetime.utcnow() + timedelta(days=1),
+            chapter_context=ChapterType.EMPATHY,
+            therapeutic_focus=["empathy_building"]
+        )
+        
+        assert reflection.uid == "test_user"
+        assert len(reflection.story_choices) == 1
+        assert reflection.chapter_context == ChapterType.EMPATHY
+        assert "empathy_building" in reflection.therapeutic_focus
+
+class TestIntegrationErrorHandling:
+    """[UNICODE_30A8]"""
+    
+    def test_invalid_story_choice_data(self):
+        """[UNICODE_7121]"""
+        
+        invalid_data = {
+            "uid": "test_user",
+            "choice_text": "[UNICODE_30C6]"
+            # choice_id[UNICODE_304C]
+        }
+        
+        response = client.post("/integration/story-choice-to-task", json=invalid_data)
+        assert response.status_code == 422  # Validation error
+    
+    def test_missing_uid_in_task_completion(self):
+        """[UNICODE_30BF]UID[UNICODE_4E0D]"""
+        
+        invalid_data = {
+            "task_id": "test_task",
+            "completion_data": {"mood_score": 3}
+            # uid[UNICODE_304C]
+        }
+        
+        response = client.post("/integration/task-completion-sync", json=invalid_data)
+        assert response.status_code == 400
+        assert "User ID and Task ID required" in response.json()["detail"]
+    
+    def test_unauthorized_status_access(self):
+        """[UNICODE_8A8D]"""
+        
+        # [UNICODE_5B9F]
+        # [UNICODE_73FE]
+        pass
+
+if __name__ == "__main__":
+    # [UNICODE_30C6]
+    pytest.main([__file__, "-v", "--tb=short"])

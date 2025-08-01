@@ -1,0 +1,493 @@
+"""
+[UNICODE_9577]
+
+[UNICODE_5B63]
+"""
+
+import pytest
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+
+from datetime import datetime, timedelta
+from services.seasonal_events.main import EngagementSystem
+from services.seasonal_events.prestige_system import LongTermEngagementSystem, TherapeuticMilestone
+import json
+
+class TestLongTermEngagementIntegration:
+    """[UNICODE_9577]"""
+    
+    def setup_method(self):
+        self.engagement = EngagementSystem()
+        self.long_term = LongTermEngagementSystem()
+        
+        # [UNICODE_30C6]
+        self.test_user = "integration_user_001"
+        
+        # [UNICODE_30D7]
+        self.prestige_profile = self.long_term.create_prestige_profile(self.test_user)
+        
+        # [UNICODE_30AE]
+        self.test_guild = self.engagement.guild_system.create_guild(
+            leader_uid=self.test_user,
+            name="[UNICODE_7D71]",
+            description="[UNICODE_7D71]",
+            therapeutic_focus="adhd_peer"
+        )
+    
+    def test_seasonal_event_prestige_integration(self):
+        """[UNICODE_5B63]"""
+        # [UNICODE_6625]
+        spring_event = self.engagement.seasonal_events.create_seasonal_event("spring_renewal")
+        
+        # [UNICODE_30E6]
+        actions = [
+            ("new_habit_started", 5),
+            ("task_completed", 20),
+            ("consecutive_day", 15),
+            ("reflection_entry", 10)
+        ]
+        
+        for action_type, count in actions:
+            self.engagement.process_user_action(self.test_user, action_type, count)
+        
+        # [UNICODE_30D7]
+        progress_data = {
+            "tasks_completed": 20,
+            "consecutive_days": 15,
+            "habit_streak": 25,
+            "new_habits_started": 5,
+            "reflection_entries": 10
+        }
+        
+        updates = self.long_term.update_user_progress(self.test_user, progress_data)
+        
+        # [UNICODE_30DE]
+        assert len(updates["milestones_achieved"]) > 0
+        
+        # [UNICODE_30A4]
+        user_progress = {
+            "new_habits_started": 5,
+            "consecutive_days": 15
+        }
+        
+        is_event_completed = self.engagement.seasonal_events.check_event_completion(
+            spring_event.event_id, user_progress
+        )
+        
+        assert is_event_completed is True
+        
+        # [UNICODE_30D7]
+        assert self.prestige_profile.total_prestige_points > 0
+    
+    def test_guild_community_prestige_synergy(self):
+        """[UNICODE_30AE]"""
+        # [UNICODE_30B3]
+        community_goal = self.engagement.community_goals.create_community_goal(
+            title="[UNICODE_7D71]",
+            description="[UNICODE_7D71]",
+            target_value=100,
+            duration_days=30,
+            reward_per_participant={"xp": 200, "coins": 100}
+        )
+        
+        # [UNICODE_4ED6]
+        guild_members = ["member_002", "member_003", "member_004"]
+        for member in guild_members:
+            self.engagement.guild_system.join_guild(self.test_guild.guild_id, member)
+            self.long_term.create_prestige_profile(member)
+        
+        # [UNICODE_5168]
+        all_members = [self.test_user] + guild_members
+        
+        for member_uid in all_members:
+            # [UNICODE_30AE]
+            self.engagement.process_user_action(member_uid, "task_completed", 15)
+            self.engagement.process_user_action(member_uid, "social_interaction", 8)
+            
+            # [UNICODE_30D7]
+            member_progress = {
+                "tasks_completed": 15,
+                "social_interactions": 8,
+                "guild_participation": 7
+            }
+            
+            self.long_term.update_user_progress(member_uid, member_progress)
+        
+        # [UNICODE_30AE]XP[UNICODE_304C]
+        assert self.test_guild.total_xp > 0
+        
+        # [UNICODE_30B3]
+        assert community_goal.current_value > 0
+        
+        # [UNICODE_5168]
+        for member_uid in all_members:
+            member_profile = self.long_term.user_profiles[member_uid]
+            assert member_profile.total_prestige_points > 0
+    
+    def test_story_branch_cosmetic_unlock_flow(self):
+        """[UNICODE_5206]"""
+        # [UNICODE_6BB5]
+        progress_stages = [
+            # [UNICODE_30B9]1: [UNICODE_57FA]
+            {
+                "tasks_completed": 10,
+                "consecutive_days": 7,
+                "habit_streak": 10
+            },
+            # [UNICODE_30B9]2: [UNICODE_7FD2]
+            {
+                "tasks_completed": 30,
+                "consecutive_days": 15,
+                "habit_streak": 25,
+                "reflection_entries": 20
+            },
+            # [UNICODE_30B9]3: [UNICODE_793E]
+            {
+                "tasks_completed": 60,
+                "consecutive_days": 30,
+                "habit_streak": 40,
+                "social_interactions": 60,
+                "guild_participation": 20,
+                "reflection_entries": 40
+            }
+        ]
+        
+        unlocked_branches = []
+        unlocked_cosmetics = []
+        
+        for stage_num, progress in enumerate(progress_stages):
+            updates = self.long_term.update_user_progress(self.test_user, progress)
+            
+            unlocked_branches.extend(updates["branches_unlocked"])
+            unlocked_cosmetics.extend(updates["cosmetics_unlocked"])
+            
+            print(f"[UNICODE_30B9] {stage_num + 1}:")
+            print(f"  - [UNICODE_30DE]: {len(updates['milestones_achieved'])}")
+            print(f"  - [UNICODE_5206]: {len(updates['branches_unlocked'])}")
+            print(f"  - [UNICODE_30B3]: {len(updates['cosmetics_unlocked'])}")
+        
+        # [UNICODE_5206]
+        assert len(unlocked_branches) > 0
+        
+        # [UNICODE_30B3]
+        assert len(unlocked_cosmetics) > 0
+        
+        # [UNICODE_30D7]
+        assert self.prestige_profile.prestige_level.value != "novice"
+    
+    def test_therapeutic_milestone_progression(self):
+        """[UNICODE_6CBB]"""
+        # [UNICODE_6CBB]
+        therapeutic_progress = [
+            # [UNICODE_7B2C]1[UNICODE_6BB5]: [UNICODE_6700]
+            {
+                "tasks_completed": 5,
+                "consecutive_days": 3
+            },
+            # [UNICODE_7B2C]2[UNICODE_6BB5]: [UNICODE_7FD2]
+            {
+                "tasks_completed": 25,
+                "consecutive_days": 15,
+                "habit_streak": 21
+            },
+            # [UNICODE_7B2C]3[UNICODE_6BB5]: [UNICODE_793E]
+            {
+                "tasks_completed": 50,
+                "consecutive_days": 25,
+                "habit_streak": 35,
+                "social_interactions": 50,
+                "guild_participation": 15
+            },
+            # [UNICODE_7B2C]4[UNICODE_6BB5]: [UNICODE_611F]
+            {
+                "tasks_completed": 80,
+                "consecutive_days": 40,
+                "habit_streak": 50,
+                "social_interactions": 80,
+                "mood_stability_days": 30,
+                "reflection_entries": 50
+            },
+            # [UNICODE_7B2C]5[UNICODE_6BB5]: [UNICODE_81EA]
+            {
+                "tasks_completed": 120,
+                "consecutive_days": 60,
+                "habit_streak": 70,
+                "social_interactions": 120,
+                "mood_stability_days": 45,
+                "self_efficacy_score": 85,
+                "reflection_entries": 80
+            }
+        ]
+        
+        achieved_milestones = []
+        
+        for stage_num, progress in enumerate(therapeutic_progress):
+            updates = self.long_term.update_user_progress(self.test_user, progress)
+            
+            for milestone_info in updates["milestones_achieved"]:
+                achieved_milestones.append(milestone_info["milestone"])
+            
+            print(f"[UNICODE_6CBB] {stage_num + 1}: {updates['milestones_achieved']}")
+        
+        # [UNICODE_4E3B]
+        expected_milestones = [
+            "first_step",
+            "habit_formation",
+            "social_reconnection",
+            "emotional_stability"
+        ]
+        
+        for expected in expected_milestones:
+            if expected in achieved_milestones:
+                print(f"[UNICODE_2705] [UNICODE_30DE]: {expected}")
+        
+        # [UNICODE_5C11]3[UNICODE_3064]
+        assert len(achieved_milestones) >= 3
+    
+    def test_long_term_retention_simulation(self):
+        """[UNICODE_9577]"""
+        # 6[UNICODE_30F6]
+        monthly_activities = [
+            # 1[UNICODE_30F6]: [UNICODE_7A4D]
+            {"tasks": 40, "social": 20, "reflection": 15, "guild": 10},
+            # 2[UNICODE_30F6]: [UNICODE_7D99]
+            {"tasks": 35, "social": 18, "reflection": 12, "guild": 8},
+            # 3[UNICODE_30F6]: [UNICODE_5C11]
+            {"tasks": 25, "social": 12, "reflection": 8, "guild": 5},
+            # 4[UNICODE_30F6]: [UNICODE_56DE]
+            {"tasks": 45, "social": 25, "reflection": 18, "guild": 12},
+            # 5[UNICODE_30F6]: [UNICODE_5B89]
+            {"tasks": 38, "social": 22, "reflection": 15, "guild": 10},
+            # 6[UNICODE_30F6]: [UNICODE_6210]
+            {"tasks": 50, "social": 30, "reflection": 20, "guild": 15}
+        ]
+        
+        cumulative_progress = {
+            "tasks_completed": 0,
+            "social_interactions": 0,
+            "reflection_entries": 0,
+            "guild_participation": 0,
+            "consecutive_days": 0,
+            "habit_streak": 0
+        }
+        
+        monthly_summaries = []
+        
+        for month, activity in enumerate(monthly_activities):
+            # [UNICODE_7D2F]
+            cumulative_progress["tasks_completed"] += activity["tasks"]
+            cumulative_progress["social_interactions"] += activity["social"]
+            cumulative_progress["reflection_entries"] += activity["reflection"]
+            cumulative_progress["guild_participation"] += activity["guild"]
+            cumulative_progress["consecutive_days"] = min(30, activity["tasks"])
+            cumulative_progress["habit_streak"] = cumulative_progress["tasks_completed"] // 2
+            cumulative_progress["mood_stability_days"] = min(30, activity["reflection"] * 2)
+            
+            # [UNICODE_30D7]
+            updates = self.long_term.update_user_progress(self.test_user, cumulative_progress)
+            
+            # [UNICODE_6708]
+            monthly_summary = self.long_term.get_user_engagement_summary(self.test_user)
+            monthly_summaries.append({
+                "month": month + 1,
+                "prestige_level": monthly_summary["prestige_level"],
+                "total_points": monthly_summary["total_prestige_points"],
+                "milestones": len(monthly_summary["achieved_milestones"]),
+                "cosmetics": monthly_summary["cosmetic_collection_size"],
+                "new_milestones": len(updates["milestones_achieved"])
+            })
+            
+            print(f"[UNICODE_6708] {month + 1}: [UNICODE_30EC]={monthly_summary['prestige_level']}, "
+                  f"[UNICODE_30DD]={monthly_summary['total_prestige_points']}, "
+                  f"[UNICODE_30DE]={len(monthly_summary['achieved_milestones'])}")
+        
+        # [UNICODE_9577]
+        final_summary = monthly_summaries[-1]
+        initial_summary = monthly_summaries[0]
+        
+        assert final_summary["total_points"] > initial_summary["total_points"]
+        assert final_summary["milestones"] >= initial_summary["milestones"]
+        assert final_summary["cosmetics"] >= initial_summary["cosmetics"]
+        
+        # [UNICODE_7D99]
+        engagement_maintained = True
+        for i in range(1, len(monthly_summaries)):
+            if monthly_summaries[i]["total_points"] < monthly_summaries[i-1]["total_points"]:
+                engagement_maintained = False
+                break
+        
+        assert engagement_maintained is True
+    
+    def test_cross_system_reward_distribution(self):
+        """[UNICODE_30B7]"""
+        # [UNICODE_5B63]
+        spring_event = self.engagement.seasonal_events.create_seasonal_event("spring_renewal")
+        
+        # [UNICODE_30B3]
+        community_goal = self.engagement.community_goals.create_community_goal(
+            title="[UNICODE_30AF]",
+            description="[UNICODE_30B7]",
+            target_value=50,
+            duration_days=14,
+            reward_per_participant={"xp": 300, "coins": 150}
+        )
+        
+        # [UNICODE_30E6]
+        activities = {
+            "tasks_completed": 30,
+            "new_habits_started": 5,
+            "consecutive_days": 14,
+            "social_interactions": 25,
+            "reflection_entries": 20,
+            "guild_participation": 10
+        }
+        
+        # [UNICODE_5404]
+        for activity_type, count in activities.items():
+            if activity_type in ["tasks_completed", "social_interactions", "reflection_entries"]:
+                self.engagement.process_user_action(self.test_user, activity_type.replace("_", ""), count)
+        
+        # [UNICODE_30B3]
+        self.engagement.community_goals.contribute_to_goal(
+            community_goal.goal_id, self.test_user, 50
+        )
+        
+        # [UNICODE_30D7]
+        updates = self.long_term.update_user_progress(self.test_user, activities)
+        
+        # [UNICODE_5404]
+        
+        # 1. [UNICODE_30AE]XP[UNICODE_306E]
+        assert self.test_guild.total_xp > 0
+        
+        # 2. [UNICODE_30B3]
+        assert community_goal.is_completed is True
+        assert self.test_user in community_goal.participating_users
+        
+        # 3. [UNICODE_30D7]
+        assert len(updates["milestones_achieved"]) > 0
+        
+        # 4. [UNICODE_30B3]
+        assert len(updates["cosmetics_unlocked"]) > 0
+        
+        # 5. [UNICODE_5206]
+        if updates["branches_unlocked"]:
+            assert len(updates["branches_unlocked"]) > 0
+        
+        print("[UNICODE_2705] [UNICODE_30AF]")
+        print(f"   - [UNICODE_30AE]XP: {self.test_guild.total_xp}")
+        print(f"   - [UNICODE_30DE]: {len(updates['milestones_achieved'])}")
+        print(f"   - [UNICODE_30B3]: {len(updates['cosmetics_unlocked'])}")
+        print(f"   - [UNICODE_5206]: {len(updates['branches_unlocked'])}")
+
+def test_complete_long_term_engagement_workflow():
+    """[UNICODE_5B8C]"""
+    # [UNICODE_30B7]
+    engagement = EngagementSystem()
+    long_term = LongTermEngagementSystem()
+    
+    user_uid = "workflow_test_user"
+    
+    print("[UNICODE_1F680] [UNICODE_9577]")
+    
+    # 1. [UNICODE_521D]
+    profile = long_term.create_prestige_profile(user_uid)
+    guild = engagement.guild_system.create_guild(
+        leader_uid=user_uid,
+        name="[UNICODE_30EF]",
+        description="[UNICODE_5B8C]",
+        therapeutic_focus="adhd_peer"
+    )
+    
+    print(f"[UNICODE_2705] [UNICODE_521D]: [UNICODE_30D7]")
+    
+    # 2. [UNICODE_7B2C]1[UNICODE_30D5]: [UNICODE_57FA]1-2[UNICODE_9031]
+    phase1_progress = {
+        "tasks_completed": 15,
+        "consecutive_days": 10,
+        "habit_streak": 12,
+        "social_interactions": 8,
+        "reflection_entries": 5
+    }
+    
+    updates1 = long_term.update_user_progress(user_uid, phase1_progress)
+    
+    print(f"[UNICODE_2705] [UNICODE_30D5]1[UNICODE_5B8C]: [UNICODE_30DE] {len(updates1['milestones_achieved'])} [UNICODE_500B]")
+    
+    # 3. [UNICODE_7B2C]2[UNICODE_30D5]: [UNICODE_7FD2]3-4[UNICODE_9031]
+    phase2_progress = {
+        "tasks_completed": 45,
+        "consecutive_days": 25,
+        "habit_streak": 28,
+        "social_interactions": 25,
+        "reflection_entries": 18,
+        "guild_participation": 12
+    }
+    
+    updates2 = long_term.update_user_progress(user_uid, phase2_progress)
+    
+    print(f"[UNICODE_2705] [UNICODE_30D5]2[UNICODE_5B8C]: [UNICODE_5206] {len(updates2['branches_unlocked'])} [UNICODE_500B]")
+    
+    # 4. [UNICODE_7B2C]3[UNICODE_30D5]: [UNICODE_793E]2-3[UNICODE_30F6]
+    phase3_progress = {
+        "tasks_completed": 100,
+        "consecutive_days": 45,
+        "habit_streak": 50,
+        "social_interactions": 70,
+        "reflection_entries": 40,
+        "guild_participation": 25,
+        "mood_stability_days": 30
+    }
+    
+    updates3 = long_term.update_user_progress(user_uid, phase3_progress)
+    
+    print(f"[UNICODE_2705] [UNICODE_30D5]3[UNICODE_5B8C]: [UNICODE_30B3] {len(updates3['cosmetics_unlocked'])} [UNICODE_500B]")
+    
+    # 5. [UNICODE_7B2C]4[UNICODE_30D5]: [UNICODE_5B89]3-6[UNICODE_30F6]
+    phase4_progress = {
+        "tasks_completed": 180,
+        "consecutive_days": 70,
+        "habit_streak": 80,
+        "social_interactions": 130,
+        "reflection_entries": 70,
+        "guild_participation": 40,
+        "mood_stability_days": 50,
+        "self_efficacy_score": 85,
+        "peer_support_given": 30
+    }
+    
+    updates4 = long_term.update_user_progress(user_uid, phase4_progress)
+    
+    print(f"[UNICODE_2705] [UNICODE_30D5]4[UNICODE_5B8C]: [UNICODE_30D7] = {updates4['prestige_level_up']}")
+    
+    # 6. [UNICODE_6700]
+    final_summary = long_term.get_user_engagement_summary(user_uid)
+    
+    print(f"\n[UNICODE_1F389] [UNICODE_9577]!")
+    print(f"[UNICODE_1F4CA] [UNICODE_6700]:")
+    print(f"   - [UNICODE_30D7]: {final_summary['prestige_level']}")
+    print(f"   - [UNICODE_7DCF]: {final_summary['total_prestige_points']}")
+    print(f"   - [UNICODE_9054]: {len(final_summary['achieved_milestones'])}")
+    print(f"   - [UNICODE_30B3]: {final_summary['cosmetic_collection_size']}")
+    print(f"   - [UNICODE_5206]: {final_summary['unlocked_story_branches']}")
+    print(f"   - [UNICODE_30EC]: {len(final_summary['legacy_achievements'])}")
+    print(f"   - [UNICODE_7D99]: {final_summary['days_since_creation']}")
+    
+    return {
+        "success": True,
+        "final_level": final_summary['prestige_level'],
+        "total_points": final_summary['total_prestige_points'],
+        "milestones_achieved": len(final_summary['achieved_milestones']),
+        "cosmetics_collected": final_summary['cosmetic_collection_size'],
+        "story_branches_unlocked": final_summary['unlocked_story_branches'],
+        "legacy_achievements": len(final_summary['legacy_achievements'])
+    }
+
+if __name__ == "__main__":
+    # [UNICODE_5B8C]
+    result = test_complete_long_term_engagement_workflow()
+    print(f"\n[UNICODE_1F4C8] [UNICODE_30EF]: {json.dumps(result, indent=2, ensure_ascii=False)}")
+    
+    # [UNICODE_7D71]
+    pytest.main([__file__, "-v"])

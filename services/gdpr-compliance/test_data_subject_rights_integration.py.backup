@@ -1,0 +1,448 @@
+"""
+[UNICODE_30C7]
+"""
+
+import unittest
+from datetime import datetime, timedelta
+from services.gdpr_compliance.data_subject_rights import (
+    DataSubjectRightsEngine, DataSubjectRight, RequestStatus, DataProcessingRecord
+)
+from services.gdpr_compliance.data_portability import (
+    DataPortabilityEngine, ExportFormat, DataPortabilityScope
+)
+from services.gdpr_compliance.privacy_protection_system import (
+    PrivacyProtectionSystem, DataCategory, ProcessingPurpose
+)
+
+
+class TestDataSubjectRightsIntegration(unittest.TestCase):
+    """[UNICODE_30C7]"""
+    
+    def setUp(self):
+        self.rights_engine = DataSubjectRightsEngine()
+        self.portability_engine = DataPortabilityEngine()
+        self.privacy_system = PrivacyProtectionSystem()
+        
+        # [UNICODE_30C6]
+        self.test_user_id = "test_user_integration_001"
+        self._setup_test_data()
+    
+    def _setup_test_data(self):
+        """[UNICODE_30C6]"""
+        # [UNICODE_30E6]
+        self.rights_engine.user_data_inventory[self.test_user_id] = {
+            "profile_data": {
+                "name": "[UNICODE_30C6]",
+                "email": "test@example.com",
+                "birth_date": "1990-01-01"
+            },
+            "therapeutic_data": {
+                "mood_logs": [
+                    {"date": "2024-01-01", "mood": 4, "notes": "[UNICODE_826F]"},
+                    {"date": "2024-01-02", "mood": 3, "notes": "[UNICODE_666E]"}
+                ],
+                "task_completions": [
+                    {"task": "[UNICODE_671D]", "completed": True, "date": "2024-01-01"},
+                    {"task": "[UNICODE_8AAD]", "completed": False, "date": "2024-01-01"}
+                ]
+            },
+            "behavioral_data": {
+                "login_history": [
+                    {"date": "2024-01-01", "duration": 30},
+                    {"date": "2024-01-02", "duration": 45}
+                ]
+            }
+        }
+        
+        # [UNICODE_51E6]
+        self.rights_engine.processing_records[self.test_user_id] = [
+            DataProcessingRecord(
+                record_id="record_001",
+                user_id=self.test_user_id,
+                data_category="therapeutic_data",
+                processing_purpose="[UNICODE_6CBB]",
+                legal_basis="[UNICODE_6B63]",
+                data_source="[UNICODE_30A2]",
+                retention_period=timedelta(days=2555)
+            ),
+            DataProcessingRecord(
+                record_id="record_002",
+                user_id=self.test_user_id,
+                data_category="behavioral_data",
+                processing_purpose="[UNICODE_30B5]",
+                legal_basis="[UNICODE_540C]",
+                data_source="[UNICODE_30B7]",
+                retention_period=timedelta(days=1095)
+            )
+        ]
+    
+    def test_complete_access_request_flow(self):
+        """[UNICODE_5B8C]"""
+        # 1. [UNICODE_30A2]
+        request_id = self.rights_engine.submit_rights_request(
+            self.test_user_id,
+            DataSubjectRight.ACCESS,
+            "[UNICODE_81EA]"
+        )
+        
+        self.assertIsNotNone(request_id)
+        
+        # 2. [UNICODE_672C]
+        verification_success = self.rights_engine.verify_identity(
+            request_id,
+            {
+                "email": "test@example.com",
+                "birth_date": "1990-01-01",
+                "verification_code": "123456"
+            }
+        )
+        
+        self.assertTrue(verification_success)
+        
+        # 3. [UNICODE_30A2]
+        access_data = self.rights_engine.process_access_request(request_id)
+        
+        self.assertIn("personal_data", access_data)
+        self.assertIn("processing_activities", access_data)
+        self.assertIn("rights_information", access_data)
+        self.assertEqual(access_data["user_id"], self.test_user_id)
+        
+        # 4. [UNICODE_8981]
+        status = self.rights_engine.get_request_status(request_id)
+        self.assertEqual(status["status"], RequestStatus.COMPLETED.value)
+    
+    def test_rectification_request_flow(self):
+        """[UNICODE_8A02]"""
+        # 1. [UNICODE_8A02]
+        request_id = self.rights_engine.submit_rights_request(
+            self.test_user_id,
+            DataSubjectRight.RECTIFICATION,
+            "[UNICODE_30E1]"
+        )
+        
+        # 2. [UNICODE_672C]
+        self.rights_engine.verify_identity(
+            request_id,
+            {
+                "email": "test@example.com",
+                "birth_date": "1990-01-01",
+                "verification_code": "123456"
+            }
+        )
+        
+        # 3. [UNICODE_8A02]
+        corrections = {
+            "email": "new_email@example.com",
+            "name": "[UNICODE_65B0]"
+        }
+        
+        result = self.rights_engine.process_rectification_request(request_id, corrections)
+        
+        self.assertIn("corrections_applied", result)
+        self.assertIn("corrections_rejected", result)
+        self.assertEqual(len(result["corrections_applied"]), 2)
+    
+    def test_erasure_request_flow(self):
+        """[UNICODE_524A]"""
+        # 1. [UNICODE_524A]
+        request_id = self.rights_engine.submit_rights_request(
+            self.test_user_id,
+            DataSubjectRight.ERASURE,
+            "[UNICODE_500B]"
+        )
+        
+        # 2. [UNICODE_672C]
+        self.rights_engine.verify_identity(
+            request_id,
+            {
+                "email": "test@example.com",
+                "birth_date": "1990-01-01",
+                "verification_code": "123456"
+            }
+        )
+        
+        # 3. [UNICODE_524A]
+        result = self.rights_engine.process_erasure_request(request_id)
+        
+        self.assertIn("data_erased", result)
+        self.assertIn("data_retained", result)
+        self.assertIn("assessment", result)
+    
+    def test_portability_request_integration(self):
+        """[UNICODE_30DD]"""
+        # 1. [UNICODE_30A2]
+        access_request_id = self.rights_engine.submit_rights_request(
+            self.test_user_id,
+            DataSubjectRight.ACCESS
+        )
+        
+        self.rights_engine.verify_identity(
+            access_request_id,
+            {
+                "email": "test@example.com",
+                "birth_date": "1990-01-01",
+                "verification_code": "123456"
+            }
+        )
+        
+        access_data = self.rights_engine.process_access_request(access_request_id)
+        
+        # 2. [UNICODE_30DD]
+        portability_request_id = self.portability_engine.create_portability_request(
+            self.test_user_id,
+            DataPortabilityScope.ALL_DATA,
+            ExportFormat.JSON
+        )
+        
+        portability_result = self.portability_engine.process_portability_request(
+            portability_request_id
+        )
+        
+        self.assertTrue(portability_result["success"])
+        self.assertIsNotNone(portability_result["file_path"])
+        self.assertIsNotNone(portability_result["checksum"])
+        
+        # 3. [UNICODE_30C7]
+        portability_status = self.portability_engine.get_portability_status(
+            portability_request_id
+        )
+        
+        self.assertTrue(portability_status["processed"])
+        self.assertGreater(portability_status["file_size"], 0)
+    
+    def test_multiple_format_portability(self):
+        """[UNICODE_8907]"""
+        formats_to_test = [ExportFormat.JSON, ExportFormat.CSV, ExportFormat.XML]
+        
+        for format in formats_to_test:
+            with self.subTest(format=format):
+                # [UNICODE_30DD]
+                request_id = self.portability_engine.create_portability_request(
+                    self.test_user_id,
+                    DataPortabilityScope.THERAPEUTIC_DATA,
+                    format
+                )
+                
+                # [UNICODE_51E6]
+                result = self.portability_engine.process_portability_request(request_id)
+                
+                self.assertTrue(result["success"])
+                self.assertEqual(result["format"], format.value)
+                self.assertIsNotNone(result["checksum"])
+    
+    def test_restriction_request_flow(self):
+        """[UNICODE_51E6]"""
+        # 1. [UNICODE_51E6]
+        request_id = self.rights_engine.submit_rights_request(
+            self.test_user_id,
+            DataSubjectRight.RESTRICTION,
+            "[UNICODE_5206]"
+        )
+        
+        # 2. [UNICODE_672C]
+        self.rights_engine.verify_identity(
+            request_id,
+            {
+                "email": "test@example.com",
+                "birth_date": "1990-01-01",
+                "verification_code": "123456"
+            }
+        )
+        
+        # 3. [UNICODE_51E6]
+        restriction_scope = ["analytics", "marketing"]
+        result = self.rights_engine.process_restriction_request(request_id, restriction_scope)
+        
+        self.assertIn("restrictions_applied", result)
+        self.assertIn("restrictions_rejected", result)
+    
+    def test_transparency_information_provision(self):
+        """[UNICODE_900F]"""
+        # [UNICODE_51E6]
+        transparency_info = self.rights_engine.get_processing_transparency_info(
+            self.test_user_id
+        )
+        
+        # [UNICODE_5FC5]
+        required_fields = [
+            "controller_info", "processing_purposes", "legal_bases",
+            "data_categories", "recipients", "retention_periods",
+            "data_subject_rights", "complaint_authority"
+        ]
+        
+        for field in required_fields:
+            self.assertIn(field, transparency_info)
+        
+        # [UNICODE_7BA1]
+        self.assertIn("name", transparency_info["controller_info"])
+        self.assertIn("contact", transparency_info["controller_info"])
+        self.assertIn("dpo_contact", transparency_info["controller_info"])
+        
+        # [UNICODE_6A29]
+        self.assertIsInstance(transparency_info["data_subject_rights"], dict)
+        self.assertGreater(len(transparency_info["data_subject_rights"]), 0)
+    
+    def test_user_rights_dashboard(self):
+        """[UNICODE_30E6]"""
+        # [UNICODE_8907]
+        request_types = [
+            DataSubjectRight.ACCESS,
+            DataSubjectRight.RECTIFICATION,
+            DataSubjectRight.PORTABILITY
+        ]
+        
+        request_ids = []
+        for right_type in request_types:
+            request_id = self.rights_engine.submit_rights_request(
+                self.test_user_id,
+                right_type,
+                f"{right_type.value}[UNICODE_306E]"
+            )
+            request_ids.append(request_id)
+        
+        # [UNICODE_30C0]
+        dashboard = self.rights_engine.get_user_rights_dashboard(self.test_user_id)
+        
+        # [UNICODE_30C0]
+        self.assertEqual(dashboard["user_id"], self.test_user_id)
+        self.assertIn("available_rights", dashboard)
+        self.assertIn("request_history", dashboard)
+        self.assertIn("transparency_info", dashboard)
+        
+        # [UNICODE_8981]
+        self.assertEqual(len(dashboard["request_history"]), 3)
+        self.assertEqual(dashboard["pending_requests"], 3)
+        self.assertEqual(dashboard["completed_requests"], 0)
+    
+    def test_privacy_system_integration(self):
+        """[UNICODE_30D7]"""
+        # 1. [UNICODE_540C]
+        consent_id = self.privacy_system.request_consent(
+            self.test_user_id,
+            DataCategory.BEHAVIORAL_DATA,
+            ProcessingPurpose.ANALYTICS
+        )
+        
+        self.privacy_system.grant_consent(consent_id)
+        
+        # 2. [UNICODE_540C]
+        has_consent = self.privacy_system.check_consent(
+            self.test_user_id,
+            DataCategory.BEHAVIORAL_DATA,
+            ProcessingPurpose.ANALYTICS
+        )
+        
+        self.assertTrue(has_consent)
+        
+        # 3. [UNICODE_6A29]
+        objection_request_id = self.rights_engine.submit_rights_request(
+            self.test_user_id,
+            DataSubjectRight.OBJECTION,
+            "[UNICODE_5206]"
+        )
+        
+        # 4. [UNICODE_540C]
+        self.privacy_system.withdraw_consent(
+            self.test_user_id,
+            DataCategory.BEHAVIORAL_DATA,
+            ProcessingPurpose.ANALYTICS
+        )
+        
+        # 5. [UNICODE_64A4]
+        has_consent_after = self.privacy_system.check_consent(
+            self.test_user_id,
+            DataCategory.BEHAVIORAL_DATA,
+            ProcessingPurpose.ANALYTICS
+        )
+        
+        self.assertFalse(has_consent_after)
+    
+    def test_data_integrity_validation(self):
+        """[UNICODE_30C7]"""
+        # [UNICODE_30DD]
+        request_id = self.portability_engine.create_portability_request(
+            self.test_user_id,
+            DataPortabilityScope.ALL_DATA,
+            ExportFormat.JSON,
+            include_metadata=True
+        )
+        
+        result = self.portability_engine.process_portability_request(request_id)
+        
+        # [UNICODE_30C1]
+        is_valid = self.portability_engine.validate_data_integrity(
+            request_id,
+            result["checksum"]
+        )
+        
+        self.assertTrue(is_valid)
+        
+        # [UNICODE_4E0D]
+        is_invalid = self.portability_engine.validate_data_integrity(
+            request_id,
+            "invalid_checksum"
+        )
+        
+        self.assertFalse(is_invalid)
+    
+    def test_request_expiration_handling(self):
+        """[UNICODE_8981]"""
+        # [UNICODE_671F]
+        request_id = self.portability_engine.create_portability_request(
+            self.test_user_id,
+            DataPortabilityScope.PROFILE_ONLY,
+            ExportFormat.JSON
+        )
+        
+        # [UNICODE_671F]
+        request = self.portability_engine.portability_requests[request_id]
+        request.expires_at = datetime.now() - timedelta(days=1)
+        
+        # [UNICODE_51E6]
+        result = self.portability_engine.process_portability_request(request_id)
+        self.assertTrue(result["success"])
+        
+        # [UNICODE_671F]
+        download_data = self.portability_engine.download_export(request_id, self.test_user_id)
+        self.assertIsNone(download_data)  # [UNICODE_671F]None[UNICODE_304C]
+    
+    def test_bulk_rights_exercise(self):
+        """[UNICODE_4E00]"""
+        # [UNICODE_8907]
+        rights_to_exercise = [
+            DataSubjectRight.ACCESS,
+            DataSubjectRight.PORTABILITY,
+            DataSubjectRight.RESTRICTION
+        ]
+        
+        request_ids = []
+        for right in rights_to_exercise:
+            request_id = self.rights_engine.submit_rights_request(
+                self.test_user_id,
+                right,
+                f"[UNICODE_4E00]{right.value}[UNICODE_8981]"
+            )
+            request_ids.append(request_id)
+            
+            # [UNICODE_672C]
+            self.rights_engine.verify_identity(
+                request_id,
+                {
+                    "email": "test@example.com",
+                    "birth_date": "1990-01-01",
+                    "verification_code": "123456"
+                }
+            )
+        
+        # [UNICODE_5404]
+        for request_id in request_ids:
+            status = self.rights_engine.get_request_status(request_id)
+            self.assertIn(status["status"], [
+                RequestStatus.UNDER_REVIEW.value,
+                RequestStatus.IN_PROGRESS.value,
+                RequestStatus.COMPLETED.value
+            ])
+
+
+if __name__ == '__main__':
+    unittest.main()

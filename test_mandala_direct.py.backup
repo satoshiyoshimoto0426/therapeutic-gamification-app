@@ -1,0 +1,181 @@
+"""
+Mandala[UNICODE_5B9F]
+
+[UNICODE_57FA]
+"""
+
+import sys
+import os
+
+# Add project root to path for imports
+sys.path.append(os.path.dirname(__file__))
+
+def test_imports():
+    """[UNICODE_30A4]"""
+    print("=== [UNICODE_30A4] ===")
+    
+    try:
+        from shared.interfaces.mandala_system import MandalaSystemInterface, CellStatus, MandalaGrid
+        print("[UNICODE_2713] MandalaSystemInterface [UNICODE_30A4]")
+    except Exception as e:
+        print(f"[UNICODE_2717] MandalaSystemInterface [UNICODE_30A4]: {e}")
+        return False
+    
+    try:
+        from shared.interfaces.mandala_validation import MandalaValidator, MandalaBusinessRules
+        print("[UNICODE_2713] MandalaValidator [UNICODE_30A4]")
+    except Exception as e:
+        print(f"[UNICODE_2717] MandalaValidator [UNICODE_30A4]: {e}")
+        return False
+    
+    return True
+
+def test_basic_functionality():
+    """[UNICODE_57FA]"""
+    print("\n=== [UNICODE_57FA] ===")
+    
+    from shared.interfaces.mandala_system import MandalaSystemInterface, CellStatus
+    
+    # [UNICODE_30A4]
+    interface = MandalaSystemInterface()
+    test_uid = "direct_test_user"
+    
+    # [UNICODE_30B0]
+    grid = interface.get_or_create_grid(test_uid)
+    print(f"[UNICODE_2713] [UNICODE_30B0]: UID={grid.uid}, [UNICODE_7DCF]={grid.total_cells}")
+    
+    # [UNICODE_4E2D]
+    core_cell = grid.get_cell(4, 4)
+    if core_cell and core_cell.status == CellStatus.CORE_VALUE:
+        print(f"[UNICODE_2713] [UNICODE_4E2D]: {core_cell.quest_title}")
+    else:
+        print("[UNICODE_2717] [UNICODE_4E2D]")
+        return False
+    
+    # [UNICODE_30A2]
+    can_unlock_42 = grid.can_unlock(4, 2)
+    print(f"[UNICODE_2713] [UNICODE_30A2](4,2): {can_unlock_42}")
+    
+    # [UNICODE_30BB]
+    quest_data = {
+        "quest_title": "[UNICODE_30C6]",
+        "quest_description": "[UNICODE_7C21]",
+        "xp_reward": 25,
+        "difficulty": 2
+    }
+    
+    success = interface.unlock_cell_for_user(test_uid, 4, 2, quest_data)
+    if success:
+        print("[UNICODE_2713] [UNICODE_30BB]")
+    else:
+        print("[UNICODE_2717] [UNICODE_30BB]")
+        return False
+    
+    # [UNICODE_30BB]
+    complete_success = interface.complete_cell_for_user(test_uid, 4, 2)
+    if complete_success:
+        print("[UNICODE_2713] [UNICODE_30BB]")
+    else:
+        print("[UNICODE_2717] [UNICODE_30BB]")
+        return False
+    
+    # API[UNICODE_5FDC]
+    api_response = interface.get_grid_api_response(test_uid)
+    print(f"[UNICODE_2713] API[UNICODE_5FDC]: [UNICODE_30A2]={api_response['unlocked_count']}")
+    
+    # [UNICODE_65E5]
+    reminder = interface.get_daily_reminder_for_user(test_uid)
+    print(f"[UNICODE_2713] [UNICODE_65E5]: {reminder}")
+    
+    return True
+
+def test_validation():
+    """[UNICODE_30D0]"""
+    print("\n=== [UNICODE_30D0] ===")
+    
+    from shared.interfaces.mandala_system import MandalaSystemInterface
+    from shared.interfaces.mandala_validation import MandalaValidator, MandalaBusinessRules
+    
+    validator = MandalaValidator()
+    business_rules = MandalaBusinessRules()
+    interface = MandalaSystemInterface()
+    
+    # [UNICODE_30B0]
+    grid = interface.get_or_create_grid("validation_test")
+    
+    # [UNICODE_30B0]
+    structure_result = validator.validate_grid_structure(grid)
+    print(f"[UNICODE_2713] [UNICODE_30B0]: {'[UNICODE_6210]' if structure_result.is_valid else '[UNICODE_5931]'}")
+    if not structure_result.is_valid:
+        print(f"  [UNICODE_30A8]: {structure_result.error_message}")
+        return False
+    
+    # [UNICODE_6709]
+    valid_quest_data = {
+        "quest_title": "[UNICODE_6709]",
+        "quest_description": "[UNICODE_6709]",
+        "xp_reward": 25,
+        "difficulty": 2
+    }
+    
+    unlock_result = validator.validate_unlock_request(grid, 4, 2, valid_quest_data)
+    print(f"[UNICODE_2713] [UNICODE_6709]: {'[UNICODE_6210]' if unlock_result.is_valid else '[UNICODE_5931]'}")
+    if not unlock_result.is_valid:
+        print(f"  [UNICODE_30A8]: {unlock_result.error_message}")
+        return False
+    
+    # [UNICODE_7121]
+    invalid_quest_data = {
+        "quest_title": "",  # [UNICODE_7A7A]
+        "quest_description": "[UNICODE_8AAC]",
+        "xp_reward": 2000,  # [UNICODE_7BC4]XP
+        "difficulty": 10    # [UNICODE_7BC4]
+    }
+    
+    invalid_result = validator.validate_unlock_request(grid, 4, 2, invalid_quest_data)
+    print(f"[UNICODE_2713] [UNICODE_7121]: {'[UNICODE_5931]' if not invalid_result.is_valid else '[UNICODE_4E88]'}")
+    if invalid_result.is_valid:
+        print("  [UNICODE_8B66]: [UNICODE_7121]")
+        return False
+    
+    # [UNICODE_30D3]
+    daily_unlock_result = business_rules.can_unlock_today(grid, 0)
+    print(f"[UNICODE_2713] [UNICODE_65E5]: {'[UNICODE_6210]' if daily_unlock_result.is_valid else '[UNICODE_5931]'}")
+    
+    return True
+
+def main():
+    """[UNICODE_30E1]"""
+    print("Mandala[UNICODE_5B9F]")
+    print("=" * 50)
+    
+    # [UNICODE_30A4]
+    if not test_imports():
+        print("[UNICODE_274C] [UNICODE_30A4]")
+        return False
+    
+    # [UNICODE_57FA]
+    if not test_basic_functionality():
+        print("[UNICODE_274C] [UNICODE_57FA]")
+        return False
+    
+    # [UNICODE_30D0]
+    if not test_validation():
+        print("[UNICODE_274C] [UNICODE_30D0]")
+        return False
+    
+    print("\n" + "=" * 50)
+    print("[UNICODE_2705] [UNICODE_5168]")
+    print("Mandala[UNICODE_5B9F]")
+    
+    return True
+
+if __name__ == "__main__":
+    try:
+        success = main()
+        exit(0 if success else 1)
+    except Exception as e:
+        print(f"\n[UNICODE_274C] [UNICODE_30C6]: {e}")
+        import traceback
+        traceback.print_exc()
+        exit(1)

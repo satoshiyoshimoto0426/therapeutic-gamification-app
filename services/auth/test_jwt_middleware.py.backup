@@ -1,0 +1,208 @@
+"""
+JWT[UNICODE_8A8D]
+
+JWT[UNICODE_8A8D]
+[UNICODE_8981]6.1, 10.3[UNICODE_306B]
+
+Requirements: 6.1, 10.3
+"""
+
+import sys
+import os
+
+# Add project root to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+from services.auth.jwt_service import jwt_service, TokenType
+from services.auth.auth_middleware import JWTAuthMiddleware
+from shared.interfaces.rbac_system import PermissionLevel
+
+
+def test_jwt_middleware_token_validation():
+    """JWT[UNICODE_30DF]"""
+    print("=== JWT[UNICODE_30DF] ===")
+    
+    middleware = JWTAuthMiddleware()
+    
+    try:
+        # [UNICODE_6709]
+        guardian_id = "test_guardian_001"
+        user_id = "test_user_001"
+        permission_level = PermissionLevel.TASK_EDIT.value
+        
+        access_token = jwt_service.create_access_token(
+            guardian_id, user_id, permission_level
+        )
+        print(f"[UNICODE_2713] [UNICODE_30C6]")
+        
+        # [UNICODE_6B63]
+        valid_header = f"Bearer {access_token}"
+        extracted_token = middleware.validate_token_format(valid_header)
+        assert extracted_token == access_token
+        print(f"[UNICODE_2713] [UNICODE_6B63]")
+        
+        # [UNICODE_4E0D]
+        invalid_headers = [
+            "",  # [UNICODE_7A7A]
+            "Basic invalid_token",  # [UNICODE_9593]
+            "Bearer",  # [UNICODE_30C8]
+            "Bearer ",  # [UNICODE_7A7A]
+            "invalid_format",  # [UNICODE_4E0D]
+        ]
+        
+        for invalid_header in invalid_headers:
+            try:
+                middleware.validate_token_format(invalid_header)
+                print(f"[UNICODE_2717] [UNICODE_4E0D] '{invalid_header}' [UNICODE_304C]")
+                return False
+            except:
+                pass  # [UNICODE_671F]
+        
+        print(f"[UNICODE_2713] [UNICODE_4E0D]")
+        
+        return True
+        
+    except Exception as e:
+        print(f"[UNICODE_2717] JWT[UNICODE_30DF]: {str(e)}")
+        return False
+
+
+def test_middleware_error_handling():
+    """[UNICODE_30DF]"""
+    print("\n=== [UNICODE_30DF] ===")
+    
+    middleware = JWTAuthMiddleware()
+    
+    try:
+        # [UNICODE_7121]
+        invalid_token = "invalid.jwt.token"
+        invalid_header = f"Bearer {invalid_token}"
+        
+        try:
+            middleware.validate_token_format(invalid_header)
+            # [UNICODE_30C8]JWT[UNICODE_3068]
+            print(f"[UNICODE_2713] [UNICODE_7121]JWT[UNICODE_30C8]")
+        except:
+            print(f"[UNICODE_2717] [UNICODE_6709]")
+            return False
+        
+        # [UNICODE_671F]JWT[UNICODE_691C]
+        print(f"[UNICODE_2713] [UNICODE_30A8]")
+        
+        return True
+        
+    except Exception as e:
+        print(f"[UNICODE_2717] [UNICODE_30DF]: {str(e)}")
+        return False
+
+
+def test_token_format_validation():
+    """[UNICODE_30C8]"""
+    print("\n=== [UNICODE_30C8] ===")
+    
+    middleware = JWTAuthMiddleware()
+    
+    test_cases = [
+        # (header, should_pass, description)
+        ("Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test.signature", True, "[UNICODE_6B63]JWT[UNICODE_5F62]"),
+        ("Bearer token_without_dots", True, "[UNICODE_30C9]"),
+        ("Bearer ", False, "[UNICODE_7A7A]"),
+        ("Basic token", False, "[UNICODE_9593]"),
+        ("", False, "[UNICODE_7A7A]"),
+        ("Bearer", False, "[UNICODE_30C8]"),
+        ("token_without_scheme", False, "[UNICODE_30B9]"),
+    ]
+    
+    passed = 0
+    total = len(test_cases)
+    
+    for header, should_pass, description in test_cases:
+        try:
+            result = middleware.validate_token_format(header)
+            if should_pass:
+                print(f"[UNICODE_2713] {description}: [UNICODE_6210]")
+                passed += 1
+            else:
+                print(f"[UNICODE_2717] {description}: [UNICODE_901A]")
+        except Exception as e:
+            if not should_pass:
+                print(f"[UNICODE_2713] {description}: [UNICODE_671F]")
+                passed += 1
+            else:
+                print(f"[UNICODE_2717] {description}: [UNICODE_901A] - {str(e)}")
+    
+    print(f"[UNICODE_30C8]: {passed}/{total}")
+    return passed == total
+
+
+def test_permission_level_tokens():
+    """[UNICODE_6A29]"""
+    print("\n=== [UNICODE_6A29] ===")
+    
+    permission_levels = [
+        PermissionLevel.VIEW_ONLY,
+        PermissionLevel.TASK_EDIT,
+        PermissionLevel.CHAT_SEND
+    ]
+    
+    try:
+        for level in permission_levels:
+            guardian_id = f"guardian_{level.value}"
+            user_id = f"user_{level.value}"
+            
+            # [UNICODE_30C8]
+            token = jwt_service.create_access_token(
+                guardian_id, user_id, level.value
+            )
+            
+            # [UNICODE_30C8]
+            token_data = jwt_service.verify_token(token)
+            assert token_data.guardian_id == guardian_id
+            assert token_data.user_id == user_id
+            assert token_data.permission_level == level.value
+            assert token_data.token_type == TokenType.ACCESS
+            
+            print(f"[UNICODE_2713] {level.value} [UNICODE_6A29]: [UNICODE_751F]")
+        
+        return True
+        
+    except Exception as e:
+        print(f"[UNICODE_2717] [UNICODE_6A29]: {str(e)}")
+        return False
+
+
+def run_middleware_tests():
+    """[UNICODE_30DF]"""
+    print("=== JWT[UNICODE_8A8D] ===")
+    
+    tests = [
+        ("JWT[UNICODE_30DF]", test_jwt_middleware_token_validation),
+        ("[UNICODE_30DF]", test_middleware_error_handling),
+        ("[UNICODE_30C8]", test_token_format_validation),
+        ("[UNICODE_6A29]", test_permission_level_tokens),
+    ]
+    
+    passed = 0
+    total = len(tests)
+    
+    for test_name, test_func in tests:
+        try:
+            result = test_func()
+            if result:
+                passed += 1
+        except Exception as e:
+            print(f"[UNICODE_2717] {test_name}[UNICODE_30C6]: {str(e)}")
+    
+    print(f"\n=== [UNICODE_30DF]: {passed}/{total} [UNICODE_6210] ===")
+    
+    if passed == total:
+        print("[UNICODE_1F389] [UNICODE_5168]")
+        return True
+    else:
+        print("[UNICODE_274C] [UNICODE_4E00]")
+        return False
+
+
+if __name__ == "__main__":
+    success = run_middleware_tests()
+    exit(0 if success else 1)

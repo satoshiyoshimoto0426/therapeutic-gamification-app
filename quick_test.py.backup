@@ -1,0 +1,64 @@
+#!/usr/bin/env python3
+"""
+Quick deployment test - 問題特定用
+"""
+
+print("🔍 問題診断開始...")
+
+# 1. Python基本動作確認
+try:
+    import sys
+    print(f"✅ Python version: {sys.version}")
+except Exception as e:
+    print(f"❌ Python基本動作エラー: {e}")
+
+# 2. 必要パッケージ確認
+required_packages = ['fastapi', 'uvicorn', 'pydantic']
+for package in required_packages:
+    try:
+        __import__(package)
+        print(f"✅ {package} - OK")
+    except ImportError as e:
+        print(f"❌ {package} - 未インストール: {e}")
+
+# 3. ポート確認
+import socket
+ports_to_check = [8001, 8002, 8003, 8004, 8005, 8006]
+for port in ports_to_check:
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(('localhost', port))
+            print(f"✅ ポート {port} - 利用可能")
+    except OSError:
+        print(f"⚠️ ポート {port} - 使用中")
+
+# 4. ファイル存在確認
+import os
+critical_files = [
+    'services/core-game/main.py',
+    'services/auth/main.py', 
+    'services/task-mgmt/main.py'
+]
+
+for file_path in critical_files:
+    if os.path.exists(file_path):
+        print(f"✅ {file_path} - 存在")
+        
+        # UNICODE文字チェック
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+                if '[UNICODE_' in content:
+                    print(f"⚠️ {file_path} - UNICODE文字問題あり")
+                else:
+                    print(f"✅ {file_path} - エンコーディングOK")
+        except Exception as e:
+            print(f"❌ {file_path} - 読み込みエラー: {e}")
+    else:
+        print(f"❌ {file_path} - 見つかりません")
+
+print("\n🎯 診断完了")
+print("\n💡 推奨解決策:")
+print("1. UNICODE文字を含むファイルを修正")
+print("2. 使用中のポートを解放")
+print("3. 依存関係を再インストール")

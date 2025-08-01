@@ -1,0 +1,97 @@
+#!/usr/bin/env python3
+"""
+Basic test to verify core game engine functionality
+"""
+
+import sys
+import os
+from datetime import datetime
+from unittest.mock import Mock
+
+# Add shared modules to path
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'shared'))
+
+try:
+    from interfaces.core_types import (
+        GameState, XPCalculation, ChapterType, Task, TaskType, TaskStatus
+    )
+    print("? Successfully imported core types")
+except ImportError as e:
+    print(f"? Failed to import core types: {e}")
+    sys.exit(1)
+
+try:
+    from main import GameEngine
+    print("? Successfully imported GameEngine")
+except ImportError as e:
+    print(f"? Failed to import GameEngine: {e}")
+    sys.exit(1)
+
+def test_basic_functionality():
+    """Test basic GameEngine functionality"""
+    print("\n? Testing XP Calculation...")
+    
+    # Create mock database
+    mock_db = Mock()
+    engine = GameEngine(mock_db)
+    
+    # Test XP calculation for levels
+    level_2_xp = engine.calculate_xp_for_level(2)
+    level_3_xp = engine.calculate_xp_for_level(3)
+    
+    print(f"Level 2 XP: {level_2_xp}")
+    print(f"Level 3 XP: {level_3_xp}")
+    
+    assert level_2_xp == 100, f"Expected 100, got {level_2_xp}"
+    assert level_3_xp == 250, f"Expected 250, got {level_3_xp}"
+    print("? Level XP calculations correct")
+    
+    # Test level from XP
+    level_from_100_xp = engine.calculate_level_from_xp(100)
+    level_from_250_xp = engine.calculate_level_from_xp(250)
+    
+    assert level_from_100_xp == 2, f"Expected level 2, got {level_from_100_xp}"
+    assert level_from_250_xp == 3, f"Expected level 3, got {level_from_250_xp}"
+    print("? XP to level calculations correct")
+    
+    # Test task XP calculation
+    task = Task(
+        task_id="test_task",
+        uid="test_user",
+        task_type=TaskType.ROUTINE,
+        title="Test Task",
+        description="Test",
+        difficulty=3,
+        status=TaskStatus.PENDING,
+        due_date=None,
+        mandala_cell_id=None,
+        adhd_support={},
+        created_at=datetime.utcnow(),
+        completed_at=None
+    )
+    
+    xp_calc = engine.calculate_task_xp(task, 1.0, 1.0)
+    assert xp_calc.base_xp == 30, f"Expected 30 base XP, got {xp_calc.base_xp}"
+    assert xp_calc.final_xp == 30, f"Expected 30 final XP, got {xp_calc.final_xp}"
+    print("? Task XP calculation correct")
+    
+    # Test with mood coefficient
+    xp_calc_mood = engine.calculate_task_xp(task, 1.2, 1.0)
+    assert xp_calc_mood.final_xp == 36, f"Expected 36 XP with mood, got {xp_calc_mood.final_xp}"
+    print("? Mood coefficient calculation correct")
+    
+    # Test chapter system
+    assert len(engine.CHAPTER_ORDER) == 8, f"Expected 8 chapters, got {len(engine.CHAPTER_ORDER)}"
+    assert engine.CHAPTER_ORDER[0] == ChapterType.SELF_DISCIPLINE, "First chapter should be Self-Discipline"
+    assert engine.CHAPTER_ORDER[-1] == ChapterType.WISDOM, "Last chapter should be Wisdom"
+    print("? Chapter system correct")
+    
+    # Test resonance system
+    assert engine.RESONANCE_LEVEL_DIFF_THRESHOLD == 5, "Resonance threshold should be 5"
+    assert engine.RESONANCE_BONUS_XP == 500, "Resonance bonus should be 500 XP"
+    print("? Resonance system correct")
+    
+    print("\n? All basic tests passed!")
+
+if __name__ == "__main__":
+    test_basic_functionality()

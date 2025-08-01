@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+"""
+Simple test for Story DAG Management System
+"""
+
+import sys
+import os
+
+def test_story_dag_utils():
+    """Test the story DAG utilities"""
+    print("[UNICODE_1F9EA] Testing Story DAG Utilities...")
+    
+    try:
+        from story_dag_utils import StoryDAGUtils
+        
+        # Test sample story generation
+        utils = StoryDAGUtils()
+        story = utils.generate_sample_story()
+        
+        print(f"[UNICODE_2705] Sample story generated with {len(story['nodes'])} nodes and {len(story['choices'])} choices")
+        
+        # Test story validation
+        validation = utils.validate_story_structure(story)
+        print(f"[UNICODE_2705] Story validation: {'PASS' if validation['is_valid'] else 'FAIL'}")
+        
+        # Test complexity analysis
+        complexity = utils.analyze_story_complexity(story)
+        print(f"[UNICODE_2705] Complexity analysis: {complexity['total_nodes']} nodes, {complexity['total_choices']} choices")
+        
+        # Test visualization
+        viz = utils.visualize_story_dag(story)
+        print(f"[UNICODE_2705] Story visualization generated ({len(viz)} characters)")
+        
+        return True
+        
+    except Exception as e:
+        print(f"[UNICODE_274C] Story DAG utilities test failed: {e}")
+        return False
+
+def test_main_module():
+    """Test the main module structure"""
+    print("[UNICODE_1F9EA] Testing Main Module Structure...")
+    
+    try:
+        # Check if main.py exists and has required classes
+        with open('main.py', 'r') as f:
+            content = f.read()
+        
+        required_classes = ['StoryDAGManager', 'StoryNode', 'StoryChoice', 'StoryProgress']
+        for cls in required_classes:
+            if cls in content:
+                print(f"[UNICODE_2705] {cls} class found")
+            else:
+                print(f"[UNICODE_274C] {cls} class missing")
+                return False
+        
+        # Check for required endpoints
+        required_endpoints = ['/nodes', '/choices', '/progress', '/validate']
+        for endpoint in required_endpoints:
+            if endpoint in content:
+                print(f"[UNICODE_2705] {endpoint} endpoint found")
+            else:
+                print(f"[UNICODE_274C] {endpoint} endpoint missing")
+                return False
+        
+        return True
+        
+    except Exception as e:
+        print(f"[UNICODE_274C] Main module test failed: {e}")
+        return False
+
+def main():
+    """Run all tests"""
+    print("[UNICODE_1F680] Story DAG Management System - Simple Test Suite")
+    print("=" * 60)
+    
+    # Test utilities
+    utils_success = test_story_dag_utils()
+    print()
+    
+    # Test main module
+    main_success = test_main_module()
+    print()
+    
+    # Summary
+    total_tests = 2
+    passed_tests = sum([utils_success, main_success])
+    
+    print("=" * 60)
+    print(f"[UNICODE_1F4CA] Test Summary: {passed_tests}/{total_tests} tests passed")
+    
+    if passed_tests == total_tests:
+        print("[UNICODE_1F389] All tests passed! Story DAG Management System is ready.")
+        return True
+    else:
+        print("[UNICODE_26A0] Some tests failed. Please review implementation.")
+        return False
+
+if __name__ == "__main__":
+    success = main()
+    sys.exit(0 if success else 1)

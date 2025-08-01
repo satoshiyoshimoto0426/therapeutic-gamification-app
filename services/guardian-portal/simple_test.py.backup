@@ -1,0 +1,104 @@
+"""
+Guardian Portal [UNICODE_306E]
+"""
+
+from main import guardian_auth, guardian_rbac
+from care_points_system import care_points_system
+
+def test_basic_functionality():
+    """[UNICODE_57FA]"""
+    print("=== Guardian Portal [UNICODE_57FA] ===")
+    
+    # 1. Magic Link[UNICODE_751F]
+    print("\n1. Magic Link[UNICODE_751F]")
+    try:
+        magic_link = guardian_auth.generate_magic_link(
+            "test@example.com", 
+            "guardian_001"
+        )
+        print(f"[UNICODE_2713] Magic Link[UNICODE_751F]: {magic_link[:50]}...")
+    except Exception as e:
+        print(f"[UNICODE_2717] Magic Link[UNICODE_751F]: {e}")
+    
+    # 2. JWT [UNICODE_30C8]
+    print("\n2. JWT [UNICODE_30C8]")
+    try:
+        token = guardian_auth.create_guardian_jwt(
+            "guardian_001", 
+            ["view_reports", "edit_tasks"]
+        )
+        payload = guardian_auth.verify_guardian_jwt(token)
+        print(f"[UNICODE_2713] JWT[UNICODE_751F]: {payload['guardian_id']}")
+    except Exception as e:
+        print(f"[UNICODE_2717] JWT[UNICODE_751F]: {e}")
+    
+    # 3. [UNICODE_6A29]
+    print("\n3. [UNICODE_6A29]")
+    try:
+        # view-only[UNICODE_6A29]
+        view_only_perms = guardian_rbac.get_guardian_permissions("guardian_003")
+        has_view = guardian_rbac.check_permission("guardian_003", "view_reports")
+        has_edit = guardian_rbac.check_permission("guardian_003", "edit_tasks")
+        
+        print(f"[UNICODE_2713] view-only[UNICODE_6A29]: view_reports={has_view}, edit_tasks={has_edit}")
+        
+        # chat-send[UNICODE_6A29]
+        chat_perms = guardian_rbac.get_guardian_permissions("guardian_001")
+        has_chat = guardian_rbac.check_permission("guardian_001", "send_messages")
+        
+        print(f"[UNICODE_2713] chat-send[UNICODE_6A29]: send_messages={has_chat}")
+    except Exception as e:
+        print(f"[UNICODE_2717] [UNICODE_6A29]: {e}")
+    
+    # 4. [UNICODE_30B1]
+    print("\n4. [UNICODE_30B1]")
+    try:
+        # [UNICODE_4F01]
+        discount = care_points_system.calculate_corporate_discount(50000)
+        print(f"[UNICODE_2713] 50,000[UNICODE_5186]: {discount*100}%")
+        
+        # [UNICODE_4F01]
+        purchase = care_points_system.process_corporate_purchase(
+            "corp_001", 10000, "pi_test_123"
+        )
+        print(f"[UNICODE_2713] [UNICODE_4F01]: {purchase.points_purchased}[UNICODE_30DD]")
+        
+        # [UNICODE_30B1]
+        transaction = care_points_system.transfer_care_points(
+            "corp_001", "user_001", 500
+        )
+        print(f"[UNICODE_2713] [UNICODE_30B1]: {transaction.points}[UNICODE_30DD]")
+        
+        # [UNICODE_6B8B]
+        corp_balance = care_points_system.get_care_point_balance("corp_001")
+        user_balance = care_points_system.get_care_point_balance("user_001")
+        print(f"[UNICODE_2713] [UNICODE_6B8B] - [UNICODE_4F01]: {corp_balance}, [UNICODE_30E6]: {user_balance}")
+        
+    except Exception as e:
+        print(f"[UNICODE_2717] [UNICODE_30B1]: {e}")
+    
+    # 5. ADHD[UNICODE_5272]
+    print("\n5. ADHD[UNICODE_5272]")
+    try:
+        # [UNICODE_533B]
+        document = care_points_system.verify_adhd_medical_document(
+            "doc_001", "user_001", "diagnosis", "doctor_001"
+        )
+        print(f"[UNICODE_2713] [UNICODE_533B]: {document.document_id}")
+        
+        # [UNICODE_5272]
+        eligible = care_points_system.check_adhd_discount_eligibility("user_001")
+        print(f"[UNICODE_2713] ADHD[UNICODE_5272]: {eligible}")
+        
+        # [UNICODE_5272]
+        if eligible:
+            discount_info = care_points_system.apply_adhd_discount("user_001", 20000)
+            print(f"[UNICODE_2713] ADHD[UNICODE_5272]: {discount_info['discounted_amount']}[UNICODE_5186]")
+        
+    except Exception as e:
+        print(f"[UNICODE_2717] ADHD[UNICODE_5272]: {e}")
+    
+    print("\n=== [UNICODE_30C6] ===")
+
+if __name__ == "__main__":
+    test_basic_functionality()

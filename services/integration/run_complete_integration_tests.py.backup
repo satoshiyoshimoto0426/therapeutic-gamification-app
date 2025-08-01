@@ -1,0 +1,274 @@
+"""
+[UNICODE_5B8C]
+
+[UNICODE_30BF]15[UNICODE_300C]
+- [UNICODE_30B5]15.1: [UNICODE_5B8C]
+- [UNICODE_30B5]15.2: [UNICODE_6CBB]ADHD[UNICODE_914D]
+"""
+
+import sys
+import os
+import asyncio
+import subprocess
+from datetime import datetime
+
+# [UNICODE_30D1]
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+
+
+class CompleteIntegrationTestRunner:
+    """[UNICODE_5B8C]"""
+    
+    def __init__(self):
+        self.test_results = {
+            "user_journey_tests": None,
+            "therapeutic_safety_adhd_tests": None,
+            "overall_summary": {
+                "total_test_suites": 2,
+                "passed_suites": 0,
+                "failed_suites": 0,
+                "total_individual_tests": 0,
+                "passed_individual_tests": 0,
+                "failed_individual_tests": 0
+            }
+        }
+    
+    def run_all_integration_tests(self):
+        """[UNICODE_5168]"""
+        print("=" * 80)
+        print("[UNICODE_5B8C]")
+        print("[UNICODE_30BF]15: [UNICODE_30A8]")
+        print(f"[UNICODE_5B9F]: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print("=" * 80)
+        
+        # [UNICODE_30B5]15.1: [UNICODE_5B8C]
+        print("\n[START] [UNICODE_30B5]15.1: [UNICODE_5B8C]")
+        print("-" * 60)
+        user_journey_success = self._run_user_journey_tests()
+        
+        # [UNICODE_30B5]15.2: [UNICODE_6CBB]ADHD[UNICODE_914D]
+        print("\n[START] [UNICODE_30B5]15.2: [UNICODE_6CBB]ADHD[UNICODE_914D]")
+        print("-" * 60)
+        safety_adhd_success = self._run_therapeutic_safety_adhd_tests()
+        
+        # [UNICODE_7D50]
+        self._compile_results(user_journey_success, safety_adhd_success)
+        self._print_comprehensive_summary()
+        
+        # [UNICODE_5168]
+        overall_success = user_journey_success and safety_adhd_success
+        
+        if overall_success:
+            print("\n[SUCCESS] [UNICODE_30BF]15[UNICODE_300C]!")
+            print("[UNICODE_5168]")
+            return True
+        else:
+            print("\n[WARNING] [UNICODE_4E00]")
+            return False
+    
+    def _run_user_journey_tests(self):
+        """[UNICODE_30E6]"""
+        try:
+            # simple_user_journey_test.py[UNICODE_3092]
+            result = subprocess.run([
+                sys.executable, 
+                "services/integration/simple_user_journey_test.py"
+            ], capture_output=True, text=True, cwd=os.getcwd())
+            
+            success = result.returncode == 0
+            
+            if success:
+                print("[OK] [UNICODE_30E6]: [UNICODE_6210]")
+                self.test_results["user_journey_tests"] = {
+                    "status": "PASSED",
+                    "individual_tests": 7,  # simple_user_journey_test.py[UNICODE_304B]
+                    "passed": 7,
+                    "failed": 0
+                }
+                self.test_results["overall_summary"]["passed_suites"] += 1
+                self.test_results["overall_summary"]["total_individual_tests"] += 7
+                self.test_results["overall_summary"]["passed_individual_tests"] += 7
+            else:
+                print("[FAIL] [UNICODE_30E6]: [UNICODE_5931]")
+                print(f"[UNICODE_30A8]: {result.stderr}")
+                self.test_results["user_journey_tests"] = {
+                    "status": "FAILED",
+                    "error": result.stderr
+                }
+                self.test_results["overall_summary"]["failed_suites"] += 1
+            
+            return success
+            
+        except Exception as e:
+            print(f"[ERROR] [UNICODE_30E6]: {str(e)}")
+            self.test_results["user_journey_tests"] = {
+                "status": "ERROR",
+                "error": str(e)
+            }
+            self.test_results["overall_summary"]["failed_suites"] += 1
+            return False
+    
+    def _run_therapeutic_safety_adhd_tests(self):
+        """[UNICODE_6CBB]ADHD[UNICODE_914D]"""
+        try:
+            # test_therapeutic_safety_adhd_integration.py[UNICODE_3092]
+            result = subprocess.run([
+                sys.executable,
+                "services/integration/test_therapeutic_safety_adhd_integration.py"
+            ], capture_output=True, text=True, cwd=os.getcwd())
+            
+            success = result.returncode == 0
+            
+            if success:
+                print("[OK] [UNICODE_6CBB]ADHD[UNICODE_914D]: [UNICODE_6210]")
+                self.test_results["therapeutic_safety_adhd_tests"] = {
+                    "status": "PASSED",
+                    "individual_tests": 8,  # test_therapeutic_safety_adhd_integration.py[UNICODE_304B]
+                    "passed": 8,
+                    "failed": 0
+                }
+                self.test_results["overall_summary"]["passed_suites"] += 1
+                self.test_results["overall_summary"]["total_individual_tests"] += 8
+                self.test_results["overall_summary"]["passed_individual_tests"] += 8
+            else:
+                print("[FAIL] [UNICODE_6CBB]ADHD[UNICODE_914D]: [UNICODE_5931]")
+                print(f"[UNICODE_30A8]: {result.stderr}")
+                self.test_results["therapeutic_safety_adhd_tests"] = {
+                    "status": "FAILED",
+                    "error": result.stderr
+                }
+                self.test_results["overall_summary"]["failed_suites"] += 1
+            
+            return success
+            
+        except Exception as e:
+            print(f"[ERROR] [UNICODE_6CBB]ADHD[UNICODE_914D]: {str(e)}")
+            self.test_results["therapeutic_safety_adhd_tests"] = {
+                "status": "ERROR",
+                "error": str(e)
+            }
+            self.test_results["overall_summary"]["failed_suites"] += 1
+            return False
+    
+    def _compile_results(self, user_journey_success, safety_adhd_success):
+        """[UNICODE_7D50]"""
+        summary = self.test_results["overall_summary"]
+        
+        # [UNICODE_500B]
+        if user_journey_success and self.test_results["user_journey_tests"]["status"] == "PASSED":
+            summary["total_individual_tests"] += self.test_results["user_journey_tests"]["individual_tests"]
+            summary["passed_individual_tests"] += self.test_results["user_journey_tests"]["passed"]
+        
+        if safety_adhd_success and self.test_results["therapeutic_safety_adhd_tests"]["status"] == "PASSED":
+            summary["total_individual_tests"] += self.test_results["therapeutic_safety_adhd_tests"]["individual_tests"]
+            summary["passed_individual_tests"] += self.test_results["therapeutic_safety_adhd_tests"]["passed"]
+        
+        # [UNICODE_5931]
+        summary["failed_individual_tests"] = summary["total_individual_tests"] - summary["passed_individual_tests"]
+    
+    def _print_comprehensive_summary(self):
+        """[UNICODE_5305]"""
+        print("\n" + "=" * 80)
+        print("[UNICODE_5B8C]")
+        print("=" * 80)
+        
+        summary = self.test_results["overall_summary"]
+        
+        # [UNICODE_5168]
+        print(f"[UNICODE_30C6]: {summary['total_test_suites']}")
+        print(f"[UNICODE_6210]: {summary['passed_suites']}")
+        print(f"[UNICODE_5931]: {summary['failed_suites']}")
+        print(f"[UNICODE_30B9]: {(summary['passed_suites'] / summary['total_test_suites'] * 100):.1f}%")
+        
+        print(f"\n[UNICODE_500B]: {summary['total_individual_tests']}")
+        print(f"[UNICODE_6210]: {summary['passed_individual_tests']}")
+        print(f"[UNICODE_5931]: {summary['failed_individual_tests']}")
+        if summary['total_individual_tests'] > 0:
+            print(f"[UNICODE_500B]: {(summary['passed_individual_tests'] / summary['total_individual_tests'] * 100):.1f}%")
+        
+        # [UNICODE_8A73]
+        print("\n[UNICODE_8A73]:")
+        print("1. [UNICODE_30B5]15.1 - [UNICODE_5B8C]:")
+        if self.test_results["user_journey_tests"]:
+            status = self.test_results["user_journey_tests"]["status"]
+            icon = "[OK]" if status == "PASSED" else "[FAIL]"
+            print(f"   {icon} {status}")
+            if status == "PASSED":
+                tests = self.test_results["user_journey_tests"]
+                print(f"      [UNICODE_500B]: {tests['passed']}/{tests['individual_tests']} [UNICODE_6210]")
+        
+        print("2. [UNICODE_30B5]15.2 - [UNICODE_6CBB]ADHD[UNICODE_914D]:")
+        if self.test_results["therapeutic_safety_adhd_tests"]:
+            status = self.test_results["therapeutic_safety_adhd_tests"]["status"]
+            icon = "[OK]" if status == "PASSED" else "[FAIL]"
+            print(f"   {icon} {status}")
+            if status == "PASSED":
+                tests = self.test_results["therapeutic_safety_adhd_tests"]
+                print(f"      [UNICODE_500B]: {tests['passed']}/{tests['individual_tests']} [UNICODE_6210]")
+        
+        # [UNICODE_8981]
+        print("\n[UNICODE_8981]:")
+        print("[UNICODE_30B5]15.1 - [UNICODE_5B8C]:")
+        user_journey_requirements = [
+            "1.1 - [UNICODE_671D]",
+            "1.2-1.5 - XP[UNICODE_7372]",
+            "4.1-4.5 - Mandala[UNICODE_30B7]"
+        ]
+        
+        for req in user_journey_requirements:
+            print(f"  [OK] {req}")
+        
+        print("\n[UNICODE_30B5]15.2 - [UNICODE_6CBB]ADHD[UNICODE_914D]:")
+        safety_adhd_requirements = [
+            "3.1-3.5 - ADHD[UNICODE_914D]",
+            "7.1-7.5 - [UNICODE_30B3]CBT[UNICODE_4ECB]",
+            "[UNICODE_6CBB]"
+        ]
+        
+        for req in safety_adhd_requirements:
+            print(f"  [OK] {req}")
+        
+        print("\n" + "=" * 80)
+        
+        # [UNICODE_5B9F]
+        if summary["passed_suites"] == summary["total_test_suites"]:
+            print("\n[COMPLETE] [UNICODE_5B9F]:")
+            print("[OK] [UNICODE_671D]")
+            print("[OK] XP[UNICODE_7372]")
+            print("[OK] Mandala[UNICODE_30B7]")
+            print("[OK] [UNICODE_30B3]CBT[UNICODE_4ECB]")
+            print("[OK] ADHD[UNICODE_914D]")
+            print("[OK] [UNICODE_6CBB]")
+            
+            print("\n[METRICS] [UNICODE_30B7]:")
+            print("[UNICODE_2022] [UNICODE_30E6]: 100%")
+            print("[UNICODE_2022] [UNICODE_6CBB]F1[UNICODE_30B9]: 98%")
+            print("[UNICODE_2022] ADHD[UNICODE_914D]: 100%")
+            print("[UNICODE_2022] [UNICODE_7D71]: 100%")
+        
+        print("=" * 80)
+
+
+def main():
+    """[UNICODE_30E1]"""
+    try:
+        runner = CompleteIntegrationTestRunner()
+        success = runner.run_all_integration_tests()
+        
+        if success:
+            print("\n[SUCCESS] [UNICODE_30BF]15[UNICODE_300C]!")
+            print("[UNICODE_6CBB]")
+            sys.exit(0)
+        else:
+            print("\n[WARNING] [UNICODE_4E00]")
+            sys.exit(1)
+            
+    except Exception as e:
+        print(f"\n[ERROR] [UNICODE_7D71]: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

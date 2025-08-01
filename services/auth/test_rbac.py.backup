@@ -1,0 +1,314 @@
+"""
+RBAC System Simple Test
+
+RBAC[UNICODE_30B7]
+
+Requirements: 6.1
+"""
+
+import sys
+import os
+from datetime import datetime, timedelta
+
+# Add project root to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+from shared.interfaces.rbac_system import (
+    RBACSystem, PermissionLevel, ResourceType, Action
+)
+from shared.middleware.rbac_middleware import (
+    GuardianAuthService, create_access_token, verify_access_token
+)
+
+
+def test_rbac_basic_functionality():
+    """RBAC[UNICODE_57FA]"""
+    print("=== RBAC[UNICODE_57FA] ===")
+    
+    # RBAC[UNICODE_30B7]
+    rbac_system = RBACSystem()
+    print(f"[UNICODE_2713] RBAC[UNICODE_30B7]")
+    print(f"  - [UNICODE_30C7]: {len(rbac_system.roles)}")
+    
+    # [UNICODE_30C6]
+    test_user_id = "test_user_001"
+    test_guardian_id = "test_guardian_001"
+    test_granted_by = "system_admin"
+    
+    # 1. [UNICODE_30ED]
+    print("\n1. [UNICODE_30ED]")
+    success = rbac_system.grant_role(
+        test_user_id,
+        test_guardian_id,
+        PermissionLevel.TASK_EDIT,
+        test_granted_by
+    )
+    print(f"[UNICODE_2713] [UNICODE_30ED]: {success}")
+    
+    # 2. [UNICODE_6A29]
+    print("\n2. [UNICODE_6A29]")
+    
+    # [UNICODE_8AAD]
+    has_read = rbac_system.check_permission(
+        test_guardian_id, test_user_id,
+        ResourceType.TASK_DATA, Action.READ
+    )
+    print(f"[UNICODE_2713] [UNICODE_30BF]: {has_read}")
+    
+    # [UNICODE_66F8]
+    has_write = rbac_system.check_permission(
+        test_guardian_id, test_user_id,
+        ResourceType.TASK_DATA, Action.WRITE
+    )
+    print(f"[UNICODE_2713] [UNICODE_30BF]: {has_write}")
+    
+    # [UNICODE_30C1]
+    has_chat = rbac_system.check_permission(
+        test_guardian_id, test_user_id,
+        ResourceType.CHAT_MESSAGES, Action.WRITE
+    )
+    print(f"[UNICODE_2713] [UNICODE_30C1]: {has_chat}")
+    
+    # 3. [UNICODE_6A29]
+    print("\n3. [UNICODE_6A29]")
+    summary = rbac_system.get_permission_summary(test_guardian_id, test_user_id)
+    print(f"[UNICODE_2713] [UNICODE_30A2]: {summary['has_access']}")
+    print(f"[UNICODE_2713] [UNICODE_6A29]: {summary['permission_level']}")
+    print(f"[UNICODE_2713] [UNICODE_30ED]: {summary['role_name']}")
+    
+    return rbac_system, test_user_id, test_guardian_id
+
+
+def test_guardian_auth_service():
+    """[UNICODE_4FDD]"""
+    print("\n=== [UNICODE_4FDD] ===")
+    
+    auth_service = GuardianAuthService()
+    test_user_id = "auth_test_user"
+    test_guardian_id = "auth_test_guardian"
+    
+    # 1. [UNICODE_30A2]
+    print("\n1. [UNICODE_30A2]")
+    success = auth_service.grant_guardian_access(
+        test_user_id,
+        test_guardian_id,
+        PermissionLevel.CHAT_SEND,
+        "system_admin"
+    )
+    print(f"[UNICODE_2713] [UNICODE_6A29]: {success}")
+    
+    # 2. [UNICODE_8A8D]
+    print("\n2. [UNICODE_8A8D]")
+    try:
+        auth_result = auth_service.authenticate_guardian(
+            test_guardian_id,
+            test_user_id,
+            PermissionLevel.CHAT_SEND
+        )
+        print(f"[UNICODE_2713] [UNICODE_8A8D]")
+        print(f"  - [UNICODE_30C8]: {auth_result['token_type']}")
+        print(f"  - [UNICODE_6709]: {auth_result['expires_in']}[UNICODE_79D2]")
+        print(f"  - [UNICODE_6A29]: {auth_result['permission_level']}")
+        
+        return auth_result["access_token"]
+        
+    except Exception as e:
+        print(f"[UNICODE_2717] [UNICODE_8A8D]: {e}")
+        return None
+
+
+def test_jwt_token_functionality():
+    """JWT[UNICODE_30C8]"""
+    print("\n=== JWT[UNICODE_30C8] ===")
+    
+    test_guardian_id = "jwt_test_guardian"
+    test_user_id = "jwt_test_user"
+    
+    # 1. [UNICODE_30C8]
+    print("\n1. [UNICODE_30C8]")
+    token = create_access_token(
+        test_guardian_id,
+        test_user_id,
+        PermissionLevel.VIEW_ONLY
+    )
+    print(f"[UNICODE_2713] [UNICODE_30C8]")
+    print(f"  - [UNICODE_30C8]: {len(token)}[UNICODE_6587]")
+    
+    # 2. [UNICODE_30C8]
+    print("\n2. [UNICODE_30C8]")
+    try:
+        payload = verify_access_token(token)
+        print(f"[UNICODE_2713] [UNICODE_30C8]")
+        print(f"  - [UNICODE_4FDD]ID: {payload['guardian_id']}")
+        print(f"  - [UNICODE_30E6]ID: {payload['user_id']}")
+        print(f"  - [UNICODE_6A29]: {payload['permission_level']}")
+        print(f"  - [UNICODE_30C8]: {payload['type']}")
+        
+    except Exception as e:
+        print(f"[UNICODE_2717] [UNICODE_30C8]: {e}")
+    
+    # 3. [UNICODE_7121]
+    print("\n3. [UNICODE_7121]")
+    try:
+        invalid_payload = verify_access_token("invalid_token")
+        print(f"[UNICODE_2717] [UNICODE_4E88]: {invalid_payload}")
+    except Exception as e:
+        print(f"[UNICODE_2713] [UNICODE_7121]: {type(e).__name__}")
+
+
+def test_multiple_guardians_scenario():
+    """[UNICODE_8907]"""
+    print("\n=== [UNICODE_8907] ===")
+    
+    rbac_system = RBACSystem()
+    user_id = "multi_test_user"
+    
+    # [UNICODE_8907]
+    guardians = [
+        ("parent_001", PermissionLevel.VIEW_ONLY, "[UNICODE_89AA]"),
+        ("counselor_001", PermissionLevel.TASK_EDIT, "[UNICODE_30AB]"),
+        ("support_worker_001", PermissionLevel.CHAT_SEND, "[UNICODE_652F]")
+    ]
+    
+    print("\n1. [UNICODE_8907]")
+    for guardian_id, permission_level, description in guardians:
+        success = rbac_system.grant_role(
+            user_id, guardian_id, permission_level, "system_admin"
+        )
+        print(f"[UNICODE_2713] {description}: {success}")
+    
+    # 2. [UNICODE_5404]
+    print("\n2. [UNICODE_5404]")
+    for guardian_id, permission_level, description in guardians:
+        # [UNICODE_30E6]
+        can_read_profile = rbac_system.check_permission(
+            guardian_id, user_id, ResourceType.USER_PROFILE, Action.READ
+        )
+        
+        # [UNICODE_30BF]Task-Edit[UNICODE_4EE5]
+        can_edit_tasks = rbac_system.check_permission(
+            guardian_id, user_id, ResourceType.TASK_DATA, Action.WRITE
+        )
+        
+        # [UNICODE_30C1]Chat-Send[UNICODE_306E]
+        can_send_chat = rbac_system.check_permission(
+            guardian_id, user_id, ResourceType.CHAT_MESSAGES, Action.WRITE
+        )
+        
+        print(f"  {description}:")
+        print(f"    - [UNICODE_30D7]: {can_read_profile}")
+        print(f"    - [UNICODE_30BF]: {can_edit_tasks}")
+        print(f"    - [UNICODE_30C1]: {can_send_chat}")
+    
+    # 3. [UNICODE_30E6]
+    print("\n3. [UNICODE_30E6]")
+    user_guardians = rbac_system.get_user_guardians(user_id)
+    print(f"[UNICODE_2713] [UNICODE_4FDD]: {len(user_guardians)}")
+    for guardian in user_guardians:
+        print(f"  - {guardian['guardian_id']}: {guardian['permission_level']}")
+
+
+def test_expired_roles_scenario():
+    """[UNICODE_671F]"""
+    print("\n=== [UNICODE_671F] ===")
+    
+    rbac_system = RBACSystem()
+    user_id = "expire_test_user"
+    guardian_id = "expire_test_guardian"
+    
+    # 1. [UNICODE_671F]
+    print("\n1. [UNICODE_671F]")
+    expired_time = datetime.now() - timedelta(hours=1)
+    success = rbac_system.grant_role(
+        user_id, guardian_id, PermissionLevel.VIEW_ONLY,
+        "system_admin", expired_time
+    )
+    print(f"[UNICODE_2713] [UNICODE_671F]: {success}")
+    
+    # 2. [UNICODE_671F]
+    print("\n2. [UNICODE_671F]")
+    has_permission = rbac_system.check_permission(
+        guardian_id, user_id, ResourceType.USER_PROFILE, Action.READ
+    )
+    print(f"[UNICODE_2713] [UNICODE_671F]: {has_permission} (False[UNICODE_3067])")
+    
+    # 3. [UNICODE_671F]
+    print("\n3. [UNICODE_671F]")
+    cleaned_count = rbac_system.cleanup_expired_roles()
+    print(f"[UNICODE_2713] [UNICODE_30AF]: {cleaned_count}")
+
+
+def test_system_statistics():
+    """[UNICODE_30B7]"""
+    print("\n=== [UNICODE_30B7] ===")
+    
+    rbac_system = RBACSystem()
+    
+    # [UNICODE_3044]
+    test_data = [
+        ("user_001", "guardian_001", PermissionLevel.VIEW_ONLY),
+        ("user_001", "guardian_002", PermissionLevel.TASK_EDIT),
+        ("user_002", "guardian_001", PermissionLevel.CHAT_SEND),
+        ("user_003", "guardian_003", PermissionLevel.VIEW_ONLY),
+    ]
+    
+    for user_id, guardian_id, permission_level in test_data:
+        rbac_system.grant_role(user_id, guardian_id, permission_level, "system_admin")
+    
+    # [UNICODE_7D71]
+    stats = rbac_system.export_roles_data()
+    
+    print(f"[UNICODE_2713] [UNICODE_30B7]:")
+    print(f"  - [UNICODE_5B9A]: {len(stats['roles'])}")
+    print(f"  - [UNICODE_30E6]: {stats['user_roles_count']}")
+    print(f"  - [UNICODE_4FDD]: {stats['guardian_roles_count']}")
+    print(f"  - [UNICODE_30A2]: {stats['total_active_assignments']}")
+    
+    # [UNICODE_5404]
+    print(f"\n[UNICODE_2713] [UNICODE_30ED]:")
+    for role_key, role_info in stats['roles'].items():
+        print(f"  - {role_key}: {role_info['name']}")
+        print(f"    [UNICODE_8AAC]: {role_info['description']}")
+        print(f"    [UNICODE_6A29]: {len(role_info['permissions'])}")
+
+
+def main():
+    """[UNICODE_30E1]"""
+    print("RBAC System Test Suite")
+    print("=" * 50)
+    
+    try:
+        # 1. [UNICODE_57FA]
+        rbac_system, user_id, guardian_id = test_rbac_basic_functionality()
+        
+        # 2. [UNICODE_8A8D]
+        access_token = test_guardian_auth_service()
+        
+        # 3. JWT[UNICODE_30C8]
+        test_jwt_token_functionality()
+        
+        # 4. [UNICODE_8907]
+        test_multiple_guardians_scenario()
+        
+        # 5. [UNICODE_671F]
+        test_expired_roles_scenario()
+        
+        # 6. [UNICODE_30B7]
+        test_system_statistics()
+        
+        print("\n" + "=" * 50)
+        print("[UNICODE_2705] [UNICODE_5168]RBAC[UNICODE_30C6]")
+        print("RBAC[UNICODE_30B7]")
+        
+        return True
+        
+    except Exception as e:
+        print(f"\n[UNICODE_274C] [UNICODE_30C6]: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+if __name__ == "__main__":
+    success = main()
+    exit(0 if success else 1)

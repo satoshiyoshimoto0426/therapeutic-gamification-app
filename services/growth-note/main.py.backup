@@ -1,0 +1,368 @@
+"""
+[UNICODE_30B0]Growth Note[UNICODE_FF09] - [UNICODE_65E5]
+
+4[UNICODE_3064]:
+1. [UNICODE_73FE]
+2. [UNICODE_7406]
+3. [UNICODE_7406]
+4. [UNICODE_660E]
+"""
+
+import random
+import re
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional
+from dataclasses import dataclass
+from enum import Enum
+
+class EmotionalTone(Enum):
+    VERY_NEGATIVE = "very_negative"
+    NEGATIVE = "negative"
+    NEUTRAL = "neutral"
+    POSITIVE = "positive"
+    VERY_POSITIVE = "very_positive"
+
+class ActionOrientation(Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+@dataclass
+class ReflectionPrompts:
+    current_problems_prompt: str
+    ideal_world_prompt: str
+    ideal_emotions_prompt: str
+    tomorrow_actions_prompt: str
+    estimated_time: str
+    xp_reward: int
+
+@dataclass
+class ReflectionAnalysis:
+    emotional_tone: EmotionalTone
+    problem_themes: List[str]
+    action_orientation: ActionOrientation
+    key_insights: List[str]
+    story_personalization_data: Dict
+
+class GrowthNoteSystem:
+    def __init__(self):
+        self.reflection_prompts = {
+            "current_problems": [
+                "[UNICODE_73FE]",
+                "[UNICODE_4ECA]",
+                "[UNICODE_89E3]",
+                "[UNICODE_6700]",
+                "[UNICODE_4ECA]"
+            ],
+            "ideal_world": [
+                "[UNICODE_3042]",
+                "[UNICODE_3082]",
+                "[UNICODE_7406]",
+                "[UNICODE_5B8C]",
+                "[UNICODE_5FC3]"
+            ],
+            "ideal_emotions": [
+                "[UNICODE_7406]",
+                "[UNICODE_305D]",
+                "[UNICODE_7406]",
+                "[UNICODE_7406]",
+                "[UNICODE_305D]"
+            ],
+            "tomorrow_actions": [
+                "[UNICODE_660E]",
+                "[UNICODE_7406]",
+                "[UNICODE_4ECA]",
+                "[UNICODE_7406]",
+                "[UNICODE_4ECA]"
+            ]
+        }
+        
+        self.reflection_xp_base = 25
+        self.problem_keywords = {
+            "social": ["[UNICODE_4EBA]", "[UNICODE_53CB]", "[UNICODE_5BB6]", "[UNICODE_8077]", "[UNICODE_5B66]", "[UNICODE_30B3]", "[UNICODE_5B64]"],
+            "work_study": ["[UNICODE_4ED5]", "[UNICODE_52C9]", "[UNICODE_5B66]", "[UNICODE_8AB2]", "[UNICODE_5BBF]", "[UNICODE_8A66]", "[UNICODE_6210]", "[UNICODE_9032]"],
+            "health": ["[UNICODE_4F53]", "[UNICODE_5065]", "[UNICODE_75B2]", "[UNICODE_7761]", "[UNICODE_904B]", "[UNICODE_98DF]", "[UNICODE_75C5]"],
+            "mental": ["[UNICODE_4E0D]", "[UNICODE_5FC3]", "[UNICODE_30B9]", "[UNICODE_6182]", "[UNICODE_6C17]", "[UNICODE_611F]", "[UNICODE_30E1]"],
+            "time": ["[UNICODE_6642]", "[UNICODE_30B9]", "[UNICODE_5FD9]", "[UNICODE_4F59]", "[UNICODE_7DE0]", "[UNICODE_9045]"],
+            "motivation": ["[UNICODE_3084]", "[UNICODE_30E2]", "[UNICODE_96C6]", "[UNICODE_7D99]", "[UNICODE_7FD2]", "[UNICODE_76EE]"]
+        }
+        
+        self.positive_emotion_words = [
+            "[UNICODE_5B09]", "[UNICODE_697D]", "[UNICODE_5E78]", "[UNICODE_6E80]", "[UNICODE_5145]", "[UNICODE_5B89]", "[UNICODE_7A4F]", "[UNICODE_5E0C]",
+            "[UNICODE_559C]", "[UNICODE_611F]", "[UNICODE_9054]", "[UNICODE_81EA]", "[UNICODE_30EA]", "[UNICODE_5E73]", "[UNICODE_611B]"
+        ]
+        
+        self.negative_emotion_words = [
+            "[UNICODE_60B2]", "[UNICODE_8F9B]", "[UNICODE_82E6]", "[UNICODE_4E0D]", "[UNICODE_5FC3]", "[UNICODE_30B9]", "[UNICODE_75B2]", "[UNICODE_5B64]",
+            "[UNICODE_6012]", "[UNICODE_30A4]", "[UNICODE_7126]", "[UNICODE_7D76]", "[UNICODE_843D]", "[UNICODE_6182]"
+        ]
+
+    def generate_reflection_prompt(self, user_context: Dict) -> ReflectionPrompts:
+        """[UNICODE_30E6]"""
+        mood = user_context.get("mood", 3)
+        completed_tasks = user_context.get("completed_tasks", 0)
+        recent_struggles = user_context.get("recent_struggles", [])
+        
+        return ReflectionPrompts(
+            current_problems_prompt=self._select_contextual_prompt(
+                "current_problems", mood, completed_tasks, recent_struggles
+            ),
+            ideal_world_prompt=self._select_contextual_prompt(
+                "ideal_world", mood, completed_tasks, recent_struggles
+            ),
+            ideal_emotions_prompt=self._select_contextual_prompt(
+                "ideal_emotions", mood, completed_tasks, recent_struggles
+            ),
+            tomorrow_actions_prompt=self._select_contextual_prompt(
+                "tomorrow_actions", mood, completed_tasks, recent_struggles
+            ),
+            estimated_time="10-15[UNICODE_5206]",
+            xp_reward=self.reflection_xp_base
+        )
+
+    def _select_contextual_prompt(self, category: str, mood: int, 
+                                completed_tasks: int, recent_struggles: List[str]) -> str:
+        """[UNICODE_30B3]"""
+        base_prompts = self.reflection_prompts[category]
+        
+        # [UNICODE_6C17]
+        if mood <= 2:  # [UNICODE_4F4E]
+            if category == "current_problems":
+                return "[UNICODE_4ECA]"
+            elif category == "ideal_world":
+                return "[UNICODE_7406]"
+            elif category == "ideal_emotions":
+                return "[UNICODE_7406]"
+            elif category == "tomorrow_actions":
+                return "[UNICODE_660E]"
+        
+        elif mood >= 4:  # [UNICODE_9AD8]
+            if category == "current_problems":
+                return "[UNICODE_4ECA]"
+            elif category == "ideal_world":
+                return "[UNICODE_524D]"
+            elif category == "ideal_emotions":
+                return "[UNICODE_7406]"
+            elif category == "tomorrow_actions":
+                return "[UNICODE_3053]"
+        
+        # [UNICODE_30BF]
+        if completed_tasks == 0:
+            if category == "tomorrow_actions":
+                return "[UNICODE_4ECA]"
+        elif completed_tasks >= 5:
+            if category == "tomorrow_actions":
+                return "[UNICODE_4ECA]"
+        
+        # [UNICODE_30C7]
+        return random.choice(base_prompts)
+
+    def process_reflection(self, reflection_data: Dict) -> ReflectionAnalysis:
+        """[UNICODE_632F]"""
+        current_problems = reflection_data.get("current_problems", "")
+        ideal_world = reflection_data.get("ideal_world", "")
+        ideal_emotions = reflection_data.get("ideal_emotions", "")
+        tomorrow_actions = reflection_data.get("tomorrow_actions", "")
+        
+        # [UNICODE_611F]
+        emotional_tone = self._analyze_emotional_tone(ideal_emotions)
+        
+        # [UNICODE_554F]
+        problem_themes = self._extract_problem_themes(current_problems)
+        
+        # [UNICODE_884C]
+        action_orientation = self._analyze_action_orientation(tomorrow_actions)
+        
+        # [UNICODE_30AD]
+        key_insights = self._extract_key_insights(reflection_data)
+        
+        # [UNICODE_30B9]
+        story_personalization_data = {
+            "current_challenges": problem_themes,
+            "ideal_vision": self._extract_key_themes(ideal_world),
+            "emotional_state": emotional_tone.value,
+            "action_readiness": action_orientation.value,
+            "reflection_timestamp": datetime.now().isoformat()
+        }
+        
+        return ReflectionAnalysis(
+            emotional_tone=emotional_tone,
+            problem_themes=problem_themes,
+            action_orientation=action_orientation,
+            key_insights=key_insights,
+            story_personalization_data=story_personalization_data
+        )
+
+    def _analyze_emotional_tone(self, emotional_text: str) -> EmotionalTone:
+        """[UNICODE_611F]"""
+        if not emotional_text:
+            return EmotionalTone.NEUTRAL
+        
+        text_lower = emotional_text.lower()
+        
+        positive_count = sum(1 for word in self.positive_emotion_words if word in text_lower)
+        negative_count = sum(1 for word in self.negative_emotion_words if word in text_lower)
+        
+        if positive_count > negative_count:
+            if positive_count >= 3:
+                return EmotionalTone.VERY_POSITIVE
+            else:
+                return EmotionalTone.POSITIVE
+        elif negative_count > positive_count:
+            if negative_count >= 3:
+                return EmotionalTone.VERY_NEGATIVE
+            else:
+                return EmotionalTone.NEGATIVE
+        else:
+            return EmotionalTone.NEUTRAL
+
+    def _extract_problem_themes(self, problems_text: str) -> List[str]:
+        """[UNICODE_554F]"""
+        if not problems_text:
+            return []
+        
+        themes = []
+        text_lower = problems_text.lower()
+        
+        for theme, keywords in self.problem_keywords.items():
+            if any(keyword in text_lower for keyword in keywords):
+                themes.append(theme)
+        
+        return themes
+
+    def _analyze_action_orientation(self, actions_text: str) -> ActionOrientation:
+        """[UNICODE_884C]"""
+        if not actions_text:
+            return ActionOrientation.LOW
+        
+        # [UNICODE_5177]
+        action_keywords = [
+            "[UNICODE_3059]", "[UNICODE_3084]", "[UNICODE_59CB]", "[UNICODE_7D9A]", "[UNICODE_53D6]", "[UNICODE_5B9F]", "[UNICODE_5B9F]",
+            "[UNICODE_6311]", "[UNICODE_9811]", "[UNICODE_52AA]", "[UNICODE_884C]", "[UNICODE_5B9F]", "[UNICODE_9054]"
+        ]
+        
+        # [UNICODE_6642]
+        time_keywords = [
+            "[UNICODE_660E]", "[UNICODE_6765]", "[UNICODE_4ECA]", "[UNICODE_3059]", "[UNICODE_4ECA]", "[UNICODE_6BCE]", "[UNICODE_5B9A]"
+        ]
+        
+        action_count = sum(1 for word in action_keywords if word in actions_text)
+        time_count = sum(1 for word in time_keywords if word in actions_text)
+        
+        total_score = action_count + time_count
+        text_length = len(actions_text)
+        
+        if total_score >= 3 and text_length > 30:
+            return ActionOrientation.HIGH
+        elif total_score >= 1 and text_length > 10:
+            return ActionOrientation.MEDIUM
+        else:
+            return ActionOrientation.LOW
+
+    def _extract_key_insights(self, reflection_data: Dict) -> List[str]:
+        """[UNICODE_30AD]"""
+        insights = []
+        
+        current_problems = reflection_data.get("current_problems", "")
+        ideal_world = reflection_data.get("ideal_world", "")
+        tomorrow_actions = reflection_data.get("tomorrow_actions", "")
+        
+        # [UNICODE_554F]
+        if current_problems and ideal_world:
+            insights.append("[UNICODE_73FE]")
+        
+        # [UNICODE_5177]
+        if len(tomorrow_actions) > 30:
+            insights.append("[UNICODE_660E]")
+        
+        # [UNICODE_611F]
+        ideal_emotions = reflection_data.get("ideal_emotions", "")
+        if len(ideal_emotions) > 20:
+            insights.append("[UNICODE_7406]")
+        
+        return insights
+
+    def _extract_key_themes(self, text: str) -> List[str]:
+        """[UNICODE_30C6]"""
+        if not text:
+            return []
+        
+        # [UNICODE_7C21]NLP[UNICODE_51E6]
+        themes = []
+        
+        # [UNICODE_983B]
+        important_concepts = [
+            "[UNICODE_4ED5]", "[UNICODE_5BB6]", "[UNICODE_53CB]", "[UNICODE_5065]", "[UNICODE_5B66]", "[UNICODE_6210]", "[UNICODE_5E78]", "[UNICODE_5B89]",
+            "[UNICODE_81EA]", "[UNICODE_5275]", "[UNICODE_6311]", "[UNICODE_9054]", "[UNICODE_3064]", "[UNICODE_5E73]", "[UNICODE_611B]"
+        ]
+        
+        for concept in important_concepts:
+            if concept in text:
+                themes.append(concept)
+        
+        return themes[:5]  # [UNICODE_6700]5[UNICODE_3064]
+
+    def calculate_reflection_xp(self, reflection_analysis: ReflectionAnalysis) -> int:
+        """[UNICODE_632F]XP[UNICODE_8A08]"""
+        base_xp = self.reflection_xp_base
+        
+        # [UNICODE_884C]
+        if reflection_analysis.action_orientation == ActionOrientation.HIGH:
+            base_xp += 10
+        elif reflection_analysis.action_orientation == ActionOrientation.MEDIUM:
+            base_xp += 5
+        
+        # [UNICODE_30A4]
+        insight_bonus = len(reflection_analysis.key_insights) * 3
+        
+        # [UNICODE_554F]
+        theme_bonus = len(reflection_analysis.problem_themes) * 2
+        
+        return base_xp + insight_bonus + theme_bonus
+
+# [UNICODE_4F7F]
+def demo_growth_note_system():
+    """[UNICODE_30B0]"""
+    system = GrowthNoteSystem()
+    
+    # [UNICODE_30B5]
+    user_context = {
+        "mood": 3,
+        "completed_tasks": 2,
+        "recent_struggles": ["social", "motivation"]
+    }
+    
+    # [UNICODE_30D7]
+    prompts = system.generate_reflection_prompt(user_context)
+    print("=== [UNICODE_751F] ===")
+    print(f"[UNICODE_73FE]: {prompts.current_problems_prompt}")
+    print(f"[UNICODE_7406]: {prompts.ideal_world_prompt}")
+    print(f"[UNICODE_7406]: {prompts.ideal_emotions_prompt}")
+    print(f"[UNICODE_660E]: {prompts.tomorrow_actions_prompt}")
+    print(f"[UNICODE_4E88]: {prompts.estimated_time}")
+    print(f"XP[UNICODE_5831]: {prompts.xp_reward}")
+    
+    # [UNICODE_30B5]
+    sample_reflection = {
+        "current_problems": "[UNICODE_4EBA]",
+        "ideal_world": "[UNICODE_53CB]",
+        "ideal_emotions": "[UNICODE_5B89]",
+        "tomorrow_actions": "[UNICODE_660E]"
+    }
+    
+    # [UNICODE_632F]
+    analysis = system.process_reflection(sample_reflection)
+    print("\n=== [UNICODE_632F] ===")
+    print(f"[UNICODE_611F]: {analysis.emotional_tone.value}")
+    print(f"[UNICODE_554F]: {analysis.problem_themes}")
+    print(f"[UNICODE_884C]: {analysis.action_orientation.value}")
+    print(f"[UNICODE_30AD]: {analysis.key_insights}")
+    
+    # XP[UNICODE_8A08]
+    xp_earned = system.calculate_reflection_xp(analysis)
+    print(f"[UNICODE_7372]XP: {xp_earned}")
+    
+    return system, analysis
+
+if __name__ == "__main__":
+    demo_growth_note_system()

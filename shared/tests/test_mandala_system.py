@@ -1,0 +1,533 @@
+"""
+Mandala System Unit Tests
+
+MandalaGrid?
+
+Requirements: 4.1, 4.3
+"""
+
+import pytest
+from datetime import datetime, timedelta
+from typing import Dict, Any
+
+from shared.interfaces.mandala_system import (
+    MandalaGrid, MemoryCell, CoreValue, CellStatus, MandalaSystemInterface
+)
+from shared.interfaces.mandala_validation import (
+    MandalaValidator, MandalaBusinessRules, ValidationResult
+)
+
+
+class TestMandalaGrid:
+    """MandalaGrid?"""
+    
+    def test_grid_initialization(self):
+        """?"""
+        uid = "test_user_001"
+        grid = MandalaGrid(uid)
+        
+        # 基本
+        assert grid.uid == uid
+        assert len(grid.grid) == 9
+        assert all(len(row) == 9 for row in grid.grid)
+        assert grid.total_cells == 81
+        assert grid.unlocked_count == 0
+        
+        # ?
+        assert len(grid.core_values) == 9
+        core_positions = [(4, 4), (3, 4), (5, 4), (4, 3), (4, 5), (3, 3), (5, 5), (3, 5), (5, 3)]
+        for pos in core_positions:
+            assert pos in grid.core_values
+            x, y = pos
+            cell = grid.grid[x][y]
+            assert cell is not None
+            assert cell.status == CellStatus.CORE_VALUE
+    
+    def test_core_values_initialization(self):
+        """?"""
+        grid = MandalaGrid("test_user")
+        
+        # ?Core Self?
+        center_cell = grid.grid[4][4]
+        assert center_cell.quest_title == "Core Self"
+        assert center_cell.status == CellStatus.CORE_VALUE
+        
+        # ?
+        expected_values = {
+            (4, 4): "Core Self",
+            (3, 4): "Compassion",
+            (5, 4): "Growth",
+            (4, 3): "Authenticity",
+            (4, 5): "Connection"
+        }
+        
+        for pos, expected_name in expected_values.items():
+            core_value = grid.core_values[pos]
+            assert core_value.name == expected_name
+            assert core_value.therapeutic_principle is not None
+            assert core_value.daily_reminder is not None
+    
+    def test_unlock_cell_success(self):
+        """?"""
+        grid = MandalaGrid("test_user")
+        
+        # ?
+        quest_data = {
+            "cell_id": "test_cell_001",
+            "quest_title": "?",
+            "quest_description": "?30?",
+            "xp_reward": 50,
+            "difficulty": 2,
+            "therapeutic_focus": "Self-Discipline"
+        }
+        
+        result = grid.unlock_cell(3, 3, quest_data)  # ?
+        assert result is True
+        assert grid.unlocked_count == 1
+        
+        cell = grid.grid[3][3]
+        assert cell is not None
+        assert cell.quest_title == "?"
+        assert cell.status == CellStatus.UNLOCKED
+        assert cell.xp_reward == 50
+        assert cell.difficulty == 2
+    
+    def test_unlock_cell_invalid_position(self):
+        """無"""
+        grid = MandalaGrid("test_user")
+        
+        quest_data = {
+            "quest_title": "?",
+            "quest_description": "?",
+            "xp_reward": 10,
+            "difficulty": 1
+        }
+        
+        # ?
+        assert grid.unlock_cell(-1, 0, quest_data) is False
+        assert grid.unlock_cell(9, 0, quest_data) is False
+        assert grid.unlock_cell(0, -1, quest_data) is False
+        assert grid.unlock_cell(0, 9, quest_data) is False
+    
+    def test_unlock_cell_core_value_position(self):
+        """?"""
+        grid = MandalaGrid("test_user")
+        
+        quest_data = {
+            "quest_title": "?",
+            "quest_description": "?",
+            "xp_reward": 10,
+            "difficulty": 1
+        }
+        
+        # ?
+        assert grid.unlock_cell(4, 4, quest_data) is False
+        assert grid.unlock_cell(3, 4, quest_data) is False
+    
+    def test_unlock_cell_no_adjacent(self):
+        """?"""
+        grid = MandalaGrid("test_user")
+        
+        quest_data = {
+            "quest_title": "?",
+            "quest_description": "?",
+            "xp_reward": 10,
+            "difficulty": 1
+        }
+        
+        # ?
+        assert grid.unlock_cell(0, 0, quest_data) is False
+        assert grid.unlock_cell(8, 8, quest_data) is False
+    
+    def test_complete_cell_success(self):
+        """?"""
+        grid = MandalaGrid("test_user")
+        
+        # ま
+        quest_data = {
+            "quest_title": "?",
+            "quest_description": "?",
+            "xp_reward": 10,
+            "difficulty": 1
+        }
+        grid.unlock_cell(3, 3, quest_data)
+        
+        # ?
+        result = grid.complete_cell(3, 3)
+        assert result is True
+        
+        cell = grid.grid[3][3]
+        assert cell.status == CellStatus.COMPLETED
+        assert cell.completion_time is not None
+        assert isinstance(cell.completion_time, datetime)
+    
+    def test_complete_cell_not_unlocked(self):
+        """?"""
+        grid = MandalaGrid("test_user")
+        
+        # ?
+        assert grid.complete_cell(0, 0) is False
+        
+        # ?
+        assert grid.complete_cell(4, 4) is False
+    
+    def test_get_unlocked_cells(self):
+        """アプリ"""
+        grid = MandalaGrid("test_user")
+        
+        # ?
+        unlocked = grid.get_unlocked_cells()
+        assert len(unlocked) == 0
+        
+        # ?
+        quest_data = {
+            "quest_title": "?1",
+            "quest_description": "?",
+            "xp_reward": 10,
+            "difficulty": 1
+        }
+        grid.unlock_cell(3, 3, quest_data)
+        
+        quest_data2 = {
+            "quest_title": "?2",
+            "quest_description": "?",
+            "xp_reward": 20,
+            "difficulty": 2
+        }
+        grid.unlock_cell(5, 5, quest_data2)
+        
+        unlocked = grid.get_unlocked_cells()
+        assert len(unlocked) == 2
+        assert all(cell.status == CellStatus.UNLOCKED for cell in unlocked)
+    
+    def test_get_completed_cells(self):
+        """?"""
+        grid = MandalaGrid("test_user")
+        
+        # ?
+        quest_data = {
+            "quest_title": "?",
+            "quest_description": "?",
+            "xp_reward": 10,
+            "difficulty": 1
+        }
+        grid.unlock_cell(3, 3, quest_data)
+        grid.complete_cell(3, 3)
+        
+        completed = grid.get_completed_cells()
+        assert len(completed) == 1
+        assert completed[0].status == CellStatus.COMPLETED
+    
+    def test_daily_core_value_reminder(self):
+        """?"""
+        grid = MandalaGrid("test_user")
+        
+        reminder = grid.get_daily_core_value_reminder()
+        assert isinstance(reminder, str)
+        assert len(reminder) > 0
+        assert "?" in reminder
+    
+    def test_serialize_grid(self):
+        """?"""
+        grid = MandalaGrid("test_user")
+        
+        # ?
+        quest_data = {
+            "quest_title": "?",
+            "quest_description": "?",
+            "xp_reward": 50,
+            "difficulty": 3,
+            "therapeutic_focus": "Self-Discipline"
+        }
+        grid.unlock_cell(3, 3, quest_data)
+        
+        serialized = grid.serialize_grid()
+        
+        # 基本
+        assert serialized["uid"] == "test_user"
+        assert serialized["unlocked_count"] == 1
+        assert serialized["total_cells"] == 81
+        assert "grid" in serialized
+        assert "core_values" in serialized
+        assert "last_updated" in serialized
+        
+        # ?
+        grid_data = serialized["grid"]
+        assert len(grid_data) == 9
+        assert all(len(row) == 9 for row in grid_data)
+        
+        # アプリ
+        cell_data = grid_data[3][3]
+        assert cell_data["quest_title"] == "?"
+        assert cell_data["status"] == "unlocked"
+        assert cell_data["xp_reward"] == 50
+    
+    def test_deserialize_grid(self):
+        """?"""
+        # システム
+        serialized_data = {
+            "uid": "test_user",
+            "unlocked_count": 1,
+            "total_cells": 81,
+            "last_updated": datetime.now().isoformat(),
+            "grid": [[{"status": "locked"} for _ in range(9)] for _ in range(9)]
+        }
+        
+        # ?
+        serialized_data["grid"][3][3] = {
+            "cell_id": "test_cell",
+            "position": [3, 3],
+            "status": "unlocked",
+            "quest_title": "?",
+            "quest_description": "?",
+            "xp_reward": 50,
+            "difficulty": 3,
+            "therapeutic_focus": "Self-Discipline"
+        }
+        
+        # デフォルト
+        grid = MandalaGrid.deserialize_grid(serialized_data)
+        
+        assert grid.uid == "test_user"
+        assert grid.unlocked_count == 1
+        
+        # ?
+        cell = grid.grid[3][3]
+        assert cell is not None
+        assert cell.quest_title == "?"
+        assert cell.status == CellStatus.UNLOCKED
+
+
+class TestMandalaSystemInterface:
+    """MandalaSystemInterface?"""
+    
+    def test_get_or_create_grid(self):
+        """?"""
+        interface = MandalaSystemInterface()
+        
+        # ?
+        grid1 = interface.get_or_create_grid("user1")
+        assert grid1.uid == "user1"
+        assert len(interface.grids) == 1
+        
+        # ?
+        grid2 = interface.get_or_create_grid("user1")
+        assert grid1 is grid2
+        assert len(interface.grids) == 1
+        
+        # ?
+        grid3 = interface.get_or_create_grid("user2")
+        assert grid3.uid == "user2"
+        assert len(interface.grids) == 2
+    
+    def test_get_grid_api_response(self):
+        """API?"""
+        interface = MandalaSystemInterface()
+        
+        response = interface.get_grid_api_response("test_user")
+        
+        assert "uid" in response
+        assert "grid" in response
+        assert "unlocked_count" in response
+        assert "total_cells" in response
+        assert response["uid"] == "test_user"
+        assert response["total_cells"] == 81
+    
+    def test_unlock_cell_for_user(self):
+        """ユーザー"""
+        interface = MandalaSystemInterface()
+        
+        quest_data = {
+            "quest_title": "?",
+            "quest_description": "?",
+            "xp_reward": 10,
+            "difficulty": 1
+        }
+        
+        result = interface.unlock_cell_for_user("test_user", 3, 3, quest_data)
+        assert result is True
+        
+        grid = interface.grids["test_user"]
+        assert grid.unlocked_count == 1
+    
+    def test_complete_cell_for_user(self):
+        """ユーザー"""
+        interface = MandalaSystemInterface()
+        
+        # ま
+        quest_data = {
+            "quest_title": "?",
+            "quest_description": "?",
+            "xp_reward": 10,
+            "difficulty": 1
+        }
+        interface.unlock_cell_for_user("test_user", 3, 3, quest_data)
+        
+        # ?
+        result = interface.complete_cell_for_user("test_user", 3, 3)
+        assert result is True
+        
+        grid = interface.grids["test_user"]
+        cell = grid.grid[3][3]
+        assert cell.status == CellStatus.COMPLETED
+    
+    def test_get_daily_reminder_for_user(self):
+        """ユーザー"""
+        interface = MandalaSystemInterface()
+        
+        reminder = interface.get_daily_reminder_for_user("test_user")
+        assert isinstance(reminder, str)
+        assert len(reminder) > 0
+
+
+class TestMandalaValidator:
+    """MandalaValidator?"""
+    
+    def test_validate_grid_structure_valid(self):
+        """?"""
+        validator = MandalaValidator()
+        grid = MandalaGrid("test_user")
+        
+        result = validator.validate_grid_structure(grid)
+        assert result.is_valid is True
+        assert result.error_code is None
+    
+    def test_validate_cell_data_valid(self):
+        """?"""
+        validator = MandalaValidator()
+        
+        cell = MemoryCell(
+            cell_id="test_cell",
+            position=(3, 3),
+            status=CellStatus.UNLOCKED,
+            quest_title="?",
+            quest_description="?",
+            xp_reward=50,
+            difficulty=3
+        )
+        
+        result = validator.validate_cell_data(cell)
+        assert result.is_valid is True
+    
+    def test_validate_cell_data_invalid_difficulty(self):
+        """無"""
+        validator = MandalaValidator()
+        
+        cell = MemoryCell(
+            cell_id="test_cell",
+            position=(3, 3),
+            status=CellStatus.UNLOCKED,
+            quest_title="?",
+            quest_description="?",
+            xp_reward=50,
+            difficulty=10  # 無
+        )
+        
+        result = validator.validate_cell_data(cell)
+        assert result.is_valid is False
+        assert result.error_code == "CELL_DATA_INVALID"
+        assert "?" in result.error_message
+    
+    def test_validate_unlock_request_valid(self):
+        """?"""
+        validator = MandalaValidator()
+        grid = MandalaGrid("test_user")
+        
+        quest_data = {
+            "quest_title": "?",
+            "quest_description": "?",
+            "xp_reward": 50,
+            "difficulty": 3
+        }
+        
+        result = validator.validate_unlock_request(grid, 3, 3, quest_data)
+        assert result.is_valid is True
+    
+    def test_validate_unlock_request_invalid_coordinates(self):
+        """無"""
+        validator = MandalaValidator()
+        grid = MandalaGrid("test_user")
+        
+        quest_data = {
+            "quest_title": "?",
+            "quest_description": "?",
+            "xp_reward": 50,
+            "difficulty": 3
+        }
+        
+        result = validator.validate_unlock_request(grid, -1, 0, quest_data)
+        assert result.is_valid is False
+        assert result.error_code == "INVALID_COORDINATES"
+    
+    def test_validate_completion_request_valid(self):
+        """?"""
+        validator = MandalaValidator()
+        grid = MandalaGrid("test_user")
+        
+        # ?
+        quest_data = {
+            "quest_title": "?",
+            "quest_description": "?",
+            "xp_reward": 10,
+            "difficulty": 1
+        }
+        grid.unlock_cell(3, 3, quest_data)
+        
+        result = validator.validate_completion_request(grid, 3, 3)
+        assert result.is_valid is True
+    
+    def test_validate_completion_request_cell_not_exists(self):
+        """?"""
+        validator = MandalaValidator()
+        grid = MandalaGrid("test_user")
+        
+        result = validator.validate_completion_request(grid, 0, 0)
+        assert result.is_valid is False
+        assert result.error_code == "COMPLETION_REQUEST_INVALID"
+        assert "?" in result.error_message
+
+
+class TestMandalaBusinessRules:
+    """MandalaBusinessRules?"""
+    
+    def test_can_unlock_today_within_limit(self):
+        """?"""
+        rules = MandalaBusinessRules()
+        grid = MandalaGrid("test_user")
+        
+        result = rules.can_unlock_today(grid, 2)  # ?
+        assert result.is_valid is True
+    
+    def test_can_unlock_today_exceed_limit(self):
+        """?"""
+        rules = MandalaBusinessRules()
+        grid = MandalaGrid("test_user")
+        
+        result = rules.can_unlock_today(grid, 3)  # ?
+        assert result.is_valid is False
+        assert result.error_code == "DAILY_UNLOCK_LIMIT_EXCEEDED"
+    
+    def test_can_complete_now_valid_interval(self):
+        """?"""
+        rules = MandalaBusinessRules()
+        grid = MandalaGrid("test_user")
+        
+        # 2?
+        last_time = (datetime.now() - timedelta(hours=2)).isoformat()
+        result = rules.can_complete_now(grid, 3, 3, last_time)
+        assert result.is_valid is True
+    
+    def test_can_complete_now_invalid_interval(self):
+        """無"""
+        rules = MandalaBusinessRules()
+        grid = MandalaGrid("test_user")
+        
+        # 30?
+        last_time = (datetime.now() - timedelta(minutes=30)).isoformat()
+        result = rules.can_complete_now(grid, 3, 3, last_time)
+        assert result.is_valid is False
+        assert result.error_code == "COMPLETION_INTERVAL_TOO_SHORT"
+
+
+if __name__ == "__main__":
+    pytest.main([__file__])

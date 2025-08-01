@@ -1,0 +1,251 @@
+"""
+Test suite for mobile-optimized story delivery implementation
+Tests evening story delivery, choice handling, and Mandala integration
+"""
+
+import sys
+import os
+
+# Add current directory to path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+def test_mobile_story_delivery_functions():
+    """Test mobile story delivery functions"""
+    try:
+        from mobile_story_delivery import (
+            create_mobile_optimized_evening_story,
+            create_mobile_story_choices,
+            create_story_choice_confirmation,
+            create_mandala_story_grid,
+            create_evening_motivation_message,
+            format_story_for_mobile
+        )
+        print("[UNICODE_2705] Successfully imported mobile story delivery functions")
+        
+        # Test data
+        sample_story_data = {
+            "title": "[UNICODE_4ECA]",
+            "content": "[UNICODE_4ECA]",
+            "choices": [
+                {
+                    "id": "choice_1",
+                    "text": "[UNICODE_65B0]",
+                    "real_task_id": "task_123",
+                    "effect": "[UNICODE_5B66]"
+                },
+                {
+                    "id": "choice_2", 
+                    "text": "[UNICODE_53CB]",
+                    "habit_tag": "social_connection",
+                    "effect": "[UNICODE_793E]"
+                },
+                {
+                    "id": "choice_3",
+                    "text": "[UNICODE_4F11]",
+                    "effect": "[UNICODE_56DE]"
+                }
+            ]
+        }
+        
+        # Test mobile-optimized evening story
+        story_message = create_mobile_optimized_evening_story(sample_story_data)
+        assert story_message is not None
+        assert hasattr(story_message, 'alt_text')
+        assert "[UNICODE_4ECA]" in story_message.alt_text
+        print("[UNICODE_2705] Mobile-optimized evening story creation: PASSED")
+        
+        # Test story choices creation
+        choice_bubbles = create_mobile_story_choices(sample_story_data["choices"])
+        assert len(choice_bubbles) == 3  # Should create 3 rows for 3x3 grid
+        print("[UNICODE_2705] Mobile story choices creation: PASSED")
+        
+        # Test choice confirmation
+        choice_data = sample_story_data["choices"][0]
+        task_info = {"title": "[UNICODE_30D7]", "difficulty": 3}
+        confirmation = create_story_choice_confirmation(choice_data, task_info)
+        assert confirmation is not None
+        assert "[UNICODE_9078]" in confirmation.alt_text
+        print("[UNICODE_2705] Story choice confirmation: PASSED")
+        
+        # Test Mandala story grid
+        story_elements = [
+            {"id": "elem_1", "type": "choice", "text": "[UNICODE_5B66]"},
+            {"id": "elem_2", "type": "growth", "text": "[UNICODE_6210]"},
+            {"id": "elem_3", "type": "challenge", "text": "[UNICODE_6311]"}
+        ]
+        mandala_grid = create_mandala_story_grid(story_elements)
+        assert mandala_grid is not None
+        assert "[UNICODE_7269]Mandala" in mandala_grid.alt_text
+        print("[UNICODE_2705] Mandala story grid creation: PASSED")
+        
+        # Test evening motivation message
+        motivation = create_evening_motivation_message()
+        assert motivation is not None
+        assert "[UNICODE_4ECA]" in motivation.alt_text
+        print("[UNICODE_2705] Evening motivation message: PASSED")
+        
+        # Test story formatting for mobile
+        long_story = "[UNICODE_3053]" * 10
+        formatted = format_story_for_mobile(long_story)
+        assert len(formatted.split('\n\n')) <= 5  # Should be limited for mobile
+        print("[UNICODE_2705] Story formatting for mobile: PASSED")
+        
+        return True
+        
+    except ImportError as e:
+        print(f"[UNICODE_274C] Import error: {e}")
+        return False
+    except Exception as e:
+        print(f"[UNICODE_274C] Test error: {e}")
+        return False
+
+def test_story_choice_mobile_optimization():
+    """Test story choice mobile optimizations"""
+    try:
+        from mobile_story_delivery import create_mobile_choice_button, create_empty_choice_slot
+        
+        # Test choice button with long text (should truncate)
+        long_choice = {
+            "id": "choice_long",
+            "text": "[UNICODE_3053]",
+            "real_task_id": "task_123"
+        }
+        
+        choice_button = create_mobile_choice_button(long_choice)
+        choice_text = choice_button.contents[1].text
+        
+        # Should be truncated for mobile display
+        assert len(choice_text) <= 15  # 12 chars + "..."
+        print("[UNICODE_2705] Choice text truncation for mobile: PASSED")
+        
+        # Test empty choice slot
+        empty_slot = create_empty_choice_slot()
+        assert empty_slot is not None
+        assert empty_slot.contents[1].text == "[UNICODE_601D]..."
+        print("[UNICODE_2705] Empty choice slot creation: PASSED")
+        
+        # Test choice button with task link
+        task_choice = {
+            "id": "choice_task",
+            "text": "[UNICODE_30BF]",
+            "real_task_id": "task_456"
+        }
+        
+        task_button = create_mobile_choice_button(task_choice)
+        task_emoji = task_button.contents[0].text
+        assert task_emoji == "[UNICODE_1F4DD]"  # Should show task emoji
+        print("[UNICODE_2705] Task-linked choice button: PASSED")
+        
+        # Test choice button with habit tag
+        habit_choice = {
+            "id": "choice_habit",
+            "text": "[UNICODE_7FD2]",
+            "habit_tag": "morning_routine"
+        }
+        
+        habit_button = create_mobile_choice_button(habit_choice)
+        habit_emoji = habit_button.contents[0].text
+        assert habit_emoji == "[UNICODE_1F504]"  # Should show habit emoji
+        print("[UNICODE_2705] Habit-linked choice button: PASSED")
+        
+        return True
+        
+    except Exception as e:
+        print(f"[UNICODE_274C] Story choice mobile optimization test error: {e}")
+        return False
+
+def test_mandala_grid_mobile_layout():
+    """Test 3x3 Mandala grid mobile layout"""
+    try:
+        from mobile_story_delivery import create_mandala_story_grid, create_mandala_story_cell, create_empty_mandala_cell
+        
+        # Test with many elements (should limit to 9 for 3x3 grid)
+        many_elements = []
+        for i in range(15):
+            many_elements.append({
+                "id": f"elem_{i}",
+                "type": "choice",
+                "text": f"[UNICODE_8981]{i}"
+            })
+        
+        mandala_grid = create_mandala_story_grid(many_elements)
+        
+        # Should have header + 3 rows = 4 bubbles (limited to 9 elements in 3x3 grid)
+        bubbles = mandala_grid.contents.contents
+        assert len(bubbles) == 4
+        print("[UNICODE_2705] Mandala grid 3x3 layout limit: PASSED")
+        
+        # Test individual Mandala cell
+        element = {
+            "id": "test_elem",
+            "type": "growth",
+            "text": "[UNICODE_6210]"
+        }
+        
+        cell = create_mandala_story_cell(element)
+        assert cell is not None
+        assert cell.contents[0].text == "[UNICODE_1F331]"  # Growth emoji
+        print("[UNICODE_2705] Mandala story cell creation: PASSED")
+        
+        # Test empty Mandala cell
+        empty_cell = create_empty_mandala_cell()
+        assert empty_cell is not None
+        assert empty_cell.contents[0].text == "[UNICODE_2B55]"
+        print("[UNICODE_2705] Empty Mandala cell creation: PASSED")
+        
+        return True
+        
+    except Exception as e:
+        print(f"[UNICODE_274C] Mandala grid mobile layout test error: {e}")
+        return False
+
+def test_evening_story_scheduling():
+    """Test evening story scheduling and timing"""
+    try:
+        from mobile_story_delivery import get_evening_story_motivational_messages
+        
+        # Test motivational messages collection
+        messages = get_evening_story_motivational_messages()
+        assert len(messages) > 0
+        assert all(isinstance(msg, str) for msg in messages)
+        print("[UNICODE_2705] Evening motivational messages: PASSED")
+        
+        # Test that messages are appropriate for evening time
+        evening_keywords = ["[UNICODE_4ECA]", "[UNICODE_304A]", "[UNICODE_660E]", "[UNICODE_4F11]", "[UNICODE_6210]"]
+        has_evening_content = any(
+            any(keyword in msg for keyword in evening_keywords)
+            for msg in messages
+        )
+        assert has_evening_content
+        print("[UNICODE_2705] Evening-appropriate message content: PASSED")
+        
+        return True
+        
+    except Exception as e:
+        print(f"[UNICODE_274C] Evening story scheduling test error: {e}")
+        return False
+
+if __name__ == "__main__":
+    print("[UNICODE_1F319] Testing Mobile-Optimized Story Delivery Implementation...")
+    print("=" * 65)
+    
+    success = True
+    success &= test_mobile_story_delivery_functions()
+    success &= test_story_choice_mobile_optimization()
+    success &= test_mandala_grid_mobile_layout()
+    success &= test_evening_story_scheduling()
+    
+    if success:
+        print("\n[UNICODE_1F389] All tests PASSED! Mobile story delivery is working correctly.")
+        print("\n[UNICODE_1F319] Key Features Implemented:")
+        print("  [UNICODE_2022] 21:30 evening story delivery with mobile optimization")
+        print("  [UNICODE_2022] 3x3 Mandala format for story choices")
+        print("  [UNICODE_2022] Touch-friendly choice buttons with task linking")
+        print("  [UNICODE_2022] Mobile-optimized story content formatting")
+        print("  [UNICODE_2022] Story choice confirmation with tomorrow's Mandala reflection")
+        print("  [UNICODE_2022] Evening motivation messages")
+        print("  [UNICODE_2022] ADHD-friendly cognitive load management")
+    else:
+        print("\n[UNICODE_274C] Some tests FAILED. Please check the implementation.")
+    
+    exit(0 if success else 1)

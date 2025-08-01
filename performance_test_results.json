@@ -1,0 +1,101 @@
+{
+  "timestamp": "2025-07-30T13:04:37.451811",
+  "results": {
+    "api_response_times": {
+      "/health": {
+        "avg_response_time": 2.0349974632263184,
+        "max_response_time": 2.071054220199585,
+        "min_response_time": 2.0179262161254883,
+        "success_rate": 1.0,
+        "meets_sla": false
+      },
+      "/api/user/test_user/dashboard": {
+        "avg_response_time": 2.1580707907676695,
+        "max_response_time": 2.200500965118408,
+        "min_response_time": 2.11242938041687,
+        "success_rate": 1.0,
+        "meets_sla": false
+      },
+      "/api/user/test_user/tasks": {
+        "avg_response_time": 2.107114350795746,
+        "max_response_time": 2.135314464569092,
+        "min_response_time": 2.0572762489318848,
+        "success_rate": 1.0,
+        "meets_sla": false
+      },
+      "/api/user/test_user/mandala": {
+        "avg_response_time": 2.151574802398682,
+        "max_response_time": 2.2316291332244873,
+        "min_response_time": 2.0889105796813965,
+        "success_rate": 1.0,
+        "meets_sla": false
+      }
+    },
+    "concurrent_10_users": {
+      "concurrent_users": 10,
+      "total_requests": 80,
+      "successful_requests": 80,
+      "error_rate": 0.0,
+      "avg_response_time": 2.139051952958107,
+      "max_response_time": 2.1970901489257812,
+      "requests_per_second": 4.0,
+      "system_resources": {
+        "avg_cpu": 23.327272727272728,
+        "max_cpu": 47.9,
+        "avg_memory": 89.17272727272727,
+        "max_memory": 91.1
+      },
+      "meets_requirements": false
+    },
+    "concurrent_25_users": {
+      "concurrent_users": 25,
+      "total_requests": 200,
+      "successful_requests": 200,
+      "error_rate": 0.0,
+      "avg_response_time": 2.135405148267746,
+      "max_response_time": 2.248121738433838,
+      "requests_per_second": 10.0,
+      "system_resources": {
+        "avg_cpu": 16.240909090909092,
+        "max_cpu": 30.7,
+        "avg_memory": 89.43181818181819,
+        "max_memory": 90.6
+      },
+      "meets_requirements": false
+    },
+    "concurrent_50_users": {
+      "concurrent_users": 50,
+      "total_requests": 400,
+      "successful_requests": 400,
+      "error_rate": 0.0,
+      "avg_response_time": 2.134086159467697,
+      "max_response_time": 2.2047083377838135,
+      "requests_per_second": 20.0,
+      "system_resources": {
+        "avg_cpu": 14.054545454545455,
+        "max_cpu": 19.1,
+        "avg_memory": 88.15454545454546,
+        "max_memory": 90.2
+      },
+      "meets_requirements": false
+    },
+    "resource_monitoring": {
+      "monitoring_duration": 30,
+      "sample_count": 30,
+      "cpu": {
+        "avg": 15.483333333333333,
+        "max": 28.3,
+        "min": 8.8
+      },
+      "memory": {
+        "avg": 88.08333333333333,
+        "max": 90.6,
+        "min": 86.2,
+        "avg_used_mb": 6977.457291666667
+      },
+      "disk_percent": 74.1,
+      "resource_healthy": false
+    }
+  },
+  "success": null
+}

@@ -1,0 +1,111 @@
+#!/usr/bin/env python3
+"""
+Debug script to test task management API endpoints
+"""
+
+import sys
+import os
+sys.path.append(os.path.dirname(__file__))
+
+from fastapi.testclient import TestClient
+from main import app
+
+client = TestClient(app)
+
+def test_endpoints():
+    """Test all available endpoints"""
+    print("Testing Task Management API Endpoints...")
+    
+    test_uid = "debug_test_user"
+    
+    # 1. Health check
+    print("\n1. Health Check")
+    response = client.get("/health")
+    print(f"   Status: {response.status_code}")
+    if response.status_code == 200:
+        print(f"   Response: {response.json()}")
+    
+    # 2. Create task
+    print("\n2. Create Task")
+    task_data = {
+        "task_type": "routine",
+        "title": "Debug Test Task",
+        "description": "Testing API endpoints",
+        "difficulty": 2,
+        "priority": "medium",
+        "estimated_duration": 30
+    }
+    
+    response = client.post(f"/tasks/{test_uid}/create", json=task_data)
+    print(f"   Status: {response.status_code}")
+    if response.status_code == 200:
+        task = response.json()
+        task_id = task["task_id"]
+        print(f"   Created task: {task_id}")
+    else:
+        print(f"   Error: {response.text}")
+        return
+    
+    # 3. Get tasks
+    print("\n3. Get Tasks")
+    response = client.get(f"/tasks/{test_uid}")
+    print(f"   Status: {response.status_code}")
+    if response.status_code == 200:
+        tasks = response.json()
+        print(f"   Found {len(tasks)} tasks")
+    
+    # 4. Daily summary
+    print("\n4. Daily Summary")
+    response = client.get(f"/tasks/{test_uid}/daily-summary")
+    print(f"   Status: {response.status_code}")
+    if response.status_code == 200:
+        summary = response.json()
+        print(f"   Summary: {summary}")
+    else:
+        print(f"   Error: {response.text}")
+    
+    # 5. Start task
+    print("\n5. Start Task")
+    response = client.post(f"/tasks/{test_uid}/{task_id}/start", json={})
+    print(f"   Status: {response.status_code}")
+    if response.status_code == 200:
+        print("   Task started successfully")
+    
+    # 6. Complete task
+    print("\n6. Complete Task")
+    complete_data = {
+        "mood_score": 4,
+        "actual_duration": 25,
+        "notes": "Debug test completed",
+        "pomodoro_sessions_completed": 1
+    }
+    
+    response = client.post(f"/tasks/{test_uid}/{task_id}/complete", json=complete_data)
+    print(f"   Status: {response.status_code}")
+    if response.status_code == 200:
+        result = response.json()
+        print(f"   XP earned: {result.get('xp_earned', 'N/A')}")
+    
+    # 7. Daily summary after completion
+    print("\n7. Daily Summary (After Completion)")
+    response = client.get(f"/tasks/{test_uid}/daily-summary")
+    print(f"   Status: {response.status_code}")
+    if response.status_code == 200:
+        summary = response.json()
+        print(f"   Summary: {summary}")
+    else:
+        print(f"   Error: {response.text}")
+    
+    # 8. Statistics
+    print("\n8. Statistics")
+    response = client.get(f"/tasks/{test_uid}/statistics")
+    print(f"   Status: {response.status_code}")
+    if response.status_code == 200:
+        stats = response.json()
+        print(f"   Total tasks: {stats.get('total_tasks', 'N/A')}")
+        print(f"   Completed: {stats.get('completed_tasks', 'N/A')}")
+    
+    print("\n? Endpoint testing completed!")
+
+if __name__ == "__main__":
+    test_endpoints()

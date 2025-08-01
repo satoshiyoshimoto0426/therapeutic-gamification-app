@@ -1,0 +1,548 @@
+"""
+Self-Efficacy Gauge Service - [UNICODE_81EA]
+
+[UNICODE_30D6]
+- 21[UNICODE_65E5]MAX [UNICODE_2192] [UNICODE_7FD2]
+- [UNICODE_6CBB]
+- [UNICODE_9577]
+"""
+
+from fastapi import FastAPI, HTTPException, Depends
+from pydantic import BaseModel
+from typing import List, Dict, Any, Optional
+from datetime import datetime, timedelta
+from enum import Enum
+import logging
+import uuid
+import math
+
+# [UNICODE_5171]
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../shared'))
+
+app = FastAPI(title="Self-Efficacy Gauge Service", version="1.0.0")
+logger = logging.getLogger(__name__)
+
+class EfficacyLevel(Enum):
+    NOVICE = "novice"          # [UNICODE_521D] (0-20%)
+    DEVELOPING = "developing"  # [UNICODE_767A] (21-40%)
+    COMPETENT = "competent"    # [UNICODE_6709] (41-60%)
+    PROFICIENT = "proficient"  # [UNICODE_719F] (61-80%)
+    EXPERT = "expert"          # [UNICODE_5C02] (81-100%)
+
+class PassiveSkillType(Enum):
+    XP_BOOST = "xp_boost"                    # XP[UNICODE_7372]
+    TASK_EFFICIENCY = "task_efficiency"      # [UNICODE_30BF]
+    MOOD_STABILITY = "mood_stability"        # [UNICODE_6C17]
+    FOCUS_ENHANCEMENT = "focus_enhancement"  # [UNICODE_96C6]
+    RESILIENCE_BOOST = "resilience_boost"    # [UNICODE_56DE]
+    SOCIAL_CONFIDENCE = "social_confidence"  # [UNICODE_793E]
+    CREATIVE_FLOW = "creative_flow"          # [UNICODE_5275]
+    WISDOM_INSIGHT = "wisdom_insight"        # [UNICODE_6D1E]
+
+class PassiveSkill(BaseModel):
+    skill_id: str
+    skill_type: PassiveSkillType
+    name: str
+    description: str
+    effect_value: float  # [UNICODE_52B9]1.2 = 20%[UNICODE_5897]
+    unlock_requirement: int  # [UNICODE_89E3]
+    therapeutic_focus: str
+    visual_effect: str
+    is_unlocked: bool = False
+    unlocked_at: Optional[datetime] = None
+
+class EfficacyGauge(BaseModel):
+    user_id: str
+    therapeutic_focus: str  # "Self-Discipline", "Empathy", etc.
+    current_level: EfficacyLevel
+    current_percentage: float  # 0.0-100.0
+    consecutive_days: int
+    total_days_active: int
+    last_activity_date: datetime
+    milestone_reached: List[int]  # [UNICODE_9054]
+    passive_skills: List[PassiveSkill]
+    efficacy_history: List[Dict[str, Any]]  # [UNICODE_65E5]
+
+class EfficacyMilestone(BaseModel):
+    day: int
+    title: str
+    description: str
+    reward_type: str
+    reward_value: Any
+    celebration_message: str
+
+class EfficacyUpdateRequest(BaseModel):
+    user_id: str
+    therapeutic_focus: str
+    task_completed: bool
+    task_difficulty: int  # 1-5
+    mood_rating: int  # 1-5
+    reflection_quality: Optional[int] = None  # 1-5
+
+class SelfEfficacyEngine:
+    def __init__(self):
+        self.milestones = self._initialize_milestones()
+        self.passive_skills_pool = self._initialize_passive_skills()
+        self.efficacy_formula_weights = {
+            "consistency": 0.4,      # [UNICODE_7D99]
+            "task_completion": 0.3,  # [UNICODE_30BF]
+            "difficulty_challenge": 0.2,  # [UNICODE_96E3]
+            "reflection_depth": 0.1  # [UNICODE_632F]
+        }
+    
+    def _initialize_milestones(self) -> List[EfficacyMilestone]:
+        """[UNICODE_30DE]"""
+        return [
+            EfficacyMilestone(
+                day=3,
+                title="[UNICODE_6700]",
+                description="3[UNICODE_65E5]",
+                reward_type="xp_bonus",
+                reward_value=50,
+                celebration_message="[UNICODE_1F331] [UNICODE_5C0F]"
+            ),
+            EfficacyMilestone(
+                day=7,
+                title="1[UNICODE_9031]",
+                description="1[UNICODE_9031]",
+                reward_type="passive_skill",
+                reward_value="xp_boost_basic",
+                celebration_message="[UNICODE_2B50] 1[UNICODE_9031]"
+            ),
+            EfficacyMilestone(
+                day=14,
+                title="2[UNICODE_9031]",
+                description="2[UNICODE_9031]",
+                reward_type="gauge_boost",
+                reward_value=10,
+                celebration_message="[UNICODE_1F525] 2[UNICODE_9031]"
+            ),
+            EfficacyMilestone(
+                day=21,
+                title="[UNICODE_7FD2]",
+                description="21[UNICODE_65E5]",
+                reward_type="passive_skill_unlock",
+                reward_value="all_available",
+                celebration_message="[UNICODE_1F3C6] 21[UNICODE_65E5]"
+            ),
+            EfficacyMilestone(
+                day=30,
+                title="1[UNICODE_30F6]",
+                description="30[UNICODE_65E5]",
+                reward_type="special_ability",
+                reward_value="efficacy_master",
+                celebration_message="[UNICODE_1F451] 30[UNICODE_65E5]"
+            ),
+            EfficacyMilestone(
+                day=50,
+                title="[UNICODE_7D99]",
+                description="50[UNICODE_65E5]",
+                reward_type="mentor_unlock",
+                reward_value="peer_mentoring",
+                celebration_message="[UNICODE_1F393] 50[UNICODE_65E5]"
+            ),
+            EfficacyMilestone(
+                day=100,
+                title="[UNICODE_767E]",
+                description="100[UNICODE_65E5]",
+                reward_type="legend_status",
+                reward_value="hundred_day_legend",
+                celebration_message="[UNICODE_1F31F] 100[UNICODE_65E5]"
+            )
+        ]
+    
+    def _initialize_passive_skills(self) -> List[PassiveSkill]:
+        """[UNICODE_30D1]"""
+        return [
+            PassiveSkill(
+                skill_id="xp_boost_basic",
+                skill_type=PassiveSkillType.XP_BOOST,
+                name="[UNICODE_7D4C]",
+                description="[UNICODE_5168]XP[UNICODE_304C]20%[UNICODE_5897]",
+                effect_value=1.2,
+                unlock_requirement=7,
+                therapeutic_focus="Self-Discipline",
+                visual_effect="golden_sparkle"
+            ),
+            PassiveSkill(
+                skill_id="task_efficiency_basic",
+                skill_type=PassiveSkillType.TASK_EFFICIENCY,
+                name="[UNICODE_52B9]",
+                description="[UNICODE_30BF]15%[UNICODE_77ED]",
+                effect_value=0.85,
+                unlock_requirement=14,
+                therapeutic_focus="Self-Discipline",
+                visual_effect="speed_lines"
+            ),
+            PassiveSkill(
+                skill_id="mood_stability_basic",
+                skill_type=PassiveSkillType.MOOD_STABILITY,
+                name="[UNICODE_5FC3]",
+                description="[UNICODE_6C17]25%[UNICODE_7DE9]",
+                effect_value=0.75,
+                unlock_requirement=21,
+                therapeutic_focus="Resilience",
+                visual_effect="calm_aura"
+            ),
+            PassiveSkill(
+                skill_id="focus_enhancement_basic",
+                skill_type=PassiveSkillType.FOCUS_ENHANCEMENT,
+                name="[UNICODE_96C6]",
+                description="ADHD[UNICODE_652F]30%[UNICODE_5411]",
+                effect_value=1.3,
+                unlock_requirement=21,
+                therapeutic_focus="Self-Discipline",
+                visual_effect="focus_beam"
+            ),
+            PassiveSkill(
+                skill_id="resilience_boost_basic",
+                skill_type=PassiveSkillType.RESILIENCE_BOOST,
+                name="[UNICODE_56DE]",
+                description="[UNICODE_5931]40%[UNICODE_65E9]",
+                effect_value=1.4,
+                unlock_requirement=30,
+                therapeutic_focus="Resilience",
+                visual_effect="phoenix_flame"
+            ),
+            PassiveSkill(
+                skill_id="social_confidence_basic",
+                skill_type=PassiveSkillType.SOCIAL_CONFIDENCE,
+                name="[UNICODE_793E]",
+                description="[UNICODE_793E]XP[UNICODE_304C]50%[UNICODE_5897]",
+                effect_value=1.5,
+                unlock_requirement=21,
+                therapeutic_focus="Communication",
+                visual_effect="confidence_glow"
+            ),
+            PassiveSkill(
+                skill_id="creative_flow_basic",
+                skill_type=PassiveSkillType.CREATIVE_FLOW,
+                name="[UNICODE_5275]",
+                description="[UNICODE_5275]",
+                effect_value=1.25,
+                unlock_requirement=21,
+                therapeutic_focus="Creativity",
+                visual_effect="inspiration_burst"
+            ),
+            PassiveSkill(
+                skill_id="wisdom_insight_basic",
+                skill_type=PassiveSkillType.WISDOM_INSIGHT,
+                name="[UNICODE_6D1E]",
+                description="[UNICODE_632F]",
+                effect_value=1.3,
+                unlock_requirement=21,
+                therapeutic_focus="Wisdom",
+                visual_effect="wisdom_eye"
+            )
+        ]
+    
+    async def update_efficacy_gauge(self, request: EfficacyUpdateRequest) -> Dict[str, Any]:
+        """[UNICODE_81EA]"""
+        try:
+            # [UNICODE_73FE]
+            current_gauge = await self._get_or_create_gauge(request.user_id, request.therapeutic_focus)
+            
+            # [UNICODE_7D99]
+            today = datetime.now().date()
+            last_activity = current_gauge.last_activity_date.date() if current_gauge.last_activity_date else None
+            
+            if last_activity == today:
+                # [UNICODE_540C]
+                pass
+            elif last_activity == today - timedelta(days=1) or last_activity is None:
+                # [UNICODE_9023]
+                if request.task_completed:
+                    current_gauge.consecutive_days += 1
+            elif last_activity is None or last_activity < today - timedelta(days=1):
+                # [UNICODE_7D99]
+                if request.task_completed:
+                    current_gauge.consecutive_days = 1
+                else:
+                    current_gauge.consecutive_days = 0
+            
+            # [UNICODE_7DCF]
+            if last_activity != today and request.task_completed:
+                current_gauge.total_days_active += 1
+            
+            # [UNICODE_52B9]
+            efficacy_increase = self._calculate_efficacy_increase(request, current_gauge)
+            current_gauge.current_percentage = min(100.0, current_gauge.current_percentage + efficacy_increase)
+            
+            # [UNICODE_30EC]
+            current_gauge.current_level = self._calculate_efficacy_level(current_gauge.current_percentage)
+            
+            # [UNICODE_6700]
+            current_gauge.last_activity_date = datetime.now()
+            
+            # [UNICODE_5C65]
+            current_gauge.efficacy_history.append({
+                "date": today.isoformat(),
+                "percentage": current_gauge.current_percentage,
+                "consecutive_days": current_gauge.consecutive_days,
+                "efficacy_increase": efficacy_increase,
+                "task_completed": request.task_completed,
+                "mood_rating": request.mood_rating
+            })
+            
+            # [UNICODE_30DE]
+            milestone_rewards = await self._check_milestones(current_gauge)
+            
+            # [UNICODE_30D1]
+            newly_unlocked_skills = await self._check_passive_skill_unlocks(current_gauge)
+            
+            return {
+                "success": True,
+                "gauge": current_gauge,
+                "efficacy_increase": efficacy_increase,
+                "milestone_rewards": milestone_rewards,
+                "newly_unlocked_skills": newly_unlocked_skills,
+                "celebration_message": self._generate_celebration_message(current_gauge, milestone_rewards)
+            }
+            
+        except Exception as e:
+            logger.error(f"Efficacy gauge update failed for user {request.user_id}: {e}")
+            raise HTTPException(status_code=500, detail="[UNICODE_81EA]")
+    
+    async def _get_or_create_gauge(self, user_id: str, therapeutic_focus: str) -> EfficacyGauge:
+        """[UNICODE_30B2]"""
+        # [UNICODE_5B9F]Firestore[UNICODE_304B]
+        # [UNICODE_30C6]
+        gauge_key = f"{user_id}_{therapeutic_focus}"
+        if not hasattr(self, '_test_gauges'):
+            self._test_gauges = {}
+        
+        if gauge_key in self._test_gauges:
+            return self._test_gauges[gauge_key]
+        
+        # [UNICODE_65B0]
+        gauge = EfficacyGauge(
+            user_id=user_id,
+            therapeutic_focus=therapeutic_focus,
+            current_level=EfficacyLevel.NOVICE,
+            current_percentage=0.0,
+            consecutive_days=0,
+            total_days_active=0,
+            last_activity_date=datetime.now() - timedelta(days=1),
+            milestone_reached=[],
+            passive_skills=[],
+            efficacy_history=[]
+        )
+        
+        self._test_gauges[gauge_key] = gauge
+        return gauge
+    
+    def _calculate_efficacy_increase(self, request: EfficacyUpdateRequest, gauge: EfficacyGauge) -> float:
+        """[UNICODE_52B9]"""
+        if not request.task_completed:
+            return 0.0
+        
+        base_increase = 2.0  # [UNICODE_30D9]
+        
+        # [UNICODE_7D99]
+        consistency_bonus = min(gauge.consecutive_days * 0.1, 2.0)
+        
+        # [UNICODE_30BF]
+        completion_bonus = 1.0 if request.task_completed else 0.0
+        
+        # [UNICODE_96E3]
+        difficulty_bonus = (request.task_difficulty - 2) * 0.3
+        
+        # [UNICODE_632F]
+        reflection_bonus = (request.reflection_quality or 3) * 0.2
+        
+        # [UNICODE_6C17]
+        mood_modifier = (request.mood_rating - 3) * 0.1
+        
+        total_increase = (
+            base_increase +
+            consistency_bonus * self.efficacy_formula_weights["consistency"] +
+            completion_bonus * self.efficacy_formula_weights["task_completion"] +
+            difficulty_bonus * self.efficacy_formula_weights["difficulty_challenge"] +
+            reflection_bonus * self.efficacy_formula_weights["reflection_depth"] +
+            mood_modifier
+        )
+        
+        return max(0.1, total_increase)
+    
+    def _calculate_efficacy_level(self, percentage: float) -> EfficacyLevel:
+        """[UNICODE_52B9]"""
+        if percentage >= 81:
+            return EfficacyLevel.EXPERT
+        elif percentage >= 61:
+            return EfficacyLevel.PROFICIENT
+        elif percentage >= 41:
+            return EfficacyLevel.COMPETENT
+        elif percentage >= 21:
+            return EfficacyLevel.DEVELOPING
+        else:
+            return EfficacyLevel.NOVICE
+    
+    async def _check_milestones(self, gauge: EfficacyGauge) -> List[Dict[str, Any]]:
+        """[UNICODE_30DE]"""
+        rewards = []
+        
+        for milestone in self.milestones:
+            if (milestone.day <= gauge.consecutive_days and 
+                milestone.day not in gauge.milestone_reached):
+                
+                gauge.milestone_reached.append(milestone.day)
+                rewards.append({
+                    "milestone": milestone,
+                    "achieved_at": datetime.now().isoformat()
+                })
+        
+        return rewards
+    
+    async def _check_passive_skill_unlocks(self, gauge: EfficacyGauge) -> List[PassiveSkill]:
+        """[UNICODE_30D1]"""
+        newly_unlocked = []
+        
+        for skill in self.passive_skills_pool:
+            if (gauge.consecutive_days >= skill.unlock_requirement and
+                skill.therapeutic_focus == gauge.therapeutic_focus and
+                not any(s.skill_id == skill.skill_id for s in gauge.passive_skills)):
+                
+                skill.is_unlocked = True
+                skill.unlocked_at = datetime.now()
+                gauge.passive_skills.append(skill)
+                newly_unlocked.append(skill)
+        
+        return newly_unlocked
+    
+    def _generate_celebration_message(self, gauge: EfficacyGauge, milestone_rewards: List[Dict[str, Any]]) -> str:
+        """[UNICODE_304A]"""
+        if milestone_rewards:
+            return milestone_rewards[-1]["milestone"].celebration_message
+        
+        if gauge.consecutive_days > 0:
+            if gauge.consecutive_days % 10 == 0:
+                return f"[UNICODE_1F389] {gauge.consecutive_days}[UNICODE_65E5]"
+            elif gauge.consecutive_days % 5 == 0:
+                return f"[UNICODE_2728] {gauge.consecutive_days}[UNICODE_65E5]"
+            else:
+                return f"[UNICODE_1F44D] {gauge.consecutive_days}[UNICODE_65E5]"
+        
+        return "[UNICODE_4ECA]"
+    
+    async def get_efficacy_dashboard(self, user_id: str) -> Dict[str, Any]:
+        """[UNICODE_52B9]"""
+        # [UNICODE_5168]
+        therapeutic_focuses = ["Self-Discipline", "Empathy", "Resilience", "Curiosity", 
+                             "Communication", "Creativity", "Courage", "Wisdom"]
+        
+        gauges = {}
+        total_efficacy = 0.0
+        total_consecutive_days = 0
+        
+        for focus in therapeutic_focuses:
+            gauge = await self._get_or_create_gauge(user_id, focus)
+            gauges[focus] = gauge
+            total_efficacy += gauge.current_percentage
+            total_consecutive_days = max(total_consecutive_days, gauge.consecutive_days)
+        
+        average_efficacy = total_efficacy / len(therapeutic_focuses)
+        
+        # [UNICODE_6B21]
+        next_milestone = None
+        for milestone in self.milestones:
+            if milestone.day > total_consecutive_days:
+                next_milestone = milestone
+                break
+        
+        return {
+            "user_id": user_id,
+            "overall_efficacy_level": self._calculate_efficacy_level(average_efficacy),
+            "average_efficacy_percentage": average_efficacy,
+            "max_consecutive_days": total_consecutive_days,
+            "therapeutic_gauges": gauges,
+            "next_milestone": next_milestone,
+            "total_passive_skills": sum(len(gauge.passive_skills) for gauge in gauges.values()),
+            "efficacy_trend": self._calculate_efficacy_trend(gauges),
+            "motivational_message": self._generate_motivational_message(average_efficacy, total_consecutive_days)
+        }
+    
+    def _calculate_efficacy_trend(self, gauges: Dict[str, EfficacyGauge]) -> str:
+        """[UNICODE_52B9]"""
+        recent_changes = []
+        
+        for gauge in gauges.values():
+            if len(gauge.efficacy_history) >= 2:
+                recent = gauge.efficacy_history[-1]["percentage"]
+                previous = gauge.efficacy_history[-2]["percentage"]
+                recent_changes.append(recent - previous)
+        
+        if not recent_changes:
+            return "stable"
+        
+        average_change = sum(recent_changes) / len(recent_changes)
+        
+        if average_change > 1.0:
+            return "improving"
+        elif average_change < -1.0:
+            return "declining"
+        else:
+            return "stable"
+    
+    def _generate_motivational_message(self, average_efficacy: float, consecutive_days: int) -> str:
+        """[UNICODE_30E2]"""
+        if consecutive_days >= 21:
+            return "[UNICODE_1F3C6] [UNICODE_7FD2]"
+        elif consecutive_days >= 14:
+            return "[UNICODE_1F525] 2[UNICODE_9031]"
+        elif consecutive_days >= 7:
+            return "[UNICODE_2B50] 1[UNICODE_9031]"
+        elif consecutive_days >= 3:
+            return "[UNICODE_1F331] [UNICODE_7D99]"
+        elif average_efficacy >= 50:
+            return "[UNICODE_1F4AA] [UNICODE_81EA]"
+        else:
+            return "[UNICODE_1F680] [UNICODE_65B0]"
+
+# [UNICODE_30B0]
+efficacy_engine = SelfEfficacyEngine()
+
+# API[UNICODE_30A8]
+
+@app.post("/efficacy/update")
+async def update_efficacy_gauge(request: EfficacyUpdateRequest):
+    """[UNICODE_81EA]"""
+    return await efficacy_engine.update_efficacy_gauge(request)
+
+@app.get("/efficacy/{user_id}/dashboard")
+async def get_efficacy_dashboard(user_id: str):
+    """[UNICODE_52B9]"""
+    return await efficacy_engine.get_efficacy_dashboard(user_id)
+
+@app.get("/efficacy/{user_id}/{therapeutic_focus}")
+async def get_specific_gauge(user_id: str, therapeutic_focus: str):
+    """[UNICODE_7279]"""
+    gauge = await efficacy_engine._get_or_create_gauge(user_id, therapeutic_focus)
+    return {
+        "gauge": gauge,
+        "available_skills": [skill for skill in efficacy_engine.passive_skills_pool 
+                           if skill.therapeutic_focus == therapeutic_focus],
+        "next_milestone": next((m for m in efficacy_engine.milestones 
+                              if m.day > gauge.consecutive_days), None)
+    }
+
+@app.get("/efficacy/milestones")
+async def get_milestones():
+    """[UNICODE_30DE]"""
+    return {
+        "milestones": efficacy_engine.milestones,
+        "description": "[UNICODE_7D99]"
+    }
+
+@app.get("/efficacy/passive-skills")
+async def get_passive_skills():
+    """[UNICODE_30D1]"""
+    return {
+        "passive_skills": efficacy_engine.passive_skills_pool,
+        "description": "[UNICODE_7D99]"
+    }
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8009)

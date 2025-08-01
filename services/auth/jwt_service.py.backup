@@ -1,0 +1,443 @@
+"""
+JWT Token Service
+
+JWT [UNICODE_30C8]
+Guardian Portal[UNICODE_7528]
+
+Requirements: 6.1, 10.3
+"""
+
+import jwt
+import secrets
+from datetime import datetime, timedelta
+from typing import Dict, Any, Optional, List
+from pydantic import BaseModel, Field
+from fastapi import HTTPException, status
+import hashlib
+import os
+from enum import Enum
+
+# JWT[UNICODE_8A2D]
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", secrets.token_urlsafe(32))
+JWT_ALGORITHM = "HS256"
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES = 60  # 1[UNICODE_6642]
+JWT_REFRESH_TOKEN_EXPIRE_DAYS = 7     # 7[UNICODE_65E5]
+
+
+class TokenType(str, Enum):
+    """[UNICODE_30C8]"""
+    ACCESS = "access"
+    REFRESH = "refresh"
+
+
+class TokenData(BaseModel):
+    """[UNICODE_30C8]"""
+    guardian_id: str
+    user_id: str
+    permission_level: str
+    token_type: TokenType
+    issued_at: datetime
+    expires_at: datetime
+    jti: str  # JWT ID (unique identifier)
+
+
+class TokenPair(BaseModel):
+    """[UNICODE_30C8]"""
+    access_token: str
+    refresh_token: str
+    token_type: str = "Bearer"
+    expires_in: int
+    refresh_expires_in: int
+
+
+class JWTService:
+    """JWT [UNICODE_30C8]"""
+    
+    def __init__(self):
+        self.secret_key = JWT_SECRET_KEY
+        self.algorithm = JWT_ALGORITHM
+        self.access_token_expire_minutes = JWT_ACCESS_TOKEN_EXPIRE_MINUTES
+        self.refresh_token_expire_days = JWT_REFRESH_TOKEN_EXPIRE_DAYS
+        self._revoked_tokens: set = set()  # [UNICODE_672C]Redis[UNICODE_306A]
+    
+    def create_access_token(
+        self,
+        guardian_id: str,
+        user_id: str,
+        permission_level: str,
+        additional_claims: Optional[Dict[str, Any]] = None
+    ) -> str:
+        """
+        [UNICODE_30A2]
+        
+        Args:
+            guardian_id: [UNICODE_4FDD]ID
+            user_id: [UNICODE_30E6]ID
+            permission_level: [UNICODE_6A29]
+            additional_claims: [UNICODE_8FFD]
+            
+        Returns:
+            str: JWT[UNICODE_30A2]
+        """
+        now = datetime.utcnow()
+        expire = now + timedelta(minutes=self.access_token_expire_minutes)
+        jti = self._generate_jti()
+        
+        payload = {
+            "sub": guardian_id,
+            "user_id": user_id,
+            "permission_level": permission_level,
+            "token_type": TokenType.ACCESS.value,
+            "iat": now,
+            "exp": expire,
+            "jti": jti
+        }
+        
+        if additional_claims:
+            payload.update(additional_claims)
+        
+        return jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
+    
+    def create_refresh_token(
+        self,
+        guardian_id: str,
+        user_id: str,
+        permission_level: str
+    ) -> str:
+        """
+        [UNICODE_30EA]
+        
+        Args:
+            guardian_id: [UNICODE_4FDD]ID
+            user_id: [UNICODE_30E6]ID
+            permission_level: [UNICODE_6A29]
+            
+        Returns:
+            str: JWT[UNICODE_30EA]
+        """
+        now = datetime.utcnow()
+        expire = now + timedelta(days=self.refresh_token_expire_days)
+        jti = self._generate_jti()
+        
+        payload = {
+            "sub": guardian_id,
+            "user_id": user_id,
+            "permission_level": permission_level,
+            "token_type": TokenType.REFRESH.value,
+            "iat": now,
+            "exp": expire,
+            "jti": jti
+        }
+        
+        return jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
+    
+    def create_token_pair(
+        self,
+        guardian_id: str,
+        user_id: str,
+        permission_level: str,
+        additional_claims: Optional[Dict[str, Any]] = None
+    ) -> TokenPair:
+        """
+        [UNICODE_30C8] + [UNICODE_30EA]
+        
+        Args:
+            guardian_id: [UNICODE_4FDD]ID
+            user_id: [UNICODE_30E6]ID
+            permission_level: [UNICODE_6A29]
+            additional_claims: [UNICODE_8FFD]
+            
+        Returns:
+            TokenPair: [UNICODE_30A2]
+        """
+        access_token = self.create_access_token(
+            guardian_id, user_id, permission_level, additional_claims
+        )
+        refresh_token = self.create_refresh_token(
+            guardian_id, user_id, permission_level
+        )
+        
+        return TokenPair(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            expires_in=self.access_token_expire_minutes * 60,
+            refresh_expires_in=self.refresh_token_expire_days * 24 * 60 * 60
+        )
+    
+    def verify_token(self, token: str) -> TokenData:
+        """
+        [UNICODE_30C8]
+        
+        Args:
+            token: JWT[UNICODE_30C8]
+            
+        Returns:
+            TokenData: [UNICODE_691C]
+            
+        Raises:
+            HTTPException: [UNICODE_30C8]
+        """
+        try:
+            # [UNICODE_30C8]
+            if self._is_token_revoked(token):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Token has been revoked",
+                    headers={"WWW-Authenticate": "Bearer"}
+                )
+            
+            # JWT[UNICODE_30C7]
+            payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
+            
+            # [UNICODE_5FC5]
+            guardian_id = payload.get("sub")
+            user_id = payload.get("user_id")
+            permission_level = payload.get("permission_level")
+            token_type = payload.get("token_type")
+            jti = payload.get("jti")
+            
+            if not all([guardian_id, user_id, permission_level, token_type, jti]):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid token payload",
+                    headers={"WWW-Authenticate": "Bearer"}
+                )
+            
+            # [UNICODE_30C8]
+            return TokenData(
+                guardian_id=guardian_id,
+                user_id=user_id,
+                permission_level=permission_level,
+                token_type=TokenType(token_type),
+                issued_at=datetime.fromtimestamp(payload.get("iat", 0)),
+                expires_at=datetime.fromtimestamp(payload.get("exp", 0)),
+                jti=jti
+            )
+            
+        except jwt.ExpiredSignatureError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has expired",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
+        except jwt.InvalidTokenError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
+    
+    def refresh_access_token(self, refresh_token: str) -> TokenPair:
+        """
+        [UNICODE_30A2]
+        
+        Args:
+            refresh_token: [UNICODE_30EA]
+            
+        Returns:
+            TokenPair: [UNICODE_65B0]
+            
+        Raises:
+            HTTPException: [UNICODE_30EA]
+        """
+        # [UNICODE_30EA]
+        token_data = self.verify_token(refresh_token)
+        
+        if token_data.token_type != TokenType.REFRESH:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
+        
+        # [UNICODE_65B0]
+        return self.create_token_pair(
+            token_data.guardian_id,
+            token_data.user_id,
+            token_data.permission_level
+        )
+    
+    def revoke_token(self, token: str) -> bool:
+        """
+        [UNICODE_30C8]
+        
+        Args:
+            token: [UNICODE_53D6]
+            
+        Returns:
+            bool: [UNICODE_53D6]
+        """
+        try:
+            token_data = self.verify_token(token)
+            self._revoked_tokens.add(token_data.jti)
+            return True
+        except:
+            return False
+    
+    def revoke_all_user_tokens(self, guardian_id: str, user_id: str) -> int:
+        """
+        [UNICODE_7279]
+        
+        Args:
+            guardian_id: [UNICODE_4FDD]ID
+            user_id: [UNICODE_30E6]ID
+            
+        Returns:
+            int: [UNICODE_53D6]
+        """
+        # [UNICODE_5B9F]
+        # [UNICODE_3053]
+        revoked_count = 0
+        # TODO: [UNICODE_5B9F]
+        return revoked_count
+    
+    def get_token_info(self, token: str) -> Dict[str, Any]:
+        """
+        [UNICODE_30C8]
+        
+        Args:
+            token: JWT[UNICODE_30C8]
+            
+        Returns:
+            Dict[str, Any]: [UNICODE_30C8]
+        """
+        token_data = self.verify_token(token)
+        
+        return {
+            "guardian_id": token_data.guardian_id,
+            "user_id": token_data.user_id,
+            "permission_level": token_data.permission_level,
+            "token_type": token_data.token_type.value,
+            "issued_at": token_data.issued_at.isoformat(),
+            "expires_at": token_data.expires_at.isoformat(),
+            "jti": token_data.jti,
+            "is_expired": token_data.expires_at < datetime.utcnow(),
+            "is_revoked": self._is_token_revoked_by_jti(token_data.jti)
+        }
+    
+    def _generate_jti(self) -> str:
+        """JWT ID[UNICODE_751F]"""
+        return secrets.token_urlsafe(16)
+    
+    def _is_token_revoked(self, token: str) -> bool:
+        """[UNICODE_30C8]"""
+        try:
+            payload = jwt.decode(
+                token, self.secret_key, algorithms=[self.algorithm],
+                options={"verify_exp": False}  # [UNICODE_671F]JTI[UNICODE_3092]
+            )
+            jti = payload.get("jti")
+            return self._is_token_revoked_by_jti(jti)
+        except:
+            return True
+    
+    def _is_token_revoked_by_jti(self, jti: str) -> bool:
+        """JTI[UNICODE_306B]"""
+        return jti in self._revoked_tokens
+    
+    def cleanup_expired_tokens(self) -> int:
+        """[UNICODE_671F]"""
+        # [UNICODE_5B9F]
+        # [UNICODE_3053]
+        cleaned_count = 0
+        # TODO: [UNICODE_5B9F]
+        return cleaned_count
+
+
+# [UNICODE_30B0]JWT[UNICODE_30B5]
+jwt_service = JWTService()
+
+
+class TokenValidator:
+    """[UNICODE_30C8]"""
+    
+    @staticmethod
+    def extract_token_from_header(authorization: str) -> str:
+        """
+        Authorization[UNICODE_30D8]
+        
+        Args:
+            authorization: Authorization[UNICODE_30D8]
+            
+        Returns:
+            str: JWT[UNICODE_30C8]
+            
+        Raises:
+            HTTPException: [UNICODE_30C8]
+        """
+        if not authorization:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authorization header missing",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
+        
+        try:
+            scheme, token = authorization.split()
+            if scheme.lower() != "bearer":
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid authentication scheme",
+                    headers={"WWW-Authenticate": "Bearer"}
+                )
+            return token
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authorization header format",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
+    
+    @staticmethod
+    def validate_access_token(token: str) -> TokenData:
+        """
+        [UNICODE_30A2]
+        
+        Args:
+            token: JWT[UNICODE_30C8]
+            
+        Returns:
+            TokenData: [UNICODE_691C]
+            
+        Raises:
+            HTTPException: [UNICODE_691C]
+        """
+        token_data = jwt_service.verify_token(token)
+        
+        if token_data.token_type != TokenType.ACCESS:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token type for this endpoint",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
+        
+        return token_data
+    
+    @staticmethod
+    def validate_refresh_token(token: str) -> TokenData:
+        """
+        [UNICODE_30EA]
+        
+        Args:
+            token: JWT[UNICODE_30C8]
+            
+        Returns:
+            TokenData: [UNICODE_691C]
+            
+        Raises:
+            HTTPException: [UNICODE_691C]
+        """
+        token_data = jwt_service.verify_token(token)
+        
+        if token_data.token_type != TokenType.REFRESH:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token type for refresh",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
+        
+        return token_data
+
+
+# [UNICODE_30C8]
+token_validator = TokenValidator()

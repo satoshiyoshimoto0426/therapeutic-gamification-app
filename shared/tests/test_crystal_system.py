@@ -1,0 +1,276 @@
+"""
+8?
+?
+"""
+
+import pytest
+from datetime import datetime
+from shared.interfaces.core_types import (
+    CrystalAttribute, CrystalGrowthEvent, CrystalState, 
+    CrystalGrowthRecord, UserCrystalSystem, CrystalMilestone,
+    CrystalSynergy
+)
+from shared.interfaces.api_models import (
+    CrystalGrowthRequest, CrystalGrowthResponse,
+    CrystalSystemResponse, CrystalResonanceRequest,
+    CrystalResonanceResponse, CrystalMilestoneResponse
+)
+
+class TestCrystalAttribute:
+    """CrystalAttribute enumの"""
+    
+    def test_all_attributes_exist(self):
+        """8つ"""
+        expected_attributes = [
+            "self_discipline", "empathy", "resilience", "curiosity",
+            "communication", "creativity", "courage", "wisdom"
+        ]
+        
+        actual_attributes = [attr.value for attr in CrystalAttribute]
+        assert len(actual_attributes) == 8
+        
+        for expected in expected_attributes:
+            assert expected in actual_attributes
+
+class TestCrystalState:
+    """CrystalStateモデル"""
+    
+    def test_crystal_state_initialization(self):
+        """?"""
+        crystal = CrystalState(attribute=CrystalAttribute.SELF_DISCIPLINE)
+        
+        assert crystal.attribute == CrystalAttribute.SELF_DISCIPLINE
+        assert crystal.current_value == 0
+        assert crystal.growth_rate == 1.0
+        assert crystal.last_growth_event is None
+        assert crystal.milestone_rewards == []
+        assert crystal.therapeutic_insights == []
+
+    def test_crystal_state_with_values(self):
+        """?"""
+        now = datetime.utcnow()
+        crystal = CrystalState(
+            attribute=CrystalAttribute.EMPATHY,
+            current_value=45,
+            growth_rate=1.2,
+            last_growth_event=now,
+            milestone_rewards=["empathy_boost_item"],
+            therapeutic_insights=["共有"]
+        )
+        
+        assert crystal.attribute == CrystalAttribute.EMPATHY
+        assert crystal.current_value == 45
+        assert crystal.growth_rate == 1.2
+        assert crystal.last_growth_event == now
+        assert "empathy_boost_item" in crystal.milestone_rewards
+        assert "共有" in crystal.therapeutic_insights
+
+class TestCrystalGrowthRecord:
+    """CrystalGrowthRecordモデル"""
+    
+    def test_growth_record_creation(self):
+        """成"""
+        now = datetime.utcnow()
+        record = CrystalGrowthRecord(
+            uid="test_user_123",
+            attribute=CrystalAttribute.RESILIENCE,
+            event_type=CrystalGrowthEvent.TASK_COMPLETION,
+            growth_amount=5,
+            trigger_context={"task_id": "task_456", "difficulty": 3},
+            therapeutic_message="?",
+            created_at=now
+        )
+        
+        assert record.uid == "test_user_123"
+        assert record.attribute == CrystalAttribute.RESILIENCE
+        assert record.event_type == CrystalGrowthEvent.TASK_COMPLETION
+        assert record.growth_amount == 5
+        assert record.trigger_context["task_id"] == "task_456"
+        assert "?" in record.therapeutic_message
+        assert record.created_at == now
+
+class TestUserCrystalSystem:
+    """UserCrystalSystemモデル"""
+    
+    def test_user_crystal_system_initialization(self):
+        """ユーザー"""
+        system = UserCrystalSystem(uid="test_user_123")
+        
+        assert system.uid == "test_user_123"
+        assert len(system.crystals) == 8  # 8つ
+        assert system.total_growth_events == 0
+        assert system.resonance_level == 0
+        assert system.last_resonance_check is None
+        assert system.active_synergies == []
+        assert system.growth_history == []
+        
+        # ?
+        for attr in CrystalAttribute:
+            assert attr in system.crystals
+            assert system.crystals[attr].current_value == 0
+
+    def test_user_crystal_system_with_data(self):
+        """デフォルト"""
+        now = datetime.utcnow()
+        
+        # ?
+        self_discipline_crystal = CrystalState(
+            attribute=CrystalAttribute.SELF_DISCIPLINE,
+            current_value=30
+        )
+        empathy_crystal = CrystalState(
+            attribute=CrystalAttribute.EMPATHY,
+            current_value=25
+        )
+        
+        system = UserCrystalSystem(
+            uid="test_user_123",
+            crystals={
+                CrystalAttribute.SELF_DISCIPLINE: self_discipline_crystal,
+                CrystalAttribute.EMPATHY: empathy_crystal
+            },
+            total_growth_events=5,
+            resonance_level=1,
+            last_resonance_check=now,
+            active_synergies=["discipline_empathy_synergy"]
+        )
+        
+        assert system.total_growth_events == 5
+        assert system.resonance_level == 1
+        assert system.last_resonance_check == now
+        assert "discipline_empathy_synergy" in system.active_synergies
+        assert system.crystals[CrystalAttribute.SELF_DISCIPLINE].current_value == 30
+        assert system.crystals[CrystalAttribute.EMPATHY].current_value == 25
+
+class TestCrystalGrowthEvent:
+    """CrystalGrowthEvent enumの"""
+    
+    def test_all_growth_events_exist(self):
+        """?"""
+        expected_events = [
+            "task_completion", "story_choice", "mood_improvement",
+            "reflection_entry", "social_interaction", "creative_activity",
+            "challenge_overcome", "wisdom_gained"
+        ]
+        
+        actual_events = [event.value for event in CrystalGrowthEvent]
+        assert len(actual_events) == 8
+        
+        for expected in expected_events:
+            assert expected in actual_events
+
+class TestCrystalAPIModels:
+    """?APIモデル"""
+    
+    def test_crystal_growth_request(self):
+        """?"""
+        request = CrystalGrowthRequest(
+            attribute=CrystalAttribute.CURIOSITY,
+            event_type=CrystalGrowthEvent.STORY_CHOICE,
+            growth_amount=8,
+            trigger_context={"story_node": "curiosity_branch_1"}
+        )
+        
+        assert request.attribute == CrystalAttribute.CURIOSITY
+        assert request.event_type == CrystalGrowthEvent.STORY_CHOICE
+        assert request.growth_amount == 8
+        assert request.trigger_context["story_node"] == "curiosity_branch_1"
+
+    def test_crystal_growth_response(self):
+        """?"""
+        response = CrystalGrowthResponse(
+            success=True,
+            attribute=CrystalAttribute.CREATIVITY,
+            previous_value=20,
+            new_value=28,
+            growth_amount=8,
+            milestone_reached=True,
+            milestone_rewards=["creative_inspiration_item"],
+            therapeutic_message="創"
+        )
+        
+        assert response.success is True
+        assert response.attribute == CrystalAttribute.CREATIVITY
+        assert response.previous_value == 20
+        assert response.new_value == 28
+        assert response.growth_amount == 8
+        assert response.milestone_reached is True
+        assert "creative_inspiration_item" in response.milestone_rewards
+        assert "創" in response.therapeutic_message
+
+    def test_crystal_system_response(self):
+        """?"""
+        response = CrystalSystemResponse(
+            crystals={
+                "self_discipline": {"current_value": 45, "growth_rate": 1.0},
+                "empathy": {"current_value": 30, "growth_rate": 1.2}
+            },
+            total_growth_events=12,
+            resonance_level=2,
+            active_synergies=[
+                {"name": "discipline_empathy", "bonus": 0.1}
+            ],
+            available_milestones=[
+                {"attribute": "courage", "threshold": 50, "title": "勇"}
+            ]
+        )
+        
+        assert response.total_growth_events == 12
+        assert response.resonance_level == 2
+        assert len(response.active_synergies) == 1
+        assert len(response.available_milestones) == 1
+        assert response.crystals["self_discipline"]["current_value"] == 45
+
+class TestCrystalMilestone:
+    """CrystalMilestoneモデル"""
+    
+    def test_crystal_milestone_creation(self):
+        """?"""
+        milestone = CrystalMilestone(
+            attribute=CrystalAttribute.WISDOM,
+            threshold=75,
+            title="?",
+            description="?",
+            rewards=["wisdom_crystal_fragment", "sage_robe"],
+            therapeutic_benefit="自動",
+            unlock_content=["wisdom_story_chapter", "meditation_feature"]
+        )
+        
+        assert milestone.attribute == CrystalAttribute.WISDOM
+        assert milestone.threshold == 75
+        assert milestone.title == "?"
+        assert "?" in milestone.description
+        assert "wisdom_crystal_fragment" in milestone.rewards
+        assert "自動" in milestone.therapeutic_benefit
+        assert "wisdom_story_chapter" in milestone.unlock_content
+
+class TestCrystalSynergy:
+    """CrystalSynergyモデル"""
+    
+    def test_crystal_synergy_creation(self):
+        """?"""
+        synergy = CrystalSynergy(
+            synergy_id="courage_resilience_synergy",
+            name="?",
+            required_attributes=[CrystalAttribute.COURAGE, CrystalAttribute.RESILIENCE],
+            min_levels={
+                CrystalAttribute.COURAGE: 40,
+                CrystalAttribute.RESILIENCE: 35
+            },
+            effect_description="勇",
+            stat_bonuses={"mental_strength": 15, "stress_resistance": 10},
+            therapeutic_benefit="ストーリー",
+            story_unlock="courage_resilience_chapter"
+        )
+        
+        assert synergy.synergy_id == "courage_resilience_synergy"
+        assert synergy.name == "?"
+        assert len(synergy.required_attributes) == 2
+        assert CrystalAttribute.COURAGE in synergy.required_attributes
+        assert synergy.min_levels[CrystalAttribute.COURAGE] == 40
+        assert synergy.stat_bonuses["mental_strength"] == 15
+        assert "ストーリー" in synergy.therapeutic_benefit
+        assert synergy.story_unlock == "courage_resilience_chapter"
+
+if __name__ == "__main__":
+    pytest.main([__file__])

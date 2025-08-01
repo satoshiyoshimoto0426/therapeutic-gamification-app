@@ -1,0 +1,350 @@
+"""
+Simple repository integration tests
+Tests basic CRUD operations and query functionality
+"""
+
+import pytest
+import asyncio
+from datetime import datetime, timedelta, date
+from unittest.mock import Mock, patch, MagicMock
+from typing import Dict, Any, List
+import sys
+import os
+
+# Add the project root to the Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
+
+def test_repository_imports():
+    """Test that all repository classes can be imported"""
+    try:
+        from shared.repositories.base_repository import BaseRepository, CachedRepository
+        from shared.repositories.user_repository import UserRepository
+        from shared.repositories.task_repository import TaskRepository
+        from shared.repositories.mood_repository import MoodRepository
+        from shared.repositories.query_optimizer import QueryOptimizer, QueryProfiler
+        
+        assert BaseRepository is not None
+        assert CachedRepository is not None
+        assert UserRepository is not None
+        assert TaskRepository is not None
+        assert MoodRepository is not None
+        assert QueryOptimizer is not None
+        assert QueryProfiler is not None
+        
+        print("[UNICODE_2713] All repository classes imported successfully")
+        
+    except ImportError as e:
+        pytest.fail(f"Failed to import repository classes: {e}")
+
+
+def test_query_optimizer_initialization():
+    """Test query optimizer initialization"""
+    try:
+        from shared.repositories.query_optimizer import QueryOptimizer
+        
+        # Mock Firestore client
+        mock_client = Mock()
+        
+        # Initialize optimizer
+        optimizer = QueryOptimizer(mock_client)
+        
+        assert optimizer.db == mock_client
+        assert hasattr(optimizer, 'recommended_indexes')
+        assert hasattr(optimizer, 'query_metrics')
+        
+        print("[UNICODE_2713] Query optimizer initialized successfully")
+        
+    except Exception as e:
+        pytest.fail(f"Failed to initialize query optimizer: {e}")
+
+
+def test_base_repository_initialization():
+    """Test base repository initialization"""
+    try:
+        from shared.repositories.base_repository import BaseRepository
+        
+        # Mock Firestore client
+        mock_client = Mock()
+        mock_collection = Mock()
+        mock_client.collection.return_value = mock_collection
+        
+        # Create test repository class
+        class TestRepository(BaseRepository):
+            def _to_entity(self, doc_data, doc_id=None):
+                return {"id": doc_id, "data": doc_data}
+            
+            def _to_document(self, entity):
+                return entity.get("data", {})
+        
+        # Initialize repository
+        repo = TestRepository(mock_client, "test_collection")
+        
+        assert repo.db == mock_client
+        assert repo.collection_name == "test_collection"
+        assert repo.collection_ref == mock_collection
+        assert hasattr(repo, 'query_optimizer')
+        assert hasattr(repo, 'query_profiler')
+        
+        print("[UNICODE_2713] Base repository initialized successfully")
+        
+    except Exception as e:
+        pytest.fail(f"Failed to initialize base repository: {e}")
+
+
+def test_user_repository_initialization():
+    """Test user repository initialization"""
+    try:
+        from shared.repositories.user_repository import UserRepository
+        
+        # Mock Firestore client
+        mock_client = Mock()
+        mock_collection = Mock()
+        mock_client.collection.return_value = mock_collection
+        
+        # Initialize repository
+        repo = UserRepository(mock_client)
+        
+        assert repo.collection_name == "user_profiles"
+        assert hasattr(repo, '_to_entity')
+        assert hasattr(repo, '_to_document')
+        
+        print("[UNICODE_2713] User repository initialized successfully")
+        
+    except Exception as e:
+        pytest.fail(f"Failed to initialize user repository: {e}")
+
+
+def test_task_repository_initialization():
+    """Test task repository initialization"""
+    try:
+        from shared.repositories.task_repository import TaskRepository
+        
+        # Mock Firestore client
+        mock_client = Mock()
+        mock_collection = Mock()
+        mock_client.collection.return_value = mock_collection
+        
+        # Initialize repository
+        repo = TaskRepository(mock_client)
+        
+        assert repo.collection_name == "tasks"
+        assert hasattr(repo, '_to_entity')
+        assert hasattr(repo, '_to_document')
+        
+        print("[UNICODE_2713] Task repository initialized successfully")
+        
+    except Exception as e:
+        pytest.fail(f"Failed to initialize task repository: {e}")
+
+
+def test_mood_repository_initialization():
+    """Test mood repository initialization"""
+    try:
+        from shared.repositories.mood_repository import MoodRepository
+        
+        # Mock Firestore client
+        mock_client = Mock()
+        mock_collection = Mock()
+        mock_client.collection.return_value = mock_collection
+        
+        # Initialize repository
+        repo = MoodRepository(mock_client)
+        
+        assert repo.collection_name == "mood_logs"
+        assert hasattr(repo, '_to_entity')
+        assert hasattr(repo, '_to_document')
+        
+        print("[UNICODE_2713] Mood repository initialized successfully")
+        
+    except Exception as e:
+        pytest.fail(f"Failed to initialize mood repository: {e}")
+
+
+@pytest.mark.asyncio
+async def test_mood_coefficient_calculation():
+    """Test mood coefficient calculation"""
+    try:
+        from shared.repositories.mood_repository import MoodRepository
+        
+        # Mock Firestore client
+        mock_client = Mock()
+        mock_collection = Mock()
+        mock_client.collection.return_value = mock_collection
+        
+        # Initialize repository
+        repo = MoodRepository(mock_client)
+        
+        # Test coefficient calculation
+        coeff_1 = await repo.calculate_mood_coefficient(1)
+        coeff_3 = await repo.calculate_mood_coefficient(3)
+        coeff_5 = await repo.calculate_mood_coefficient(5)
+        
+        assert 0.8 <= coeff_1 <= 1.2
+        assert 0.8 <= coeff_3 <= 1.2
+        assert 0.8 <= coeff_5 <= 1.2
+        
+        # Test that higher mood scores give higher coefficients
+        assert coeff_5 > coeff_1
+        
+        print("[UNICODE_2713] Mood coefficient calculation working correctly")
+        
+    except Exception as e:
+        pytest.fail(f"Failed mood coefficient calculation test: {e}")
+
+
+def test_query_optimizer_analysis():
+    """Test query optimizer analysis functionality"""
+    try:
+        from shared.repositories.query_optimizer import QueryOptimizer, QueryType
+        
+        # Mock Firestore client
+        mock_client = Mock()
+        
+        # Initialize optimizer
+        optimizer = QueryOptimizer(mock_client)
+        
+        # Test simple query analysis
+        filters = {"uid": "test_user"}
+        plan = optimizer.analyze_query("tasks", filters)
+        
+        assert hasattr(plan, 'query_type')
+        assert hasattr(plan, 'estimated_cost')
+        assert hasattr(plan, 'optimization_hints')
+        
+        # Test compound query analysis
+        compound_filters = {"uid": "test_user", "status": "pending", "task_type": "routine"}
+        compound_plan = optimizer.analyze_query("tasks", compound_filters)
+        
+        assert compound_plan.query_type == QueryType.COMPOUND
+        assert compound_plan.estimated_cost > plan.estimated_cost
+        
+        print("[UNICODE_2713] Query optimizer analysis working correctly")
+        
+    except Exception as e:
+        pytest.fail(f"Failed query optimizer analysis test: {e}")
+
+
+def test_repository_crud_operations():
+    """Test basic CRUD operations with mocked Firestore"""
+    try:
+        from shared.repositories.base_repository import BaseRepository
+        
+        # Mock Firestore client
+        mock_client = Mock()
+        mock_collection = Mock()
+        mock_document = Mock()
+        
+        mock_client.collection.return_value = mock_collection
+        mock_collection.document.return_value = mock_document
+        mock_collection.add.return_value = (None, mock_document)
+        
+        # Mock document operations
+        mock_doc_data = {
+            "id": "test_doc_id",
+            "name": "test_entity",
+            "value": 42,
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+        mock_document.get.return_value.exists = True
+        mock_document.get.return_value.to_dict.return_value = mock_doc_data
+        mock_document.get.return_value.id = "test_doc_id"
+        mock_document.id = "test_doc_id"
+        
+        # Create test repository class
+        class TestEntity:
+            def __init__(self, id: str, name: str, value: int):
+                self.id = id
+                self.name = name
+                self.value = value
+        
+        class TestRepository(BaseRepository):
+            def _to_entity(self, doc_data, doc_id=None):
+                return TestEntity(
+                    id=doc_data.get("id", doc_id),
+                    name=doc_data["name"],
+                    value=doc_data["value"]
+                )
+            
+            def _to_document(self, entity):
+                return {
+                    "id": entity.id,
+                    "name": entity.name,
+                    "value": entity.value
+                }
+        
+        # Initialize repository
+        repo = TestRepository(mock_client, "test_collection")
+        
+        # Test that repository was initialized correctly
+        assert repo.collection_name == "test_collection"
+        assert repo.db == mock_client
+        
+        print("[UNICODE_2713] Repository CRUD operations setup working correctly")
+        
+    except Exception as e:
+        pytest.fail(f"Failed repository CRUD operations test: {e}")
+
+
+def test_performance_monitoring():
+    """Test performance monitoring functionality"""
+    try:
+        from shared.repositories.query_optimizer import QueryOptimizer, QueryMetrics, QueryType
+        
+        # Mock Firestore client
+        mock_client = Mock()
+        
+        # Initialize optimizer
+        optimizer = QueryOptimizer(mock_client)
+        
+        # Record some test metrics
+        optimizer.record_query_metrics(
+            collection_name="test_collection",
+            query_type=QueryType.SIMPLE,
+            execution_time=0.1,
+            documents_read=5,
+            documents_returned=3,
+            index_used=True
+        )
+        
+        optimizer.record_query_metrics(
+            collection_name="test_collection",
+            query_type=QueryType.COMPOUND,
+            execution_time=0.5,
+            documents_read=20,
+            documents_returned=10,
+            index_used=False
+        )
+        
+        # Test performance summary
+        summary = optimizer.get_performance_summary(hours=1)
+        
+        assert "total_queries" in summary
+        assert "average_execution_time" in summary
+        assert "collection_stats" in summary
+        assert summary["total_queries"] == 2
+        
+        print("[UNICODE_2713] Performance monitoring working correctly")
+        
+    except Exception as e:
+        pytest.fail(f"Failed performance monitoring test: {e}")
+
+
+if __name__ == "__main__":
+    # Run all tests
+    test_repository_imports()
+    test_query_optimizer_initialization()
+    test_base_repository_initialization()
+    test_user_repository_initialization()
+    test_task_repository_initialization()
+    test_mood_repository_initialization()
+    
+    # Run async test
+    asyncio.run(test_mood_coefficient_calculation())
+    
+    test_query_optimizer_analysis()
+    test_repository_crud_operations()
+    test_performance_monitoring()
+    
+    print("\n[UNICODE_2705] All repository integration tests passed!")

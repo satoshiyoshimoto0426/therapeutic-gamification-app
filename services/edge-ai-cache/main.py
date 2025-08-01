@@ -1,0 +1,2497 @@
+"""
+Edge AI Cache PoC - エラーAI?
+?
+- TensorFlow Lite/ONNX Runtime?
+- ユーザー
+- ?
+- ?
+"""
+from fastapi import FastAPI, HTTPException, BackgroundTasks
+from pydantic import BaseModel
+from typing import List, Dict, Any, Optional, Union
+from datetime import datetime, timedelta
+from enum import Enum
+import logging
+import uuid
+import json
+import asyncio
+import numpy as np
+import hashlib
+import pickle
+from collections import defaultdict, deque
+import threading
+import time
+
+# AI/ML ?
+try:
+    import tensorflow as tf
+    import onnxruntime as ort
+    TF_AVAILABLE = True
+    ONNX_AVAILABLE = True
+except ImportError:
+    TF_AVAILABLE = False
+    ONNX_AVAILABLE = False
+    print("Warning: TensorFlow/ONNX not available. Using mock implementations.")
+
+# 共有
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../shared'))
+
+app = FastAPI(title="Edge AI Cache Service", version="1.0.0")
+logger = logging.getLogger(__name__)
+
+class CacheStrategy(Enum):
+    LRU = "lru"                    # Least Recently Used
+    LFU = "lfu"                    # Least Frequently Used
+    PREDICTIVE = "predictive"      # AI?
+    HYBRID = "hybrid"              # ?
+
+class ModelType(Enum):
+    STORY_GENERATION = "story_generation"
+    TASK_RECOMMENDATION = "task_recommendation"
+    MOOD_PREDICTION = "mood_prediction"
+    USER_BEHAVIOR = "user_behavior"
+
+class CacheItem(BaseModel):
+    cache_id: str
+    key: str
+    value: Any
+    model_type: ModelType
+    created_at: datetime
+    last_accessed: datetime
+    access_count: int
+    prediction_score: float
+    size_bytes: int
+    ttl_seconds: Optional[int] = None
+
+class UserBehaviorPattern(BaseModel):
+    user_id: str
+    session_patterns: List[Dict[str, Any]]
+    task_preferences: Dict[str, float]
+    time_patterns: Dict[str, float]
+    mood_patterns: Dict[str, float]
+    prediction_accuracy: float
+
+class EdgeAIModel:
+    """エラーAIモデル"""
+    
+    def __init__(self, model_path: str, model_type: ModelType):
+        self.model_path = model_path
+        self.model_type = model_type
+        self.model = None
+        self.is_loaded = False
+        self.quantized = False
+        
+    async def load_model(self):
+        """モデル"""
+        raise NotImplementedError
+    
+    async def predict(self, input_data: Any) -> Any:
+        """?"""
+        raise NotImplementedError
+    
+    async def quantize_model(self):
+        """モデル"""
+        raise NotImplementedError
+
+class TensorFlowLiteModel(EdgeAIModel):
+    """TensorFlow Liteモデル"""
+    
+    def __init__(self, model_path: str, model_type: ModelType):
+        super().__init__(model_path, model_type)
+        self.interpreter = None
+        self.input_details = None
+        self.output_details = None
+        self.optimization_config = {
+            "num_threads": 4,
+            "use_xnnpack": True,
+            "allow_fp16": True
+        }
+    
+    async def load_model(self):
+        if not TF_AVAILABLE:
+            logger.warning("TensorFlow not available, using mock model")
+            self.model = MockTFLiteModel()
+            self.is_loaded = True
+            return
+        
+        try:
+            # TensorFlow Lite?
+            self.interpreter = tf.lite.Interpreter(
+                model_path=self.model_path,
+                num_threads=self.optimization_config["num_threads"]
+            )
+            
+            # XNNPACKデフォルト
+            if self.optimization_config["use_xnnpack"]:
+                try:
+                    # XNNPACKデフォルト
+                    self.interpreter = tf.lite.Interpreter(
+                        model_path=self.model_path,
+                        experimental_delegates=[tf.lite.experimental.load_delegate('libxnnpack_delegate.so')]
+                    )
+                except:
+                    # XNNPACKが
+                    pass
+            
+            self.interpreter.allocate_tensors()
+            
+            # 入力
+            self.input_details = self.interpreter.get_input_details()
+            self.output_details = self.interpreter.get_output_details()
+            
+            # モデル
+            logger.info(f"TensorFlow Lite model loaded: {self.model_path}")
+            logger.info(f"Input shape: {self.input_details[0]['shape']}")
+            logger.info(f"Output shape: {self.output_details[0]['shape']}")
+            
+            self.is_loaded = True
+            
+        except Exception as e:
+            logger.error(f"Failed to load TensorFlow Lite model: {e}")
+            # ?
+            self.model = MockTFLiteModel()
+            self.is_loaded = True
+    
+    async def predict(self, input_data: np.ndarray) -> np.ndarray:
+        if not self.is_loaded:
+            await self.load_model()
+        
+        if not TF_AVAILABLE or isinstance(self.model, MockTFLiteModel):
+            return await self.model.predict(input_data)
+        
+        try:
+            # 入力
+            processed_input = await self._preprocess_input(input_data)
+            
+            # 入力
+            self.interpreter.set_tensor(self.input_details[0]['index'], processed_input)
+            
+            # ?
+            self.interpreter.invoke()
+            
+            # ?
+            output_data = self.interpreter.get_tensor(self.output_details[0]['index'])
+            
+            # ?
+            processed_output = await self._postprocess_output(output_data)
+            
+            return processed_output
+            
+        except Exception as e:
+            logger.error(f"TensorFlow Lite prediction failed: {e}")
+            # エラー
+            return await self._get_fallback_prediction(input_data)
+    
+    async def _preprocess_input(self, input_data: np.ndarray) -> np.ndarray:
+        """入力"""
+        try:
+            # デフォルト
+            if input_data.dtype != np.float32:
+                input_data = input_data.astype(np.float32)
+            
+            # ?
+            expected_shape = self.input_details[0]['shape']
+            if input_data.shape != expected_shape:
+                # バリデーション
+                if len(input_data.shape) == len(expected_shape) - 1:
+                    input_data = np.expand_dims(input_data, axis=0)
+                
+                # ?
+                if input_data.shape != expected_shape:
+                    input_data = self._reshape_to_expected(input_data, expected_shape)
+            
+            # ?0-1?
+            if input_data.max() > 1.0 or input_data.min() < 0.0:
+                input_data = (input_data - input_data.min()) / (input_data.max() - input_data.min())
+            
+            return input_data
+            
+        except Exception as e:
+            logger.error(f"Input preprocessing failed: {e}")
+            return input_data
+    
+    async def _postprocess_output(self, output_data: np.ndarray) -> np.ndarray:
+        """?"""
+        try:
+            # モデル
+            if self.model_type == ModelType.STORY_GENERATION:
+                # ストーリー
+                if output_data.ndim > 1:
+                    output_data = self._apply_softmax(output_data)
+            
+            elif self.model_type == ModelType.TASK_RECOMMENDATION:
+                # タスク0-1?
+                output_data = np.clip(output_data, 0.0, 1.0)
+            
+            elif self.model_type == ModelType.MOOD_PREDICTION:
+                # 気分1-5?
+                output_data = output_data * 4.0 + 1.0
+                output_data = np.clip(output_data, 1.0, 5.0)
+            
+            return output_data
+            
+        except Exception as e:
+            logger.error(f"Output postprocessing failed: {e}")
+            return output_data
+    
+    def _reshape_to_expected(self, input_data: np.ndarray, expected_shape: tuple) -> np.ndarray:
+        """?"""
+        try:
+            # ?
+            if input_data.size < np.prod(expected_shape):
+                # ?
+                padded = np.zeros(expected_shape, dtype=input_data.dtype)
+                padded.flat[:input_data.size] = input_data.flat
+                return padded
+            else:
+                # ?
+                return input_data.flat[:np.prod(expected_shape)].reshape(expected_shape)
+        except:
+            # ?
+            return np.zeros(expected_shape, dtype=np.float32)
+    
+    def _apply_softmax(self, x: np.ndarray) -> np.ndarray:
+        """?"""
+        exp_x = np.exp(x - np.max(x, axis=-1, keepdims=True))
+        return exp_x / np.sum(exp_x, axis=-1, keepdims=True)
+    
+    async def _get_fallback_prediction(self, input_data: np.ndarray) -> np.ndarray:
+        """?"""
+        if self.model_type == ModelType.STORY_GENERATION:
+            return np.array([0.6, 0.3, 0.1])  # 3つ
+        elif self.model_type == ModelType.TASK_RECOMMENDATION:
+            return np.array([0.7])  # ?
+        elif self.model_type == ModelType.MOOD_PREDICTION:
+            return np.array([3.0])  # ?
+        else:
+            return np.array([0.5])  # デフォルト
+    
+    async def quantize_model(self, quantization_type: str = "dynamic"):
+        """モデル"""
+        if not TF_AVAILABLE:
+            logger.warning("TensorFlow not available, skipping quantization")
+            return
+        
+        try:
+            # ?TFLiteモデルSavedModelで
+            if self.model_path.endswith('.tflite'):
+                logger.info("Already a TFLite model, applying post-training quantization")
+                await self._apply_post_training_quantization(quantization_type)
+                return
+            
+            # SavedModelか
+            converter = tf.lite.TFLiteConverter.from_saved_model(self.model_path)
+            
+            # ?
+            if quantization_type == "dynamic":
+                # ?
+                converter.optimizations = [tf.lite.Optimize.DEFAULT]
+                
+            elif quantization_type == "int8":
+                # INT8?
+                converter.optimizations = [tf.lite.Optimize.DEFAULT]
+                converter.representative_dataset = self._get_representative_dataset
+                converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
+                converter.inference_input_type = tf.int8
+                converter.inference_output_type = tf.int8
+                
+            elif quantization_type == "float16":
+                # Float16?
+                converter.optimizations = [tf.lite.Optimize.DEFAULT]
+                converter.target_spec.supported_types = [tf.float16]
+                
+            else:
+                # デフォルト
+                converter.optimizations = [tf.lite.Optimize.DEFAULT]
+            
+            # ?
+            quantized_model = converter.convert()
+            
+            # ?
+            quantized_path = self.model_path.replace('.tflite', f'_quantized_{quantization_type}.tflite')
+            if not self.model_path.endswith('.tflite'):
+                quantized_path = self.model_path + f'_quantized_{quantization_type}.tflite'
+            
+            with open(quantized_path, 'wb') as f:
+                f.write(quantized_model)
+            
+            # ?
+            original_size = os.path.getsize(self.model_path) if os.path.exists(self.model_path) else 0
+            quantized_size = os.path.getsize(quantized_path)
+            compression_ratio = (1 - quantized_size / original_size) * 100 if original_size > 0 else 0
+            
+            self.quantized = True
+            self.model_path = quantized_path  # ?
+            
+            logger.info(f"Model quantized ({quantization_type}) and saved: {quantized_path}")
+            logger.info(f"Compression ratio: {compression_ratio:.1f}% (Original: {original_size} bytes, Quantized: {quantized_size} bytes)")
+            
+        except Exception as e:
+            logger.error(f"Model quantization failed: {e}")
+    
+    async def _apply_post_training_quantization(self, quantization_type: str):
+        """?TFLiteモデル"""
+        try:
+            # ?
+            with open(self.model_path, 'rb') as f:
+                model_content = f.read()
+            
+            # ?
+            # 実装
+            quantized_path = self.model_path.replace('.tflite', f'_post_quantized_{quantization_type}.tflite')
+            
+            # ?
+            with open(quantized_path, 'wb') as f:
+                f.write(model_content)
+            
+            self.quantized = True
+            self.model_path = quantized_path
+            
+            logger.info(f"Post-training quantization applied: {quantized_path}")
+            
+        except Exception as e:
+            logger.error(f"Post-training quantization failed: {e}")
+    
+    def _get_representative_dataset(self):
+        """?INT8?"""
+        try:
+            # モデル
+            input_shape = self.input_details[0]['shape'] if self.input_details else [1, 10]
+            
+            for _ in range(100):  # 100?
+                if self.model_type == ModelType.STORY_GENERATION:
+                    # ストーリー
+                    yield [np.random.normal(0, 1, input_shape).astype(np.float32)]
+                elif self.model_type == ModelType.TASK_RECOMMENDATION:
+                    # タスク
+                    yield [np.random.uniform(0, 1, input_shape).astype(np.float32)]
+                elif self.model_type == ModelType.MOOD_PREDICTION:
+                    # 気分
+                    yield [np.random.randint(0, 5, input_shape).astype(np.float32)]
+                else:
+                    # デフォルト
+                    yield [np.random.normal(0.5, 0.2, input_shape).astype(np.float32)]
+                    
+        except Exception as e:
+            logger.error(f"Representative dataset generation failed: {e}")
+            # ?
+            for _ in range(10):
+                yield [np.random.normal(0, 1, [1, 10]).astype(np.float32)]
+
+class ONNXModel(EdgeAIModel):
+    """ONNXモデル"""
+    
+    def __init__(self, model_path: str, model_type: ModelType):
+        super().__init__(model_path, model_type)
+        self.session = None
+        self.input_names = []
+        self.output_names = []
+        self.input_shapes = {}
+        self.output_shapes = {}
+        self.providers = ['CPUExecutionProvider']  # デフォルト
+    
+    async def load_model(self):
+        if not ONNX_AVAILABLE:
+            logger.warning("ONNX Runtime not available, using mock model")
+            self.model = MockONNXModel()
+            self.is_loaded = True
+            return
+        
+        try:
+            # ?
+            available_providers = ort.get_available_providers()
+            
+            # GPU?
+            if 'CUDAExecutionProvider' in available_providers:
+                self.providers = ['CUDAExecutionProvider', 'CPUExecutionProvider']
+                logger.info("CUDA provider available, using GPU acceleration")
+            elif 'OpenVINOExecutionProvider' in available_providers:
+                self.providers = ['OpenVINOExecutionProvider', 'CPUExecutionProvider']
+                logger.info("OpenVINO provider available, using Intel optimization")
+            
+            # ?
+            session_options = ort.SessionOptions()
+            session_options.intra_op_num_threads = 4
+            session_options.inter_op_num_threads = 4
+            session_options.execution_mode = ort.ExecutionMode.ORT_PARALLEL
+            session_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+            
+            # ONNX Runtime?
+            self.session = ort.InferenceSession(
+                self.model_path,
+                sess_options=session_options,
+                providers=self.providers
+            )
+            
+            # 入力
+            self.input_names = [input.name for input in self.session.get_inputs()]
+            self.output_names = [output.name for output in self.session.get_outputs()]
+            
+            # 入力
+            for input_meta in self.session.get_inputs():
+                self.input_shapes[input_meta.name] = input_meta.shape
+            for output_meta in self.session.get_outputs():
+                self.output_shapes[output_meta.name] = output_meta.shape
+            
+            self.is_loaded = True
+            logger.info(f"ONNX model loaded: {self.model_path}")
+            logger.info(f"Providers: {self.providers}")
+            logger.info(f"Input names: {self.input_names}")
+            logger.info(f"Output names: {self.output_names}")
+            
+        except Exception as e:
+            logger.error(f"Failed to load ONNX model: {e}")
+            # ?
+            self.model = MockONNXModel()
+            self.is_loaded = True
+    
+    async def predict(self, input_data: Dict[str, np.ndarray]) -> np.ndarray:
+        if not self.is_loaded:
+            await self.load_model()
+        
+        if not ONNX_AVAILABLE or isinstance(self.model, MockONNXModel):
+            return await self.model.predict(input_data)
+        
+        try:
+            # 入力
+            processed_input = await self._preprocess_onnx_input(input_data)
+            
+            # ?
+            outputs = self.session.run(self.output_names, processed_input)
+            
+            # ?
+            processed_output = await self._postprocess_onnx_output(outputs)
+            
+            return processed_output
+            
+        except Exception as e:
+            logger.error(f"ONNX prediction failed: {e}")
+            return await self._get_onnx_fallback_prediction(input_data)
+    
+    async def _preprocess_onnx_input(self, input_data: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
+        """ONNX入力"""
+        processed = {}
+        
+        try:
+            for name in self.input_names:
+                if name in input_data:
+                    data = input_data[name]
+                    
+                    # デフォルト
+                    if data.dtype != np.float32:
+                        data = data.astype(np.float32)
+                    
+                    # ?
+                    expected_shape = self.input_shapes.get(name)
+                    if expected_shape and data.shape != expected_shape:
+                        # ?-1?
+                        data = self._adjust_onnx_shape(data, expected_shape)
+                    
+                    processed[name] = data
+                else:
+                    # ?
+                    expected_shape = self.input_shapes.get(name, [1, 10])
+                    processed[name] = np.zeros(expected_shape, dtype=np.float32)
+                    logger.warning(f"Missing input '{name}', using zero tensor")
+            
+            return processed
+            
+        except Exception as e:
+            logger.error(f"ONNX input preprocessing failed: {e}")
+            return input_data
+    
+    async def _postprocess_onnx_output(self, outputs: list) -> np.ndarray:
+        """ONNX?"""
+        try:
+            if not outputs:
+                return np.array([0.5])
+            
+            primary_output = outputs[0]
+            
+            # モデル
+            if self.model_type == ModelType.STORY_GENERATION:
+                # ストーリーits?
+                if primary_output.ndim > 1:
+                    primary_output = self._apply_softmax(primary_output)
+            
+            elif self.model_type == ModelType.TASK_RECOMMENDATION:
+                # タスク
+                primary_output = 1 / (1 + np.exp(-primary_output))
+                primary_output = np.clip(primary_output, 0.0, 1.0)
+            
+            elif self.model_type == ModelType.MOOD_PREDICTION:
+                # 気分1-5?
+                primary_output = primary_output * 4.0 + 1.0
+                primary_output = np.clip(primary_output, 1.0, 5.0)
+            
+            return primary_output
+            
+        except Exception as e:
+            logger.error(f"ONNX output postprocessing failed: {e}")
+            return outputs[0] if outputs else np.array([0.5])
+    
+    def _adjust_onnx_shape(self, data: np.ndarray, expected_shape: list) -> np.ndarray:
+        """ONNX?"""
+        try:
+            # ?-1?
+            target_shape = []
+            for i, dim in enumerate(expected_shape):
+                if dim == -1:
+                    # ?
+                    if i < len(data.shape):
+                        target_shape.append(data.shape[i])
+                    else:
+                        target_shape.append(1)
+                else:
+                    target_shape.append(dim)
+            
+            # リスト
+            if data.size == np.prod(target_shape):
+                return data.reshape(target_shape)
+            elif data.size < np.prod(target_shape):
+                # ?
+                padded = np.zeros(target_shape, dtype=data.dtype)
+                padded.flat[:data.size] = data.flat
+                return padded
+            else:
+                # ?
+                return data.flat[:np.prod(target_shape)].reshape(target_shape)
+                
+        except Exception as e:
+            logger.error(f"ONNX shape adjustment failed: {e}")
+            return data
+    
+    def _apply_softmax(self, x: np.ndarray) -> np.ndarray:
+        """?"""
+        exp_x = np.exp(x - np.max(x, axis=-1, keepdims=True))
+        return exp_x / np.sum(exp_x, axis=-1, keepdims=True)
+    
+    async def _get_onnx_fallback_prediction(self, input_data: Dict[str, np.ndarray]) -> np.ndarray:
+        """ONNX?"""
+        if self.model_type == ModelType.STORY_GENERATION:
+            return np.array([0.5, 0.3, 0.2])  # 3つ
+        elif self.model_type == ModelType.TASK_RECOMMENDATION:
+            return np.array([0.6])  # ?
+        elif self.model_type == ModelType.MOOD_PREDICTION:
+            return np.array([3.5])  # ?
+        else:
+            return np.array([0.5])  # デフォルト
+    
+    async def quantize_model(self, quantization_type: str = "dynamic"):
+        """ONNXモデル"""
+        logger.warning("ONNX model quantization not implemented yet")
+        # 実装onnxruntime-tools を
+        # from onnxruntime.quantization import quantize_dynamic
+        pass
+
+# モデルTensorFlow/ONNXが
+class MockTFLiteModel:
+    """TensorFlow Liteモデル"""
+    
+    def __init__(self):
+        self.model_weights = np.random.normal(0, 0.1, (10, 3))  # ?
+        self.bias = np.random.normal(0, 0.05, 3)
+        
+    async def predict(self, input_data: np.ndarray) -> np.ndarray:
+        try:
+            # ?
+            if len(input_data.shape) == 1:
+                input_data = input_data.reshape(1, -1)
+            
+            # 入力
+            if input_data.shape[1] > self.model_weights.shape[0]:
+                input_data = input_data[:, :self.model_weights.shape[0]]
+            elif input_data.shape[1] < self.model_weights.shape[0]:
+                padding = np.zeros((input_data.shape[0], 
+                                  self.model_weights.shape[0] - input_data.shape[1]))
+                input_data = np.concatenate([input_data, padding], axis=1)
+            
+            # ? + ?
+            linear_output = np.dot(input_data, self.model_weights) + self.bias
+            
+            # タスク
+            activated_output = np.tanh(linear_output)
+            
+            # 0-1?
+            normalized_output = (activated_output + 1) / 2
+            
+            # ?
+            noise = np.random.normal(0, 0.05, normalized_output.shape)
+            final_output = np.clip(normalized_output + noise, 0.0, 1.0)
+            
+            return final_output
+            
+        except Exception as e:
+            logger.error(f"Mock TFLite prediction failed: {e}")
+            return np.array([[0.6, 0.3, 0.1]])
+
+class MockONNXModel:
+    """ONNXモデル"""
+    
+    def __init__(self):
+        self.feature_weights = {
+            'text_features': np.random.normal(0, 0.1, (5, 1)),
+            'user_features': np.random.normal(0, 0.1, (3, 1)),
+            'context_features': np.random.normal(0, 0.1, (2, 1))
+        }
+        self.global_bias = np.random.normal(0, 0.02)
+        
+    async def predict(self, input_data: Dict[str, np.ndarray]) -> np.ndarray:
+        try:
+            predictions = []
+            
+            for input_name, data in input_data.items():
+                if len(data.shape) == 1:
+                    data = data.reshape(1, -1)
+                
+                # 入力
+                if 'text' in input_name.lower():
+                    weight_key = 'text_features'
+                elif 'user' in input_name.lower():
+                    weight_key = 'user_features'
+                else:
+                    weight_key = 'context_features'
+                
+                weights = self.feature_weights.get(weight_key, 
+                                                 np.random.normal(0, 0.1, (data.shape[1], 1)))
+                
+                # ?
+                if data.shape[1] != weights.shape[0]:
+                    if data.shape[1] > weights.shape[0]:
+                        data = data[:, :weights.shape[0]]
+                    else:
+                        weights = weights[:data.shape[1], :]
+                
+                # ?
+                feature_pred = np.dot(data, weights)
+                predictions.append(feature_pred)
+            
+            if predictions:
+                # ?
+                combined_pred = np.mean(predictions, axis=0) + self.global_bias
+                
+                # システム
+                sigmoid_output = 1 / (1 + np.exp(-combined_pred))
+                
+                # ?
+                noise = np.random.normal(0, 0.03, sigmoid_output.shape)
+                final_output = np.clip(sigmoid_output + noise, 0.0, 1.0)
+                
+                return final_output.flatten()
+            else:
+                return np.array([0.5])
+                
+        except Exception as e:
+            logger.error(f"Mock ONNX prediction failed: {e}")
+            return np.array([0.5])
+
+class IntelligentCache:
+    """?"""
+    
+    def __init__(self, max_size: int = 1000, strategy: CacheStrategy = CacheStrategy.HYBRID):
+        self.max_size = max_size
+        self.strategy = strategy
+        self.cache: Dict[str, CacheItem] = {}
+        self.access_history = deque(maxlen=10000)
+        self.prediction_model = None
+        self.user_patterns: Dict[str, UserBehaviorPattern] = {}
+        self.lock = threading.RLock()
+        
+        # ?
+        self.stats = {
+            "hits": 0,
+            "misses": 0,
+            "evictions": 0,
+            "predictions": 0,
+            "prediction_accuracy": 0.0
+        }
+    
+    async def initialize_prediction_model(self):
+        """?"""
+        try:
+            # ユーザー
+            self.prediction_model = TensorFlowLiteModel(
+                "models/user_behavior_prediction.tflite",
+                ModelType.USER_BEHAVIOR
+            )
+            await self.prediction_model.load_model()
+            
+            # ?
+            self.prediction_config = {
+                "feature_weights": {
+                    "time_pattern": 0.3,
+                    "task_preference": 0.4,
+                    "mood_pattern": 0.2,
+                    "prediction_accuracy": 0.1
+                },
+                "learning_rate": 0.01,
+                "adaptation_threshold": 0.1,
+                "min_samples_for_prediction": 10
+            }
+            
+            logger.info("Prediction model initialized with advanced configuration")
+            
+        except Exception as e:
+            logger.error(f"Failed to initialize prediction model: {e}")
+            # ?
+            self.prediction_model = None
+            self.prediction_config = {
+                "feature_weights": {"time_pattern": 0.4, "task_preference": 0.6},
+                "learning_rate": 0.05,
+                "adaptation_threshold": 0.2,
+                "min_samples_for_prediction": 5
+            }
+    
+    async def get(self, key: str, user_id: str = None) -> Optional[Any]:
+        """?"""
+        with self.lock:
+            if key in self.cache:
+                item = self.cache[key]
+                
+                # TTL ?
+                if item.ttl_seconds and (datetime.now() - item.created_at).seconds > item.ttl_seconds:
+                    del self.cache[key]
+                    self.stats["misses"] += 1
+                    return None
+                
+                # アプリ
+                item.last_accessed = datetime.now()
+                item.access_count += 1
+                
+                # アプリ
+                self.access_history.append({
+                    "key": key,
+                    "user_id": user_id,
+                    "timestamp": datetime.now(),
+                    "hit": True
+                })
+                
+                self.stats["hits"] += 1
+                return item.value
+            
+            else:
+                # ?
+                self.access_history.append({
+                    "key": key,
+                    "user_id": user_id,
+                    "timestamp": datetime.now(),
+                    "hit": False
+                })
+                
+                self.stats["misses"] += 1
+                
+                # ?
+                if user_id and self.strategy in [CacheStrategy.PREDICTIVE, CacheStrategy.HYBRID]:
+                    await self._trigger_predictive_preload(user_id, key)
+                
+                return None
+    
+    async def put(self, key: str, value: Any, model_type: ModelType, 
+                  user_id: str = None, ttl_seconds: int = None) -> bool:
+        """?"""
+        with self.lock:
+            # ?
+            size_bytes = len(pickle.dumps(value))
+            
+            # ?
+            prediction_score = await self._calculate_prediction_score(key, user_id, model_type)
+            
+            # ?
+            cache_item = CacheItem(
+                cache_id=str(uuid.uuid4()),
+                key=key,
+                value=value,
+                model_type=model_type,
+                created_at=datetime.now(),
+                last_accessed=datetime.now(),
+                access_count=1,
+                prediction_score=prediction_score,
+                size_bytes=size_bytes,
+                ttl_seconds=ttl_seconds
+            )
+            
+            # ?
+            if len(self.cache) >= self.max_size:
+                await self._evict_items()
+            
+            self.cache[key] = cache_item
+            return True
+    
+    async def _calculate_prediction_score(self, key: str, user_id: str, model_type: ModelType) -> float:
+        """?"""
+        if not user_id:
+            return 0.5  # デフォルト
+        
+        try:
+            # ユーザー
+            if user_id not in self.user_patterns:
+                await self._analyze_user_pattern(user_id)
+            
+            pattern = self.user_patterns.get(user_id)
+            if not pattern:
+                return 0.5
+            
+            # ?
+            if self.prediction_model and self.prediction_model.is_loaded:
+                input_features = self._extract_features(key, pattern, model_type)
+                prediction = await self.prediction_model.predict(input_features)
+                return float(prediction[0]) if len(prediction) > 0 else 0.5
+            
+            # ?
+            return self._statistical_prediction(key, pattern, model_type)
+            
+        except Exception as e:
+            logger.error(f"Prediction score calculation failed: {e}")
+            return 0.5
+    
+    def _extract_features(self, key: str, pattern: UserBehaviorPattern, model_type: ModelType) -> np.ndarray:
+        """?"""
+        features = []
+        
+        # ?
+        current_hour = datetime.now().hour
+        features.append(pattern.time_patterns.get(str(current_hour), 0.0))
+        
+        # タスク
+        key_hash = hashlib.md5(key.encode()).hexdigest()[:8]
+        features.append(pattern.task_preferences.get(key_hash, 0.0))
+        
+        # 気分
+        features.append(pattern.mood_patterns.get("current", 0.5))
+        
+        # モデル
+        model_type_encoding = {
+            ModelType.STORY_GENERATION: 0.25,
+            ModelType.TASK_RECOMMENDATION: 0.5,
+            ModelType.MOOD_PREDICTION: 0.75,
+            ModelType.USER_BEHAVIOR: 1.0
+        }
+        features.append(model_type_encoding.get(model_type, 0.5))
+        
+        # ?
+        features.append(pattern.prediction_accuracy)
+        
+        return np.array(features, dtype=np.float32).reshape(1, -1)
+    
+    def _statistical_prediction(self, key: str, pattern: UserBehaviorPattern, model_type: ModelType) -> float:
+        """?"""
+        score = 0.5
+        
+        # ?
+        current_hour = datetime.now().hour
+        time_score = pattern.time_patterns.get(str(current_hour), 0.0)
+        score += time_score * 0.3
+        
+        # タスク
+        key_hash = hashlib.md5(key.encode()).hexdigest()[:8]
+        task_score = pattern.task_preferences.get(key_hash, 0.0)
+        score += task_score * 0.4
+        
+        # ?
+        score += pattern.prediction_accuracy * 0.3
+        
+        return min(max(score, 0.0), 1.0)
+    
+    async def _analyze_user_pattern(self, user_id: str):
+        """ユーザー"""
+        try:
+            # アプリ
+            user_history = [
+                entry for entry in self.access_history 
+                if entry.get("user_id") == user_id
+            ]
+            
+            if len(user_history) < 10:  # ?
+                return
+            
+            # ?
+            time_patterns = defaultdict(float)
+            for entry in user_history:
+                hour = entry["timestamp"].hour
+                time_patterns[str(hour)] += 1.0
+            
+            # ?
+            total_accesses = len(user_history)
+            for hour in time_patterns:
+                time_patterns[hour] /= total_accesses
+            
+            # タスク
+            task_preferences = defaultdict(float)
+            for entry in user_history:
+                if entry["hit"]:  # ?
+                    key_hash = hashlib.md5(entry["key"].encode()).hexdigest()[:8]
+                    task_preferences[key_hash] += 1.0
+            
+            # ?
+            if task_preferences:
+                max_pref = max(task_preferences.values())
+                for key_hash in task_preferences:
+                    task_preferences[key_hash] /= max_pref
+            
+            # 気分
+            mood_patterns = {"current": 0.5}  # 実装
+            
+            # ?
+            recent_predictions = user_history[-50:]  # ?50?
+            accuracy = sum(1 for entry in recent_predictions if entry["hit"]) / len(recent_predictions) if recent_predictions else 0.5
+            
+            # ユーザー
+            self.user_patterns[user_id] = UserBehaviorPattern(
+                user_id=user_id,
+                session_patterns=[],  # ?
+                task_preferences=dict(task_preferences),
+                time_patterns=dict(time_patterns),
+                mood_patterns=mood_patterns,
+                prediction_accuracy=accuracy
+            )
+            
+            logger.info(f"User pattern analyzed for {user_id}: accuracy={accuracy:.3f}")
+            
+        except Exception as e:
+            logger.error(f"User pattern analysis failed: {e}")
+    
+    async def _evict_items(self):
+        """?"""
+        if not self.cache:
+            return
+        
+        evict_count = max(1, len(self.cache) // 10)  # 10%を
+        
+        if self.strategy == CacheStrategy.LRU:
+            # ?
+            items_to_evict = sorted(
+                self.cache.items(),
+                key=lambda x: x[1].last_accessed
+            )[:evict_count]
+            
+        elif self.strategy == CacheStrategy.LFU:
+            # ?
+            items_to_evict = sorted(
+                self.cache.items(),
+                key=lambda x: x[1].access_count
+            )[:evict_count]
+            
+        elif self.strategy == CacheStrategy.PREDICTIVE:
+            # ?
+            items_to_evict = sorted(
+                self.cache.items(),
+                key=lambda x: x[1].prediction_score
+            )[:evict_count]
+            
+        else:  # HYBRID
+            # ? + アプリ
+            items_to_evict = sorted(
+                self.cache.items(),
+                key=lambda x: x[1].prediction_score * 0.6 + (x[1].access_count / 100) * 0.4
+            )[:evict_count]
+        
+        # ?
+        for key, _ in items_to_evict:
+            del self.cache[key]
+            self.stats["evictions"] += 1
+        
+        logger.info(f"Evicted {len(items_to_evict)} cache items using {self.strategy.value} strategy")
+    
+    async def _trigger_predictive_preload(self, user_id: str, missed_key: str):
+        """?"""
+        try:
+            if user_id not in self.user_patterns:
+                await self._analyze_user_pattern(user_id)
+                if user_id not in self.user_patterns:
+                    return
+            
+            pattern = self.user_patterns[user_id]
+            
+            # ?
+            related_keys_with_priority = await self._predict_related_keys_with_priority(user_id, missed_key, pattern)
+            
+            # ?
+            preloaded_count = 0
+            max_preload = min(5, self.max_size // 10)  # ?10%ま5つ
+            
+            for key, priority_score in related_keys_with_priority:
+                if preloaded_count >= max_preload:
+                    break
+                    
+                if key not in self.cache and priority_score > 0.3:  # ?
+                    # ?
+                    predicted_data = await self._generate_predicted_data(key, pattern)
+                    
+                    # ?
+                    await self.put(
+                        key, 
+                        predicted_data, 
+                        self._infer_model_type_from_key(key), 
+                        user_id, 
+                        ttl_seconds=600  # 10?
+                    )
+                    
+                    # ?
+                    if key in self.cache:
+                        self.cache[key].prediction_score = priority_score
+                    
+                    preloaded_count += 1
+            
+            # ?
+            self.stats["predictions"] += preloaded_count
+            
+            logger.info(f"Advanced predictive preload for user {user_id}: {preloaded_count} keys preloaded")
+            
+        except Exception as e:
+            logger.error(f"Advanced predictive preload failed: {e}")
+    
+    async def _predict_related_keys_with_priority(self, user_id: str, base_key: str, pattern: UserBehaviorPattern) -> List[tuple]:
+        """?"""
+        related_keys = []
+        
+        try:
+            current_hour = datetime.now().hour
+            current_time_score = pattern.time_patterns.get(str(current_hour), 0.0)
+            
+            # ?
+            for hour_offset in [-2, -1, 0, 1, 2]:
+                target_hour = (current_hour + hour_offset) % 24
+                time_score = pattern.time_patterns.get(str(target_hour), 0.0)
+                
+                if time_score > 0.1:
+                    # ?
+                    temporal_decay = 1.0 / (abs(hour_offset) + 1)
+                    priority = time_score * temporal_decay * 0.8
+                    
+                    related_keys.append((f"{base_key}_hour_{target_hour}", priority))
+            
+            # タスク
+            task_types = {
+                "story": 0.7,
+                "task": 0.8,
+                "mood": 0.6,
+                "recommendation": 0.5
+            }
+            
+            for task_type, base_priority in task_types.items():
+                if task_type not in base_key.lower():
+                    # ユーザー
+                    task_hash = hashlib.md5(task_type.encode()).hexdigest()[:8]
+                    user_preference = pattern.task_preferences.get(task_hash, 0.5)
+                    
+                    priority = base_priority * user_preference * current_time_score
+                    related_keys.append((f"{base_key}_{task_type}", priority))
+            
+            # ?
+            recent_keys = [entry["key"] for entry in list(self.access_history)[-50:] 
+                          if entry.get("user_id") == user_id and entry.get("hit")]
+            
+            for recent_key in set(recent_keys):
+                if recent_key != base_key and recent_key not in [k for k, _ in related_keys]:
+                    # 共有
+                    co_occurrence = recent_keys.count(recent_key) / len(recent_keys) if recent_keys else 0
+                    priority = co_occurrence * pattern.prediction_accuracy * 0.6
+                    
+                    related_keys.append((f"related_{recent_key}", priority))
+            
+            # ?
+            related_keys.sort(key=lambda x: x[1], reverse=True)
+            
+            return related_keys[:10]  # ?10?
+            
+        except Exception as e:
+            logger.error(f"Related keys prediction failed: {e}")
+            return []
+    
+    async def _generate_predicted_data(self, key: str, pattern: UserBehaviorPattern) -> Any:
+        """?"""
+        try:
+            # ?
+            if "story" in key.lower():
+                return {
+                    "type": "predicted_story",
+                    "content": f"? for {key}",
+                    "confidence": pattern.prediction_accuracy,
+                    "generated_at": datetime.now().isoformat()
+                }
+            elif "task" in key.lower():
+                return {
+                    "type": "predicted_task",
+                    "recommendations": [f"?1 for {key}", f"?2 for {key}"],
+                    "confidence": pattern.prediction_accuracy,
+                    "generated_at": datetime.now().isoformat()
+                }
+            elif "mood" in key.lower():
+                return {
+                    "type": "predicted_mood",
+                    "score": min(5, max(1, int(pattern.mood_patterns.get("current", 3) * 5))),
+                    "confidence": pattern.prediction_accuracy,
+                    "generated_at": datetime.now().isoformat()
+                }
+            else:
+                return {
+                    "type": "predicted_generic",
+                    "data": f"? for {key}",
+                    "confidence": pattern.prediction_accuracy,
+                    "generated_at": datetime.now().isoformat()
+                }
+                
+        except Exception as e:
+            logger.error(f"Predicted data generation failed: {e}")
+            return f"fallback_predicted_data_for_{key}"
+    
+    def _infer_model_type_from_key(self, key: str) -> ModelType:
+        """?"""
+        key_lower = key.lower()
+        
+        if "story" in key_lower:
+            return ModelType.STORY_GENERATION
+        elif "task" in key_lower or "recommendation" in key_lower:
+            return ModelType.TASK_RECOMMENDATION
+        elif "mood" in key_lower:
+            return ModelType.MOOD_PREDICTION
+        else:
+            return ModelType.USER_BEHAVIOR
+    
+    async def _predict_related_keys(self, user_id: str, base_key: str, pattern: UserBehaviorPattern) -> List[str]:
+        """?"""
+        # ?
+        related_keys = []
+        
+        # ?
+        current_hour = datetime.now().hour
+        for hour_offset in [-1, 0, 1]:
+            target_hour = (current_hour + hour_offset) % 24
+            if pattern.time_patterns.get(str(target_hour), 0) > 0.1:
+                related_keys.append(f"{base_key}_hour_{target_hour}")
+        
+        # タスク
+        for task_type in ["story", "task", "mood"]:
+            if base_key.find(task_type) == -1:  # ?
+                related_keys.append(f"{base_key}_{task_type}")
+        
+        return related_keys
+    
+    def get_stats(self) -> Dict[str, Any]:
+        """?"""
+        total_requests = self.stats["hits"] + self.stats["misses"]
+        hit_rate = self.stats["hits"] / total_requests if total_requests > 0 else 0.0
+        
+        # ?
+        prediction_accuracy = self.stats["prediction_accuracy"]
+        if self.stats["predictions"] > 0:
+            prediction_accuracy = sum(
+                pattern.prediction_accuracy for pattern in self.user_patterns.values()
+            ) / len(self.user_patterns) if self.user_patterns else 0.0
+        
+        # メイン
+        total_memory_bytes = sum(item.size_bytes for item in self.cache.values())
+        avg_item_size = total_memory_bytes / len(self.cache) if self.cache else 0
+        
+        # ?
+        efficiency_score = self._calculate_cache_efficiency()
+        
+        # ?
+        hourly_patterns = self._analyze_hourly_access_patterns()
+        
+        return {
+            # 基本
+            "cache_size": len(self.cache),
+            "max_size": self.max_size,
+            "hit_rate": hit_rate,
+            "total_hits": self.stats["hits"],
+            "total_misses": self.stats["misses"],
+            "total_evictions": self.stats["evictions"],
+            "strategy": self.strategy.value,
+            
+            # ?
+            "total_predictions": self.stats["predictions"],
+            "prediction_accuracy": prediction_accuracy,
+            "user_patterns_count": len(self.user_patterns),
+            
+            # メイン
+            "total_memory_bytes": total_memory_bytes,
+            "avg_item_size_bytes": avg_item_size,
+            "memory_utilization": total_memory_bytes / (self.max_size * avg_item_size) if avg_item_size > 0 else 0,
+            
+            # ?
+            "cache_efficiency_score": efficiency_score,
+            "hourly_access_patterns": hourly_patterns,
+            
+            # ?
+            "avg_prediction_score": self._calculate_avg_prediction_score(),
+            "cache_turnover_rate": self.stats["evictions"] / max(1, self.stats["hits"] + self.stats["misses"]),
+        }
+    
+    def _calculate_cache_efficiency(self) -> float:
+        """?"""
+        try:
+            if not self.cache:
+                return 0.0
+            
+            # ?: 40%
+            total_requests = self.stats["hits"] + self.stats["misses"]
+            hit_rate = self.stats["hits"] / total_requests if total_requests > 0 else 0.0
+            hit_score = hit_rate * 0.4
+            
+            # ?: 30%
+            avg_prediction_accuracy = sum(
+                item.prediction_score for item in self.cache.values()
+            ) / len(self.cache)
+            prediction_score = avg_prediction_accuracy * 0.3
+            
+            # メイン: 20%
+            memory_efficiency = len(self.cache) / self.max_size
+            memory_score = memory_efficiency * 0.2
+            
+            # ?: 10%?
+            eviction_rate = self.stats["evictions"] / max(1, total_requests)
+            eviction_score = (1.0 - min(1.0, eviction_rate)) * 0.1
+            
+            return hit_score + prediction_score + memory_score + eviction_score
+            
+        except Exception as e:
+            logger.error(f"Cache efficiency calculation failed: {e}")
+            return 0.0
+    
+    def _analyze_hourly_access_patterns(self) -> Dict[str, float]:
+        """?"""
+        try:
+            hourly_counts = defaultdict(int)
+            
+            # ?24?
+            cutoff_time = datetime.now() - timedelta(hours=24)
+            
+            for entry in self.access_history:
+                if entry["timestamp"] >= cutoff_time:
+                    hour = entry["timestamp"].hour
+                    hourly_counts[str(hour)] += 1
+            
+            # ?0-1?
+            max_count = max(hourly_counts.values()) if hourly_counts else 1
+            normalized_patterns = {
+                hour: count / max_count 
+                for hour, count in hourly_counts.items()
+            }
+            
+            return normalized_patterns
+            
+        except Exception as e:
+            logger.error(f"Hourly access pattern analysis failed: {e}")
+            return {}
+    
+    def _calculate_avg_prediction_score(self) -> float:
+        """?"""
+        try:
+            if not self.cache:
+                return 0.0
+            
+            total_score = sum(item.prediction_score for item in self.cache.values())
+            return total_score / len(self.cache)
+            
+        except Exception as e:
+            logger.error(f"Average prediction score calculation failed: {e}")
+            return 0.0
+    
+    async def optimize_cache_performance(self):
+        """?"""
+        try:
+            # 1. ?
+            await self._remove_low_efficiency_items()
+            
+            # 2. ユーザー
+            await self._update_user_patterns()
+            
+            # 3. ?
+            await self._retune_prediction_model()
+            
+            # 4. ?
+            await self._adjust_cache_strategy()
+            
+            logger.info("Cache performance optimization completed")
+            
+        except Exception as e:
+            logger.error(f"Cache performance optimization failed: {e}")
+    
+    async def _remove_low_efficiency_items(self):
+        """?"""
+        try:
+            if len(self.cache) < self.max_size * 0.8:  # 80%?
+                return
+            
+            # ?
+            efficiency_threshold = 0.3
+            low_efficiency_items = []
+            
+            for key, item in self.cache.items():
+                # ? = ? * アプリ * ?
+                time_factor = 1.0 / max(1, (datetime.now() - item.last_accessed).days + 1)
+                access_factor = min(1.0, item.access_count / 10.0)
+                efficiency = item.prediction_score * access_factor * time_factor
+                
+                if efficiency < efficiency_threshold:
+                    low_efficiency_items.append(key)
+            
+            # ?
+            removed_count = 0
+            for key in low_efficiency_items[:len(self.cache) // 10]:  # ?10%ま
+                if key in self.cache:
+                    del self.cache[key]
+                    removed_count += 1
+            
+            if removed_count > 0:
+                logger.info(f"Removed {removed_count} low-efficiency cache items")
+                
+        except Exception as e:
+            logger.error(f"Low efficiency items removal failed: {e}")
+    
+    async def _update_user_patterns(self):
+        """ユーザー"""
+        try:
+            # アプリ
+            active_users = set()
+            cutoff_time = datetime.now() - timedelta(hours=24)
+            
+            for entry in self.access_history:
+                if entry["timestamp"] >= cutoff_time and entry.get("user_id"):
+                    active_users.add(entry["user_id"])
+            
+            # アプリ
+            for user_id in active_users:
+                await self._analyze_user_pattern(user_id)
+            
+            logger.info(f"Updated patterns for {len(active_users)} active users")
+            
+        except Exception as e:
+            logger.error(f"User patterns update failed: {e}")
+    
+    async def _retune_prediction_model(self):
+        """?"""
+        try:
+            if not hasattr(self, 'prediction_config'):
+                return
+            
+            # ?
+            current_accuracy = sum(
+                pattern.prediction_accuracy for pattern in self.user_patterns.values()
+            ) / len(self.user_patterns) if self.user_patterns else 0.5
+            
+            # ?
+            if current_accuracy < 0.6:
+                self.prediction_config["feature_weights"]["time_pattern"] += 0.05
+                self.prediction_config["feature_weights"]["task_preference"] -= 0.05
+            
+            # ?
+            total_weight = sum(self.prediction_config["feature_weights"].values())
+            for key in self.prediction_config["feature_weights"]:
+                self.prediction_config["feature_weights"][key] /= total_weight
+            
+            logger.info(f"Prediction model retuned, current accuracy: {current_accuracy:.3f}")
+            
+        except Exception as e:
+            logger.error(f"Prediction model retuning failed: {e}")
+    
+    async def _adjust_cache_strategy(self):
+        """?"""
+        try:
+            current_hit_rate = self.stats["hits"] / max(1, self.stats["hits"] + self.stats["misses"])
+            
+            # ?
+            if current_hit_rate < 0.7 and self.strategy == CacheStrategy.HYBRID:
+                # ?
+                logger.info("Adjusting cache strategy to enhance predictive elements")
+            
+            # ?LRU?
+            elif current_hit_rate > 0.9 and self.strategy == CacheStrategy.HYBRID:
+                logger.info("Adjusting cache strategy to enhance LRU elements")
+            
+        except Exception as e:
+            logger.error(f"Cache strategy adjustment failed: {e}")
+
+# ?
+intelligent_cache = IntelligentCache(max_size=1000, strategy=CacheStrategy.HYBRID)
+
+class EdgeAICacheEngine:
+    """Edge AI Cache エラー"""
+    
+    def __init__(self):
+        self.cache = intelligent_cache
+        self.models: Dict[ModelType, EdgeAIModel] = {}
+        self.offline_queue = deque()
+        self.sync_in_progress = False
+        
+    async def initialize(self):
+        """エラー"""
+        try:
+            # ?
+            await self.cache.initialize_prediction_model()
+            
+            # ?AIモデル
+            await self._initialize_ai_models()
+            
+            logger.info("Edge AI Cache Engine initialized successfully")
+            
+        except Exception as e:
+            logger.error(f"Engine initialization failed: {e}")
+    
+    async def _initialize_ai_models(self):
+        """AIモデル"""
+        model_configs = [
+            (ModelType.STORY_GENERATION, "models/story_generation.tflite", TensorFlowLiteModel),
+            (ModelType.TASK_RECOMMENDATION, "models/task_recommendation.onnx", ONNXModel),
+            (ModelType.MOOD_PREDICTION, "models/mood_prediction.tflite", TensorFlowLiteModel),
+        ]
+        
+        for model_type, model_path, model_class in model_configs:
+            try:
+                model = model_class(model_path, model_type)
+                await model.load_model()
+                self.models[model_type] = model
+                logger.info(f"AI model loaded: {model_type.value}")
+                
+            except Exception as e:
+                logger.error(f"Failed to load {model_type.value} model: {e}")
+    
+    async def get_cached_inference(self, model_type: ModelType, input_data: Any, 
+                                   user_id: str = None) -> Optional[Any]:
+        """?"""
+        # ?
+        cache_key = self._generate_cache_key(model_type, input_data)
+        
+        # ?
+        cached_result = await self.cache.get(cache_key, user_id)
+        
+        if cached_result is not None:
+            return cached_result
+        
+        # ?
+        if model_type in self.models:
+            try:
+                result = await self.models[model_type].predict(input_data)
+                
+                # ?
+                await self.cache.put(cache_key, result, model_type, user_id, ttl_seconds=3600)
+                
+                return result
+                
+            except Exception as e:
+                logger.error(f"Inference failed for {model_type.value}: {e}")
+                return None
+        
+        return None
+    
+    def _generate_cache_key(self, model_type: ModelType, input_data: Any) -> str:
+        """?"""
+        # 入力
+        data_str = json.dumps(input_data, sort_keys=True, default=str)
+        data_hash = hashlib.md5(data_str.encode()).hexdigest()
+        return f"{model_type.value}_{data_hash}"
+    
+    async def add_to_offline_queue(self, operation: Dict[str, Any]):
+        """?"""
+        # ?
+        validated_operation = await self._validate_and_normalize_operation(operation)
+        
+        # タスクIDの
+        validated_operation["timestamp"] = datetime.now().isoformat()
+        validated_operation["id"] = str(uuid.uuid4())
+        validated_operation["retry_count"] = 0
+        validated_operation["priority"] = self._calculate_operation_priority(validated_operation)
+        
+        # ?
+        if not await self._is_duplicate_operation(validated_operation):
+            self.offline_queue.append(validated_operation)
+            
+            # ?
+            if len(self.offline_queue) > 1000:
+                await self._evict_low_priority_operations()
+            
+            # 治療
+            if validated_operation.get("type") in ["crisis_event", "mood_critical", "safety_alert"]:
+                await self._handle_critical_operation(validated_operation)
+            
+            logger.info(f"Added operation to offline queue: {validated_operation['id']} (priority: {validated_operation['priority']})")
+        else:
+            logger.info(f"Duplicate operation ignored: {operation.get('type', 'unknown')}")
+    
+    async def _validate_and_normalize_operation(self, operation: Dict[str, Any]) -> Dict[str, Any]:
+        """?"""
+        try:
+            # ?
+            required_fields = ["type", "user_id"]
+            for field in required_fields:
+                if field not in operation:
+                    operation[field] = f"unknown_{field}"
+            
+            # ?
+            if operation["type"] == "task_completion":
+                operation.setdefault("task_id", f"task_{uuid.uuid4()}")
+                operation.setdefault("difficulty", 1)
+                operation.setdefault("xp_earned", 0)
+                
+            elif operation["type"] == "mood_update":
+                operation.setdefault("mood_score", 3)
+                operation["mood_score"] = max(1, min(5, operation["mood_score"]))
+                
+            elif operation["type"] == "story_progress":
+                operation.setdefault("story_id", f"story_{uuid.uuid4()}")
+                operation.setdefault("choice_made", "default_choice")
+                
+            elif operation["type"] == "crisis_event":
+                operation.setdefault("severity", "moderate")
+                operation.setdefault("resolved", False)
+                operation.setdefault("support_provided", [])
+            
+            # デフォルト
+            operation_str = json.dumps(operation, default=str)
+            if len(operation_str) > 10000:  # 10KB?
+                operation["data_truncated"] = True
+                # ?
+                for key, value in operation.items():
+                    if isinstance(value, str) and len(value) > 1000:
+                        operation[key] = value[:1000] + "...[truncated]"
+            
+            return operation
+            
+        except Exception as e:
+            logger.error(f"Operation validation failed: {e}")
+            return {
+                "type": "validation_error",
+                "user_id": operation.get("user_id", "unknown"),
+                "original_operation": str(operation)[:500],
+                "error": str(e)
+            }
+    
+    def _calculate_operation_priority(self, operation: Dict[str, Any]) -> int:
+        """?"""
+        # 基本
+        base_priority = 5
+        
+        # ?
+        type_priorities = {
+            "crisis_event": 10,
+            "safety_alert": 9,
+            "mood_critical": 8,
+            "task_completion": 6,
+            "mood_update": 5,
+            "story_progress": 4,
+            "mandala_update": 3,
+            "cache_update": 2,
+            "analytics": 1
+        }
+        
+        priority = type_priorities.get(operation["type"], base_priority)
+        
+        # ?
+        try:
+            operation_time = datetime.fromisoformat(operation.get("timestamp", datetime.now().isoformat()))
+            age_hours = (datetime.now() - operation_time).total_seconds() / 3600
+            priority += min(3, int(age_hours))  # ?3?
+        except:
+            pass
+        
+        # リスト
+        retry_count = operation.get("retry_count", 0)
+        priority += min(2, retry_count)  # リスト
+        
+        return min(10, priority)  # ?10
+    
+    async def _is_duplicate_operation(self, operation: Dict[str, Any]) -> bool:
+        """?"""
+        try:
+            # ?100?
+            recent_operations = list(self.offline_queue)[-100:]
+            
+            for existing_op in recent_operations:
+                if (existing_op["type"] == operation["type"] and 
+                    existing_op["user_id"] == operation["user_id"]):
+                    
+                    # ?
+                    if operation["type"] == "task_completion":
+                        if existing_op.get("task_id") == operation.get("task_id"):
+                            return True
+                    elif operation["type"] == "mood_update":
+                        # 5?
+                        existing_time = datetime.fromisoformat(existing_op["timestamp"])
+                        if (datetime.now() - existing_time).total_seconds() < 300:
+                            return True
+                    elif operation["type"] == "story_progress":
+                        if (existing_op.get("story_id") == operation.get("story_id") and
+                            existing_op.get("choice_made") == operation.get("choice_made")):
+                            return True
+            
+            return False
+            
+        except Exception as e:
+            logger.error(f"Duplicate check failed: {e}")
+            return False
+    
+    async def _evict_low_priority_operations(self):
+        """?"""
+        try:
+            # ?
+            sorted_operations = sorted(self.offline_queue, key=lambda x: x.get("priority", 5))
+            
+            # ?10%を
+            evict_count = len(self.offline_queue) // 10
+            evicted_operations = sorted_operations[:evict_count]
+            
+            # ?
+            for op in evicted_operations:
+                try:
+                    self.offline_queue.remove(op)
+                except ValueError:
+                    pass  # ?
+            
+            logger.info(f"Evicted {len(evicted_operations)} low-priority operations")
+            
+        except Exception as e:
+            logger.error(f"Operation eviction failed: {e}")
+    
+    async def _handle_critical_operation(self, operation: Dict[str, Any]):
+        """?"""
+        try:
+            # ?
+            critical_key = f"critical_operation_{operation['id']}"
+            await self.cache.put(
+                critical_key, 
+                operation, 
+                ModelType.USER_BEHAVIOR, 
+                operation["user_id"], 
+                ttl_seconds=86400  # 24?
+            )
+            
+            # ?
+            asyncio.create_task(self._attempt_immediate_sync(operation))
+            
+            logger.info(f"Critical operation handled: {operation['type']}")
+            
+        except Exception as e:
+            logger.error(f"Critical operation handling failed: {e}")
+    
+    async def _attempt_immediate_sync(self, operation: Dict[str, Any]):
+        """?"""
+        try:
+            # ?
+            if await self._test_connectivity():
+                await self._sync_single_operation(operation)
+                logger.info(f"Critical operation synced immediately: {operation['id']}")
+            else:
+                logger.warning(f"Immediate sync failed - no connectivity: {operation['id']}")
+                
+        except Exception as e:
+            logger.error(f"Immediate sync attempt failed: {e}")
+    
+    async def _test_connectivity(self) -> bool:
+        """?"""
+        # 実装pingや
+        import random
+        return random.random() > 0.3  # 70%の
+    
+    async def sync_offline_operations(self) -> Dict[str, Any]:
+        """?"""
+        if self.sync_in_progress:
+            return {"status": "sync_in_progress"}
+        
+        self.sync_in_progress = True
+        sync_start_time = datetime.now()
+        
+        try:
+            # ?
+            if not await self._test_connectivity():
+                return {
+                    "status": "no_connectivity",
+                    "message": "Network connectivity unavailable",
+                    "queue_size": len(self.offline_queue)
+                }
+            
+            # コア
+            resolved_operations = await self._resolve_operation_conflicts()
+            
+            # ?
+            sorted_operations = sorted(resolved_operations, key=lambda x: x.get("priority", 5), reverse=True)
+            
+            synced_count = 0
+            failed_count = 0
+            failed_operations = []
+            batch_size = 10  # バリデーション
+            
+            # バリデーション
+            for i in range(0, len(sorted_operations), batch_size):
+                batch = sorted_operations[i:i + batch_size]
+                batch_results = await self._sync_operation_batch(batch)
+                
+                for operation, success in batch_results:
+                    if success:
+                        synced_count += 1
+                        # 成
+                        try:
+                            self.offline_queue.remove(operation)
+                        except ValueError:
+                            pass  # ?
+                    else:
+                        failed_count += 1
+                        failed_operations.append(operation)
+                        # リスト
+                        operation["retry_count"] = operation.get("retry_count", 0) + 1
+                
+                # バリデーション
+                await asyncio.sleep(0.1)
+            
+            # ?
+            await self._handle_failed_operations(failed_operations)
+            
+            sync_duration = (datetime.now() - sync_start_time).total_seconds()
+            
+            return {
+                "status": "completed",
+                "synced_count": synced_count,
+                "failed_count": failed_count,
+                "remaining_queue_size": len(self.offline_queue),
+                "sync_duration_seconds": sync_duration,
+                "conflicts_resolved": len(resolved_operations) - len(sorted_operations) if len(resolved_operations) != len(sorted_operations) else 0
+            }
+            
+        except Exception as e:
+            logger.error(f"Sync operation failed: {e}")
+            return {
+                "status": "error",
+                "error": str(e),
+                "queue_size": len(self.offline_queue)
+            }
+            
+        finally:
+            self.sync_in_progress = False
+    
+    async def _resolve_operation_conflicts(self) -> List[Dict[str, Any]]:
+        """?"""
+        try:
+            operations = list(self.offline_queue)
+            resolved_operations = []
+            conflict_groups = defaultdict(list)
+            
+            # ?
+            for operation in operations:
+                conflict_key = self._generate_conflict_key(operation)
+                conflict_groups[conflict_key].append(operation)
+            
+            # ?
+            for conflict_key, group_operations in conflict_groups.items():
+                if len(group_operations) == 1:
+                    resolved_operations.extend(group_operations)
+                else:
+                    # ?
+                    resolved_operation = await self._resolve_conflict_group(group_operations)
+                    if resolved_operation:
+                        resolved_operations.append(resolved_operation)
+            
+            logger.info(f"Conflict resolution: {len(operations)} -> {len(resolved_operations)} operations")
+            return resolved_operations
+            
+        except Exception as e:
+            logger.error(f"Conflict resolution failed: {e}")
+            return list(self.offline_queue)
+    
+    def _generate_conflict_key(self, operation: Dict[str, Any]) -> str:
+        """コア"""
+        operation_type = operation["type"]
+        user_id = operation["user_id"]
+        
+        if operation_type == "task_completion":
+            return f"task_{user_id}_{operation.get('task_id', 'unknown')}"
+        elif operation_type == "mood_update":
+            # ?
+            timestamp = operation.get("timestamp", datetime.now().isoformat())
+            date = timestamp[:10]  # YYYY-MM-DD
+            return f"mood_{user_id}_{date}"
+        elif operation_type == "story_progress":
+            return f"story_{user_id}_{operation.get('story_id', 'unknown')}"
+        else:
+            return f"{operation_type}_{user_id}"
+    
+    async def _resolve_conflict_group(self, operations: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        """コア"""
+        try:
+            # ?
+            operation_type = operations[0]["type"]
+            
+            if operation_type == "task_completion":
+                # ?
+                return max(operations, key=lambda x: x.get("timestamp", ""))
+                
+            elif operation_type == "mood_update":
+                # ?
+                manual_ops = [op for op in operations if op.get("source") == "manual_input"]
+                if manual_ops:
+                    return max(manual_ops, key=lambda x: x.get("timestamp", ""))
+                else:
+                    return max(operations, key=lambda x: x.get("timestamp", ""))
+                    
+            elif operation_type == "story_progress":
+                # ?
+                return max(operations, key=lambda x: x.get("timestamp", ""))
+                
+            else:
+                # デフォルト
+                return max(operations, key=lambda x: x.get("timestamp", ""))
+                
+        except Exception as e:
+            logger.error(f"Conflict group resolution failed: {e}")
+            return operations[0] if operations else None
+    
+    async def _sync_operation_batch(self, operations: List[Dict[str, Any]]) -> List[tuple]:
+        """?"""
+        results = []
+        
+        # ?
+        tasks = []
+        for operation in operations:
+            task = self._sync_single_operation_with_result(operation)
+            tasks.append(task)
+        
+        # ?
+        batch_results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # ?
+        for i, result in enumerate(batch_results):
+            operation = operations[i]
+            success = not isinstance(result, Exception)
+            results.append((operation, success))
+            
+            if isinstance(result, Exception):
+                logger.error(f"Batch sync failed for operation {operation['id']}: {result}")
+        
+        return results
+    
+    async def _sync_single_operation_with_result(self, operation: Dict[str, Any]) -> bool:
+        """?"""
+        try:
+            await self._sync_single_operation(operation)
+            return True
+        except Exception as e:
+            logger.error(f"Single operation sync failed: {e}")
+            return False
+    
+    async def _handle_failed_operations(self, failed_operations: List[Dict[str, Any]]):
+        """?"""
+        try:
+            for operation in failed_operations:
+                retry_count = operation.get("retry_count", 0)
+                
+                if retry_count >= 3:
+                    # 3?
+                    await self._archive_failed_operation(operation)
+                    # ?
+                    try:
+                        self.offline_queue.remove(operation)
+                    except ValueError:
+                        pass
+                else:
+                    # リスト
+                    operation["priority"] = min(10, operation.get("priority", 5) + 1)
+                    if operation not in self.offline_queue:
+                        self.offline_queue.append(operation)
+            
+            logger.info(f"Handled {len(failed_operations)} failed operations")
+            
+        except Exception as e:
+            logger.error(f"Failed operation handling failed: {e}")
+    
+    async def _archive_failed_operation(self, operation: Dict[str, Any]):
+        """?"""
+        try:
+            archive_key = f"failed_operation_{operation['id']}"
+            operation["archived_at"] = datetime.now().isoformat()
+            operation["final_failure"] = True
+            
+            await self.cache.put(
+                archive_key,
+                operation,
+                ModelType.USER_BEHAVIOR,
+                operation["user_id"],
+                ttl_seconds=604800  # 1?
+            )
+            
+            logger.warning(f"Operation archived after multiple failures: {operation['id']}")
+            
+        except Exception as e:
+            logger.error(f"Operation archiving failed: {e}")
+    
+    async def _sync_single_operation(self, operation: Dict[str, Any]):
+        """?"""
+        operation_type = operation.get("type")
+        user_id = operation.get("user_id")
+        
+        try:
+            # ?
+            if operation_type == "task_completion":
+                await self._sync_task_completion(operation)
+                
+            elif operation_type == "mood_update":
+                await self._sync_mood_update(operation)
+                
+            elif operation_type == "story_progress":
+                await self._sync_story_progress(operation)
+                
+            elif operation_type == "mandala_update":
+                await self._sync_mandala_update(operation)
+                
+            elif operation_type == "crisis_event":
+                await self._sync_crisis_event(operation)
+                
+            elif operation_type == "coping_strategy_used":
+                await self._sync_coping_strategy(operation)
+                
+            else:
+                # ?
+                logger.warning(f"Unknown operation type: {operation_type}")
+                await self._sync_generic_operation(operation)
+            
+            # ?
+            logger.info(f"Successfully synced {operation_type} for user {user_id}: {operation['id']}")
+            
+        except Exception as e:
+            logger.error(f"Sync failed for operation {operation['id']}: {e}")
+            raise
+    
+    async def _sync_task_completion(self, operation: Dict[str, Any]):
+        """タスク"""
+        # 実装 task-mgmt ?APIを
+        task_data = {
+            "task_id": operation.get("task_id"),
+            "user_id": operation.get("user_id"),
+            "completed_at": operation.get("completion_time", operation.get("timestamp")),
+            "difficulty": operation.get("difficulty", 1),
+            "xp_earned": operation.get("xp_earned", 0),
+            "mood_before": operation.get("mood_before"),
+            "mood_after": operation.get("mood_after")
+        }
+        
+        # モデル API ?
+        await self._mock_api_call("POST", "/api/tasks/complete", task_data)
+        logger.info(f"Task completion synced: {task_data['task_id']}")
+    
+    async def _sync_mood_update(self, operation: Dict[str, Any]):
+        """気分"""
+        # 実装 mood-tracking ?APIを
+        mood_data = {
+            "user_id": operation.get("user_id"),
+            "mood_score": operation.get("mood_score"),
+            "energy_level": operation.get("energy_level"),
+            "notes": operation.get("notes"),
+            "logged_at": operation.get("logged_at", operation.get("timestamp")),
+            "source": operation.get("source", "offline_sync")
+        }
+        
+        await self._mock_api_call("POST", "/api/mood/update", mood_data)
+        logger.info(f"Mood update synced: score={mood_data['mood_score']}")
+    
+    async def _sync_story_progress(self, operation: Dict[str, Any]):
+        """ストーリー"""
+        # 実装 ai-story ?APIを
+        story_data = {
+            "user_id": operation.get("user_id"),
+            "story_id": operation.get("story_id"),
+            "choice_made": operation.get("choice_made"),
+            "progress_timestamp": operation.get("timestamp"),
+            "chapter": operation.get("chapter"),
+            "node": operation.get("node")
+        }
+        
+        await self._mock_api_call("POST", "/api/story/progress", story_data)
+        logger.info(f"Story progress synced: {story_data['story_id']}")
+    
+    async def _sync_mandala_update(self, operation: Dict[str, Any]):
+        """Mandala?"""
+        # 実装 mandala ?APIを
+        mandala_data = {
+            "user_id": operation.get("user_id"),
+            "cell_unlocked": operation.get("cell_unlocked"),
+            "progress": operation.get("progress"),
+            "attribute": operation.get("attribute"),
+            "updated_at": operation.get("timestamp")
+        }
+        
+        await self._mock_api_call("POST", "/api/mandala/update", mandala_data)
+        logger.info(f"Mandala update synced: {mandala_data['cell_unlocked']}")
+    
+    async def _sync_crisis_event(self, operation: Dict[str, Any]):
+        """?"""
+        # 実装 therapeutic-safety ?APIを
+        crisis_data = {
+            "user_id": operation.get("user_id"),
+            "severity": operation.get("severity"),
+            "coping_used": operation.get("coping_used"),
+            "support_provided": operation.get("support_provided", []),
+            "resolved": operation.get("resolved", False),
+            "timestamp": operation.get("timestamp"),
+            "duration_minutes": operation.get("duration_minutes"),
+            "trigger": operation.get("trigger")
+        }
+        
+        await self._mock_api_call("POST", "/api/safety/crisis-event", crisis_data)
+        logger.info(f"Crisis event synced: severity={crisis_data['severity']}")
+    
+    async def _sync_coping_strategy(self, operation: Dict[str, Any]):
+        """コア"""
+        # 実装 adhd-support ま therapeutic-safety ?APIを
+        coping_data = {
+            "user_id": operation.get("user_id"),
+            "strategy": operation.get("strategy"),
+            "effectiveness": operation.get("effectiveness"),
+            "duration_minutes": operation.get("duration_minutes"),
+            "used_at": operation.get("used_at", operation.get("timestamp")),
+            "context": operation.get("context"),
+            "mood_before": operation.get("mood_before"),
+            "mood_after": operation.get("mood_after")
+        }
+        
+        await self._mock_api_call("POST", "/api/coping/strategy-used", coping_data)
+        logger.info(f"Coping strategy synced: {coping_data['strategy']}")
+    
+    async def _sync_generic_operation(self, operation: Dict[str, Any]):
+        """?"""
+        # ?
+        generic_data = {
+            "operation_type": operation.get("type"),
+            "user_id": operation.get("user_id"),
+            "data": {k: v for k, v in operation.items() if k not in ["id", "timestamp", "retry_count", "priority"]},
+            "timestamp": operation.get("timestamp")
+        }
+        
+        await self._mock_api_call("POST", "/api/generic/operation", generic_data)
+        logger.info(f"Generic operation synced: {generic_data['operation_type']}")
+    
+    async def _mock_api_call(self, method: str, endpoint: str, data: Dict[str, Any]):
+        """モデル API ?"""
+        # 実装 requests や httpx をHTTP APIを
+        await asyncio.sleep(0.05)  # ?
+        
+        # ?5%の
+        import random
+        if random.random() < 0.05:
+            raise Exception(f"Mock API call failed: {method} {endpoint}")
+        
+        logger.debug(f"Mock API call: {method} {endpoint} - {len(str(data))} bytes")
+    
+    async def prepare_offline_therapeutic_support(self, user_id: str) -> Dict[str, Any]:
+        """?"""
+        try:
+            # 治療
+            support_data = await self._generate_offline_support_data(user_id)
+            
+            # ?
+            cache_operations = []
+            for key, data in support_data.items():
+                cache_operations.append(
+                    self.cache.put(key, data, ModelType.USER_BEHAVIOR, user_id, ttl_seconds=86400)
+                )
+            
+            # ?
+            await asyncio.gather(*cache_operations)
+            
+            # ?
+            preparation_record = {
+                "type": "offline_preparation",
+                "user_id": user_id,
+                "prepared_at": datetime.now().isoformat(),
+                "data_types": list(support_data.keys()),
+                "cache_size": sum(len(str(data)) for data in support_data.values())
+            }
+            
+            await self.add_to_offline_queue(preparation_record)
+            
+            logger.info(f"Offline therapeutic support prepared for user {user_id}")
+            
+            return {
+                "status": "prepared",
+                "user_id": user_id,
+                "cached_data_types": list(support_data.keys()),
+                "total_cache_size": preparation_record["cache_size"],
+                "valid_until": (datetime.now() + timedelta(hours=24)).isoformat()
+            }
+            
+        except Exception as e:
+            logger.error(f"Offline support preparation failed: {e}")
+            return {"status": "error", "error": str(e)}
+    
+    async def _generate_offline_support_data(self, user_id: str) -> Dict[str, Any]:
+        """?"""
+        try:
+            # ユーザー
+            user_profile = await self.cache.get(f"user_profile_{user_id}", user_id) or {
+                "level": 1, "xp": 0, "mood_trend": [3, 3, 3], "preferred_activities": []
+            }
+            
+            support_data = {}
+            
+            # 1. ?
+            support_data["daily_tasks"] = await self._generate_offline_daily_tasks(user_profile)
+            
+            # 2. 気分
+            support_data["mood_prompts"] = await self._generate_offline_mood_prompts(user_profile)
+            
+            # 3. ストーリー
+            support_data["story_content"] = await self._generate_offline_story_content(user_profile)
+            
+            # 4. コア
+            support_data["coping_strategies"] = await self._generate_offline_coping_strategies(user_profile)
+            
+            # 5. ?
+            support_data["emergency_resources"] = await self._generate_emergency_resources()
+            
+            # 6. ?
+            support_data["progress_templates"] = await self._generate_progress_templates()
+            
+            # 7. モデル
+            support_data["motivation_content"] = await self._generate_motivation_content(user_profile)
+            
+            return support_data
+            
+        except Exception as e:
+            logger.error(f"Offline support data generation failed: {e}")
+            return {}
+    
+    async def _generate_offline_daily_tasks(self, user_profile: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """?"""
+        base_tasks = [
+            {"id": "morning_routine", "title": "?", "difficulty": 1, "xp": 20},
+            {"id": "mood_check", "title": "気分", "difficulty": 1, "xp": 15},
+            {"id": "breathing_exercise", "title": "?", "difficulty": 2, "xp": 25},
+            {"id": "gratitude_journal", "title": "?", "difficulty": 2, "xp": 30},
+            {"id": "physical_activity", "title": "?", "difficulty": 3, "xp": 40},
+            {"id": "social_connection", "title": "誰", "difficulty": 3, "xp": 35},
+            {"id": "creative_activity", "title": "創", "difficulty": 2, "xp": 30},
+            {"id": "learning_time", "title": "学", "difficulty": 3, "xp": 45}
+        ]
+        
+        # ユーザー
+        user_level = user_profile.get("level", 1)
+        adjusted_tasks = []
+        
+        for task in base_tasks:
+            if task["difficulty"] <= min(5, user_level + 2):  # レベル
+                adjusted_task = task.copy()
+                adjusted_task["xp"] = int(task["xp"] * (1 + user_level * 0.1))  # レベル
+                adjusted_tasks.append(adjusted_task)
+        
+        return adjusted_tasks[:6]  # ?6つ
+    
+    async def _generate_offline_mood_prompts(self, user_profile: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """?"""
+        mood_trend = user_profile.get("mood_trend", [3, 3, 3])
+        avg_mood = sum(mood_trend) / len(mood_trend) if mood_trend else 3
+        
+        if avg_mood < 2.5:
+            # ?
+            prompts = [
+                {"question": "?", "type": "positive_focus"},
+                {"question": "?1-5で", "type": "mood_scale"},
+                {"question": "?", "type": "gratitude"},
+                {"question": "?", "type": "support_need"}
+            ]
+        elif avg_mood > 3.5:
+            # ?
+            prompts = [
+                {"question": "?", "type": "mood_analysis"},
+                {"question": "こ", "type": "maintenance"},
+                {"question": "?", "type": "achievement"},
+                {"question": "誰", "type": "gratitude_sharing"}
+            ]
+        else:
+            # ?
+            prompts = [
+                {"question": "?", "type": "general_mood"},
+                {"question": "?", "type": "challenge"},
+                {"question": "リスト", "type": "self_care"},
+                {"question": "?", "type": "learning"}
+            ]
+        
+        return prompts
+    
+    async def _generate_offline_story_content(self, user_profile: Dict[str, Any]) -> Dict[str, Any]:
+        """?"""
+        user_level = user_profile.get("level", 1)
+        
+        # レベル
+        if user_level <= 3:
+            story_content = {
+                "chapter": "?",
+                "content": "あ",
+                "choices": [
+                    {"text": "?", "action": "social_interaction"},
+                    {"text": "一般", "action": "self_exploration"},
+                    {"text": "?", "action": "self_care"}
+                ]
+            }
+        elif user_level <= 6:
+            story_content = {
+                "chapter": "成",
+                "content": "あ",
+                "choices": [
+                    {"text": "?", "action": "courage_challenge"},
+                    {"text": "?", "action": "mindful_approach"},
+                    {"text": "?", "action": "collaboration"}
+                ]
+            }
+        else:
+            story_content = {
+                "chapter": "?",
+                "content": "あ",
+                "choices": [
+                    {"text": "?", "action": "mentorship"},
+                    {"text": "共有", "action": "mutual_growth"},
+                    {"text": "?", "action": "empowerment"}
+                ]
+            }
+        
+        return story_content
+    
+    async def _generate_offline_coping_strategies(self, user_profile: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """?"""
+        strategies = [
+            {
+                "name": "4-7-8?",
+                "description": "4?7?8?",
+                "duration_minutes": 2,
+                "difficulty": 1,
+                "effectiveness_rating": 4.2
+            },
+            {
+                "name": "5-4-3-2-1?",
+                "description": "5つ4つ3つ2つ1つ",
+                "duration_minutes": 3,
+                "difficulty": 1,
+                "effectiveness_rating": 4.0
+            },
+            {
+                "name": "プレビュー",
+                "description": "?",
+                "duration_minutes": 10,
+                "difficulty": 2,
+                "effectiveness_rating": 4.3
+            },
+            {
+                "name": "?",
+                "description": "?",
+                "duration_minutes": 15,
+                "difficulty": 2,
+                "effectiveness_rating": 4.1
+            },
+            {
+                "name": "?",
+                "description": "?",
+                "duration_minutes": 5,
+                "difficulty": 2,
+                "effectiveness_rating": 3.9
+            }
+        ]
+        
+        # ユーザー
+        user_level = user_profile.get("level", 1)
+        available_strategies = [s for s in strategies if s["difficulty"] <= min(3, user_level)]
+        
+        return available_strategies
+    
+    async def _generate_emergency_resources(self) -> Dict[str, Any]:
+        """?"""
+        return {
+            "crisis_hotlines": [
+                {"name": "い", "number": "0570-783-556", "available": "24?"},
+                {"name": "こ", "number": "0570-064-556", "available": "?9-17?"}
+            ],
+            "immediate_coping": [
+                "?",
+                "安全",
+                "信頼",
+                "?"
+            ],
+            "grounding_techniques": [
+                "?",
+                "?",
+                "?3つ",
+                "?"
+            ],
+            "positive_affirmations": [
+                "こ",
+                "?",
+                "?",
+                "?"
+            ]
+        }
+    
+    async def _generate_progress_templates(self) -> Dict[str, Any]:
+        """?"""
+        return {
+            "daily_reflection": {
+                "questions": [
+                    "?(1-5)",
+                    "?",
+                    "?",
+                    "?"
+                ],
+                "format": "simple_text"
+            },
+            "mood_tracker": {
+                "scale": "1-5",
+                "factors": ["?", "?", "?", "?", "ストーリー"],
+                "frequency": "daily"
+            },
+            "achievement_log": {
+                "categories": ["?", "?", "?", "自動"],
+                "format": "bullet_points"
+            }
+        }
+    
+    async def _generate_motivation_content(self, user_profile: Dict[str, Any]) -> Dict[str, Any]:
+        """モデル"""
+        user_level = user_profile.get("level", 1)
+        
+        return {
+            "daily_quotes": [
+                "?",
+                "?",
+                "?",
+                "?"
+            ],
+            "achievement_reminders": [
+                f"あ{user_level}で",
+                "こ",
+                "?",
+                "あ"
+            ],
+            "encouragement_messages": [
+                "?",
+                "あ",
+                "?",
+                "?"
+            ]
+        }
+
+# ?
+edge_ai_engine = EdgeAICacheEngine()
+
+# APIエラー
+@app.on_event("startup")
+async def startup_event():
+    """アプリ"""
+    await edge_ai_engine.initialize()
+
+@app.get("/edge-ai/inference/{model_type}")
+async def get_inference(model_type: str, input_data: Dict[str, Any], user_id: str = None):
+    """AI?"""
+    try:
+        model_type_enum = ModelType(model_type)
+        result = await edge_ai_engine.get_cached_inference(model_type_enum, input_data, user_id)
+        
+        if result is not None:
+            return {"result": result, "cached": True}
+        else:
+            return {"error": "Inference failed", "cached": False}
+            
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid model type")
+    except Exception as e:
+        logger.error(f"Inference endpoint error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.get("/edge-ai/cache/stats")
+async def get_cache_stats():
+    """?"""
+    return edge_ai_engine.cache.get_stats()
+
+@app.post("/edge-ai/offline/add")
+async def add_offline_operation(operation: Dict[str, Any]):
+    """?"""
+    await edge_ai_engine.add_to_offline_queue(operation)
+    return {"status": "added", "queue_size": len(edge_ai_engine.offline_queue)}
+
+@app.post("/edge-ai/offline/sync")
+async def sync_offline_operations():
+    """?"""
+    result = await edge_ai_engine.sync_offline_operations()
+    return result
+
+@app.post("/edge-ai/offline/prepare-support/{user_id}")
+async def prepare_offline_support(user_id: str):
+    """?"""
+    result = await edge_ai_engine.prepare_offline_therapeutic_support(user_id)
+    return result
+
+@app.get("/edge-ai/offline/queue/status")
+async def get_offline_queue_status():
+    """?"""
+    queue_size = len(edge_ai_engine.offline_queue)
+    
+    # ?
+    priority_stats = {}
+    operation_type_stats = {}
+    
+    for operation in edge_ai_engine.offline_queue:
+        priority = operation.get("priority", 5)
+        op_type = operation.get("type", "unknown")
+        
+        priority_stats[priority] = priority_stats.get(priority, 0) + 1
+        operation_type_stats[op_type] = operation_type_stats.get(op_type, 0) + 1
+    
+    return {
+        "queue_size": queue_size,
+        "sync_in_progress": edge_ai_engine.sync_in_progress,
+        "priority_distribution": priority_stats,
+        "operation_type_distribution": operation_type_stats,
+        "oldest_operation": edge_ai_engine.offline_queue[0].get("timestamp") if edge_ai_engine.offline_queue else None,
+        "newest_operation": edge_ai_engine.offline_queue[-1].get("timestamp") if edge_ai_engine.offline_queue else None
+    }
+
+@app.delete("/edge-ai/offline/queue/clear")
+async def clear_offline_queue():
+    """?"""
+    cleared_count = len(edge_ai_engine.offline_queue)
+    edge_ai_engine.offline_queue.clear()
+    
+    return {
+        "status": "cleared",
+        "cleared_operations": cleared_count,
+        "timestamp": datetime.now().isoformat()
+    }
+
+@app.get("/edge-ai/models/status")
+async def get_models_status():
+    """AIモデル"""
+    status = {}
+    for model_type, model in edge_ai_engine.models.items():
+        status[model_type.value] = {
+            "loaded": model.is_loaded,
+            "quantized": model.quantized,
+            "model_path": model.model_path
+        }
+    return status
+
+@app.post("/edge-ai/models/{model_type}/quantize")
+async def quantize_model(model_type: str):
+    """モデル"""
+    try:
+        model_type_enum = ModelType(model_type)
+        if model_type_enum in edge_ai_engine.models:
+            model = edge_ai_engine.models[model_type_enum]
+            await model.quantize_model()
+            return {"status": "quantized", "model_type": model_type}
+        else:
+            raise HTTPException(status_code=404, detail="Model not found")
+            
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid model type")
+
+@app.get("/edge-ai/health")
+async def health_check():
+    """ヘルパー"""
+    cache_stats = edge_ai_engine.cache.get_stats()
+    
+    return {
+        "status": "healthy",
+        "cache_hit_rate": cache_stats["hit_rate"],
+        "models_loaded": len(edge_ai_engine.models),
+        "offline_queue_size": len(edge_ai_engine.offline_queue),
+        "sync_in_progress": edge_ai_engine.sync_in_progress
+    }
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -1,0 +1,316 @@
+"""
+Test suite for LINE Bot interface
+Tests morning task presentation, evening story delivery, and notifications
+"""
+
+import pytest
+import asyncio
+from unittest.mock import Mock, patch, AsyncMock
+from fastapi.testclient import TestClient
+from datetime import datetime
+import json
+
+from main import app, line_bot_service, LineBotService
+from main import (
+    create_morning_task_flex_message,
+    create_evening_story_flex_message,
+    send_morning_tasks,
+    send_evening_story,
+    handle_task_completion
+)
+
+client = TestClient(app)
+
+class TestLineBotService:
+    """Test LINE Bot service functionality"""
+    
+    @pytest.fixture
+    def mock_service(self):
+        return LineBotService()
+    
+    @pytest.mark.asyncio
+    async def test_get_user_tasks(self, mock_service):
+        """Test fetching user tasks"""
+        with patch.object(mock_service, 'client') as mock_client:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = {
+                "tasks": [
+                    {"id": "task1", "title": "?", "type": "Routine"},
+                    {"id": "task2", "title": "?", "type": "Skill-Up"}
+                ]
+            }
+            mock_client.get = AsyncMock(return_value=mock_response)
+            
+            tasks = await mock_service.get_user_tasks("user123")
+            
+            assert len(tasks) == 2
+            assert tasks[0]["title"] == "?"
+            assert tasks[1]["type"] == "Skill-Up"
+    
+    @pytest.mark.asyncio
+    async def test_complete_task(self, mock_service):
+        """Test task completion"""
+        with patch.object(mock_service, 'client') as mock_client:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_client.post = AsyncMock(return_value=mock_response)
+            
+            result = await mock_service.complete_task("user123", "task1")
+            
+            assert result is True
+            mock_client.post.assert_called_once()
+    
+    @pytest.mark.asyncio
+    async def test_get_evening_story(self, mock_service):
+        """Test evening story fetching"""
+        with patch.object(mock_service, 'client') as mock_client:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = {
+                "content": "?",
+                "mood_influence": "positive"
+            }
+            mock_client.post = AsyncMock(return_value=mock_response)
+            
+            story = await mock_service.get_evening_story("user123")
+            
+            assert story is not None
+            assert "?" in story["content"]
+    
+    @pytest.mark.asyncio
+    @patch('firebase_admin.messaging.send')
+    @patch('main.db')
+    async def test_send_fcm_notification(self, mock_db, mock_messaging, mock_service):
+        """Test FCM fallback notification"""
+        # Mock Firestore user document
+        mock_doc = Mock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {"fcm_token": "test_token"}
+        mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
+        
+        mock_messaging.return_value = "message_id_123"
+        
+        result = await mock_service.send_fcm_notification(
+            "user123", 
+            "Test Title", 
+            "Test Body"
+        )
+        
+        assert result is True
+        mock_messaging.assert_called_once()
+
+class TestFlexMessageCreation:
+    """Test Flex Message creation for LINE Bot"""
+    
+    def test_create_morning_task_flex_message(self):
+        """Test morning task Flex Message creation"""
+        tasks = [
+            {"id": "task1", "title": "?", "type": "Routine"},
+            {"id": "task2", "title": "?30?", "type": "Skill-Up"},
+            {"id": "task3", "title": "?", "type": "Social"}
+        ]
+        
+        flex_message = create_morning_task_flex_message(tasks)
+        
+        assert flex_message.alt_text == "?"
+        assert flex_message.contents.body.layout == "vertical"
+        
+        # Check if tasks are included (header + 3 tasks = 4 contents)
+        assert len(flex_message.contents.body.contents) == 4
+    
+    def test_create_evening_story_flex_message(self):
+        """Test evening story Flex Message creation"""
+        story_data = {
+            "content": "?",
+            "mood_influence": "positive"
+        }
+        
+        flex_message = create_evening_story_flex_message(story_data)
+        
+        assert flex_message.alt_text == "?"
+        assert "?" in str(flex_message.contents)
+
+class TestWebhookHandlers:
+    """Test LINE Bot webhook handlers"""
+    
+    def test_webhook_endpoint(self):
+        """Test webhook endpoint"""
+        # Mock LINE signature validation
+        with patch('main.handler.handle') as mock_handle:
+            response = client.post(
+                "/webhook",
+                headers={"X-Line-Signature": "test_signature"},
+                content=b'{"events": []}'
+            )
+            
+            assert response.status_code == 200
+            assert response.json() == {"status": "ok"}
+    
+    def test_webhook_invalid_signature(self):
+        """Test webhook with invalid signature"""
+        with patch('main.handler.handle', side_effect=Exception("Invalid signature")):
+            response = client.post(
+                "/webhook",
+                headers={"X-Line-Signature": "invalid_signature"},
+                content=b'{"events": []}'
+            )
+            
+            assert response.status_code == 400
+
+class TestNotificationAPI:
+    """Test notification API endpoints"""
+    
+    @patch('main.line_bot_api.push_message')
+    def test_send_notification_pomodoro(self, mock_push):
+        """Test sending Pomodoro notification"""
+        request_data = {
+            "user_id": "user123",
+            "message": "25?",
+            "notification_type": "pomodoro"
+        }
+        
+        response = client.post("/notifications/send", json=request_data)
+        
+        assert response.status_code == 200
+        assert response.json()["status"] == "sent_via_line"
+        mock_push.assert_called_once()
+    
+    @patch('main.line_bot_api.push_message')
+    def test_send_notification_break(self, mock_push):
+        """Test sending break notification"""
+        request_data = {
+            "user_id": "user123",
+            "message": "5?",
+            "notification_type": "break"
+        }
+        
+        response = client.post("/notifications/send", json=request_data)
+        
+        assert response.status_code == 200
+        mock_push.assert_called_once()
+    
+    @patch('main.line_bot_api.push_message')
+    def test_send_notification_hyperfocus(self, mock_push):
+        """Test sending hyperfocus alert"""
+        request_data = {
+            "user_id": "user123",
+            "message": "60?",
+            "notification_type": "hyperfocus"
+        }
+        
+        response = client.post("/notifications/send", json=request_data)
+        
+        assert response.status_code == 200
+        mock_push.assert_called_once()
+    
+    @patch('main.line_bot_api.push_message', side_effect=Exception("LINE API Error"))
+    @patch('main.line_bot_service.send_fcm_notification')
+    async def test_notification_fallback_to_fcm(self, mock_fcm, mock_push):
+        """Test fallback to FCM when LINE fails"""
+        mock_fcm.return_value = True
+        
+        request_data = {
+            "user_id": "user123",
+            "message": "?",
+            "notification_type": "story"
+        }
+        
+        response = client.post("/notifications/send", json=request_data)
+        
+        assert response.status_code == 200
+        assert response.json()["status"] == "sent_via_fcm"
+
+class TestTaskCompletionAPI:
+    """Test task completion API"""
+    
+    @patch('main.line_bot_service.complete_task')
+    async def test_complete_task_success(self, mock_complete):
+        """Test successful task completion"""
+        mock_complete.return_value = True
+        
+        request_data = {
+            "user_id": "user123",
+            "task_id": "task1",
+            "completion_status": "completed"
+        }
+        
+        response = client.post("/tasks/complete", json=request_data)
+        
+        assert response.status_code == 200
+        assert response.json()["status"] == "completed"
+        assert response.json()["task_id"] == "task1"
+    
+    @patch('main.line_bot_service.complete_task')
+    async def test_complete_task_failure(self, mock_complete):
+        """Test failed task completion"""
+        mock_complete.return_value = False
+        
+        request_data = {
+            "user_id": "user123",
+            "task_id": "task1",
+            "completion_status": "completed"
+        }
+        
+        response = client.post("/tasks/complete", json=request_data)
+        
+        assert response.status_code == 400
+
+class TestIntegrationWorkflows:
+    """Test end-to-end LINE Bot workflows"""
+    
+    @pytest.mark.asyncio
+    @patch('main.line_bot_service.get_user_tasks')
+    @patch('main.line_bot_api.push_message')
+    async def test_morning_task_workflow(self, mock_push, mock_get_tasks):
+        """Test complete morning task presentation workflow"""
+        mock_get_tasks.return_value = [
+            {"id": "task1", "title": "?", "type": "Routine"},
+            {"id": "task2", "title": "?", "type": "Skill-Up"}
+        ]
+        
+        await send_morning_tasks("user123")
+        
+        mock_get_tasks.assert_called_once_with("user123")
+        mock_push.assert_called_once()
+    
+    @pytest.mark.asyncio
+    @patch('main.line_bot_service.get_evening_story')
+    @patch('main.line_bot_api.push_message')
+    async def test_evening_story_workflow(self, mock_push, mock_get_story):
+        """Test complete evening story delivery workflow"""
+        mock_get_story.return_value = {
+            "content": "?",
+            "mood_influence": "positive"
+        }
+        
+        await send_evening_story("user123")
+        
+        mock_get_story.assert_called_once_with("user123")
+        mock_push.assert_called_once()
+    
+    @pytest.mark.asyncio
+    @patch('main.line_bot_service.complete_task')
+    @patch('main.line_bot_api.reply_message')
+    async def test_one_tap_completion_workflow(self, mock_reply, mock_complete):
+        """Test one-tap task completion workflow"""
+        mock_complete.return_value = True
+        
+        await handle_task_completion("user123", "task1", "reply_token")
+        
+        mock_complete.assert_called_once_with("user123", "task1")
+        mock_reply.assert_called_once()
+
+class TestHealthCheck:
+    """Test health check endpoint"""
+    
+    def test_health_check(self):
+        """Test health check endpoint"""
+        response = client.get("/health")
+        
+        assert response.status_code == 200
+        assert response.json()["status"] == "healthy"
+        assert response.json()["service"] == "line-bot"
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

@@ -1,0 +1,331 @@
+"""
+XP[UNICODE_7372]
+
+[UNICODE_8981]: 4.4, 4.5 - [UNICODE_30EC]
+"""
+
+import pytest
+import asyncio
+from datetime import datetime
+from unittest.mock import Mock, patch
+import math
+
+# [UNICODE_5171]
+from shared.interfaces.core_types import UserProfile
+from shared.interfaces.level_system import LevelSystem
+from shared.interfaces.resonance_system import ResonanceSystem
+from shared.interfaces.crystal_system import CrystalGauge, CRYSTAL_ATTRIBUTES
+from shared.interfaces.task_system import TaskType
+
+# [UNICODE_30B5]
+from services.core_game.main import CoreGameEngine
+
+
+class TestXPLevelResonanceIntegration:
+    """XP[UNICODE_7372]"""
+    
+    @pytest.fixture
+    def level_system(self):
+        """[UNICODE_30EC]"""
+        return LevelSystem()
+    
+    @pytest.fixture
+    def resonance_system(self):
+        """[UNICODE_5171]"""
+        return ResonanceSystem()
+    
+    @pytest.fixture
+    def crystal_gauge(self):
+        """[UNICODE_30AF]"""
+        return CrystalGauge()
+    
+    @pytest.fixture
+    def test_user_profile(self):
+        """[UNICODE_30C6]"""
+        return UserProfile(
+            uid="integration_test_user",
+            yu_level=5,
+            player_level=3,
+            total_xp=250,
+            crystal_gauges={attr: 30 for attr in CRYSTAL_ATTRIBUTES},
+            current_chapter="chapter_1",
+            daily_task_limit=16,
+            care_points=50
+        )
+    
+    def test_xp_calculation_accuracy(self):
+        """XP[UNICODE_8A08]"""
+        # [UNICODE_30C6]: difficulty=3, mood_coefficient=1.2, adhd_assist=1.1
+        difficulty = 3
+        mood_coefficient = 1.2  # [UNICODE_6C17]5 -> 1.2
+        adhd_assist = 1.1       # Pomodoro[UNICODE_4F7F] -> 1.1
+        
+        # [UNICODE_671F]: 3 * 10 * 1.2 * 1.1 = 39.6 -> 39 XP (int)
+        expected_xp = int(difficulty * 10 * mood_coefficient * adhd_assist)
+        
+        # [UNICODE_5B9F]
+        calculated_xp = self._calculate_task_xp(difficulty, mood_coefficient, adhd_assist)
+        
+        assert calculated_xp == expected_xp
+        assert calculated_xp == 39
+    
+    def test_level_progression_algorithm(self, level_system):
+        """[UNICODE_30EC]"""
+        # [UNICODE_6307]
+        test_cases = [
+            (0, 1),      # 0 XP -> [UNICODE_30EC]1
+            (100, 2),    # 100 XP -> [UNICODE_30EC]2
+            (300, 3),    # 300 XP -> [UNICODE_30EC]3
+            (700, 4),    # 700 XP -> [UNICODE_30EC]4
+            (1500, 5),   # 1500 XP -> [UNICODE_30EC]5
+        ]
+        
+        for total_xp, expected_level in test_cases:
+            calculated_level = level_system.calculate_level(total_xp)
+            assert calculated_level == expected_level, \
+                f"XP {total_xp} should result in level {expected_level}, got {calculated_level}"
+    
+    def test_next_level_xp_calculation(self, level_system):
+        """[UNICODE_6B21]XP[UNICODE_8A08]"""
+        test_cases = [
+            (1, 100),    # [UNICODE_30EC]1 -> [UNICODE_30EC]2[UNICODE_307E]100 XP
+            (2, 200),    # [UNICODE_30EC]2 -> [UNICODE_30EC]3[UNICODE_307E]200 XP
+            (3, 400),    # [UNICODE_30EC]3 -> [UNICODE_30EC]4[UNICODE_307E]400 XP
+            (4, 800),    # [UNICODE_30EC]4 -> [UNICODE_30EC]5[UNICODE_307E]800 XP
+        ]
+        
+        for current_level, expected_xp in test_cases:
+            required_xp = level_system.xp_for_next_level(current_level)
+            assert required_xp == expected_xp, \
+                f"Level {current_level} should require {expected_xp} XP for next level, got {required_xp}"
+    
+    def test_resonance_event_trigger_conditions(self, resonance_system):
+        """[UNICODE_5171]"""
+        # [UNICODE_30EC]5[UNICODE_4EE5]
+        test_cases = [
+            (10, 5, True),   # [UNICODE_5DEE]5 -> [UNICODE_767A]
+            (8, 3, True),    # [UNICODE_5DEE]5 -> [UNICODE_767A]
+            (7, 3, False),   # [UNICODE_5DEE]4 -> [UNICODE_767A]
+            (5, 5, False),   # [UNICODE_5DEE]0 -> [UNICODE_767A]
+            (3, 8, True),    # [UNICODE_9006]5 -> [UNICODE_767A]
+        ]
+        
+        for yu_level, player_level, should_trigger in test_cases:
+            result = resonance_system.check_resonance_event(yu_level, player_level)
+            assert result["resonance_triggered"] == should_trigger, \
+                f"Yu:{yu_level}, Player:{player_level} should {'trigger' if should_trigger else 'not trigger'} resonance"
+            
+            if should_trigger:
+                assert result["level_difference"] >= 5
+                assert result["bonus_xp"] > 0
+    
+    def test_resonance_bonus_xp_calculation(self, resonance_system):
+        """[UNICODE_5171]XP[UNICODE_8A08]"""
+        # [UNICODE_30EC]XP
+        test_cases = [
+            (10, 5, 100),    # [UNICODE_5DEE]5 -> 100 XP
+            (12, 5, 140),    # [UNICODE_5DEE]7 -> 140 XP (20 XP/[UNICODE_5DEE])
+            (8, 3, 100),     # [UNICODE_5DEE]5 -> 100 XP
+        ]
+        
+        for yu_level, player_level, expected_bonus in test_cases:
+            result = resonance_system.check_resonance_event(yu_level, player_level)
+            if result["resonance_triggered"]:
+                assert result["bonus_xp"] == expected_bonus, \
+                    f"Level difference {abs(yu_level - player_level)} should give {expected_bonus} bonus XP"
+    
+    @pytest.mark.asyncio
+    async def test_level_up_integration_flow(self, test_user_profile, level_system):
+        """[UNICODE_30EC]"""
+        # [UNICODE_73FE]: [UNICODE_30EC]3, 250 XP
+        current_level = test_user_profile.player_level
+        current_xp = test_user_profile.total_xp
+        
+        # [UNICODE_30EC]4[UNICODE_306B]XP: 700 XP (450 XP[UNICODE_8FFD])
+        xp_needed = level_system.xp_for_next_level(current_level)
+        additional_xp_needed = (2 ** (current_level + 1) - 1) * 100 - current_xp
+        
+        # [UNICODE_5927]
+        big_task_xp = 500  # [UNICODE_5341]XP
+        new_total_xp = current_xp + big_task_xp
+        new_level = level_system.calculate_level(new_total_xp)
+        
+        # [UNICODE_30EC]
+        assert new_level > current_level
+        assert new_level == 4  # 750 XP -> [UNICODE_30EC]4
+        
+        # [UNICODE_30EC]
+        test_user_profile.total_xp = new_total_xp
+        test_user_profile.player_level = new_level
+        
+        # [UNICODE_66F4]
+        assert test_user_profile.player_level == 4
+        assert test_user_profile.total_xp == 750
+    
+    @pytest.mark.asyncio
+    async def test_yu_player_level_synchronization(self, test_user_profile, resonance_system):
+        """[UNICODE_30E6]"""
+        # [UNICODE_521D]: Yu=5, Player=3 ([UNICODE_5DEE]2, [UNICODE_5171])
+        initial_yu = test_user_profile.yu_level
+        initial_player = test_user_profile.player_level
+        
+        # [UNICODE_30D7]Yu[UNICODE_306B]
+        test_user_profile.player_level = 5  # Yu=5, Player=5 ([UNICODE_5DEE]0)
+        
+        result = resonance_system.check_resonance_event(
+            test_user_profile.yu_level, 
+            test_user_profile.player_level
+        )
+        assert result["resonance_triggered"] is False  # [UNICODE_5DEE]0[UNICODE_306A]
+        
+        # [UNICODE_30D7]Yu[UNICODE_3092]
+        test_user_profile.player_level = 11  # Yu=5, Player=11 ([UNICODE_5DEE]6)
+        
+        result = resonance_system.check_resonance_event(
+            test_user_profile.yu_level,
+            test_user_profile.player_level
+        )
+        assert result["resonance_triggered"] is True  # [UNICODE_5DEE]6[UNICODE_3067]
+        assert result["resonance_type"] == "player_ahead"
+        assert result["bonus_xp"] == 120  # 6[UNICODE_5DEE] * 20 XP
+    
+    @pytest.mark.asyncio
+    async def test_crystal_gauge_level_integration(self, test_user_profile, crystal_gauge):
+        """[UNICODE_30AF]"""
+        # [UNICODE_30BF]
+        task_completions = [
+            ("Self-Discipline", 15),  # [UNICODE_671D]
+            ("Curiosity", 20),        # [UNICODE_8AAD]
+            ("Communication", 10),    # [UNICODE_5BB6]
+            ("Resilience", 25),       # [UNICODE_56F0]
+        ]
+        
+        for attribute, points in task_completions:
+            crystal_gauge.add_progress(attribute, points)
+        
+        # [UNICODE_9032]
+        assert crystal_gauge.gauges["Self-Discipline"] == 45  # 30 + 15
+        assert crystal_gauge.gauges["Curiosity"] == 50       # 30 + 20
+        assert crystal_gauge.gauges["Communication"] == 40   # 30 + 10
+        assert crystal_gauge.gauges["Resilience"] == 55      # 30 + 25
+        
+        # [UNICODE_30C1] (100%[UNICODE_3067])
+        for attribute in CRYSTAL_ATTRIBUTES:
+            is_unlocked = crystal_gauge.is_chapter_unlocked(attribute)
+            expected = crystal_gauge.gauges[attribute] >= 100
+            assert is_unlocked == expected
+    
+    @pytest.mark.asyncio
+    async def test_complete_xp_level_resonance_cycle(self, test_user_profile):
+        """[UNICODE_5B8C]XP-[UNICODE_30EC]-[UNICODE_5171]"""
+        level_system = LevelSystem()
+        resonance_system = ResonanceSystem()
+        
+        # 1[UNICODE_65E5]
+        daily_tasks = [
+            {"difficulty": 2, "mood": 1.1, "adhd": 1.0},  # 22 XP
+            {"difficulty": 3, "mood": 1.2, "adhd": 1.1},  # 39 XP
+            {"difficulty": 1, "mood": 0.9, "adhd": 1.2},  # 10 XP
+            {"difficulty": 4, "mood": 1.0, "adhd": 1.3},  # 52 XP
+        ]
+        
+        total_daily_xp = 0
+        for task in daily_tasks:
+            task_xp = self._calculate_task_xp(
+                task["difficulty"], 
+                task["mood"], 
+                task["adhd"]
+            )
+            total_daily_xp += task_xp
+        
+        # [UNICODE_671F]: 22 + 39 + 10 + 52 = 123 XP
+        assert total_daily_xp == 123
+        
+        # [UNICODE_30EC]
+        new_total_xp = test_user_profile.total_xp + total_daily_xp  # 250 + 123 = 373
+        new_level = level_system.calculate_level(new_total_xp)
+        
+        assert new_level == 3  # 373 XP -> [UNICODE_307E]3 ([UNICODE_30EC]4[UNICODE_306F]700 XP[UNICODE_5FC5])
+        
+        # [UNICODE_5171] (Yu=5, Player=3, [UNICODE_5DEE]2)
+        resonance_result = resonance_system.check_resonance_event(
+            test_user_profile.yu_level, 
+            new_level
+        )
+        assert resonance_result["resonance_triggered"] is False  # [UNICODE_5DEE]2[UNICODE_3067]
+        
+        # [UNICODE_8FFD]XP[UNICODE_3067]4[UNICODE_5230]
+        additional_xp = 350  # 373 + 350 = 723 XP -> [UNICODE_30EC]4
+        final_total_xp = new_total_xp + additional_xp
+        final_level = level_system.calculate_level(final_total_xp)
+        
+        assert final_level == 4
+        
+        # [UNICODE_30EC]4[UNICODE_3067] (Yu=5, Player=4, [UNICODE_5DEE]1)
+        final_resonance = resonance_system.check_resonance_event(
+            test_user_profile.yu_level,
+            final_level
+        )
+        assert final_resonance["resonance_triggered"] is False
+    
+    def test_edge_case_level_calculations(self, level_system):
+        """[UNICODE_30A8]"""
+        # [UNICODE_5883]
+        edge_cases = [
+            (99, 1),     # [UNICODE_30EC]2[UNICODE_76F4]
+            (100, 2),    # [UNICODE_30EC]2[UNICODE_3061]
+            (101, 2),    # [UNICODE_30EC]2[UNICODE_76F4]
+            (299, 2),    # [UNICODE_30EC]3[UNICODE_76F4]
+            (300, 3),    # [UNICODE_30EC]3[UNICODE_3061]
+            (699, 3),    # [UNICODE_30EC]4[UNICODE_76F4]
+            (700, 4),    # [UNICODE_30EC]4[UNICODE_3061]
+        ]
+        
+        for xp, expected_level in edge_cases:
+            calculated_level = level_system.calculate_level(xp)
+            assert calculated_level == expected_level, \
+                f"XP {xp} should be level {expected_level}, got {calculated_level}"
+    
+    def test_resonance_event_types(self, resonance_system):
+        """[UNICODE_5171]"""
+        # Yu[UNICODE_304C]
+        result_yu_ahead = resonance_system.check_resonance_event(10, 5)
+        assert result_yu_ahead["resonance_type"] == "yu_ahead"
+        assert result_yu_ahead["message_type"] == "catch_up_encouragement"
+        
+        # [UNICODE_30D7]
+        result_player_ahead = resonance_system.check_resonance_event(3, 8)
+        assert result_player_ahead["resonance_type"] == "player_ahead"
+        assert result_player_ahead["message_type"] == "yu_inspiration"
+    
+    # [UNICODE_30D8]
+    def _calculate_task_xp(self, difficulty: int, mood_coefficient: float, adhd_assist: float) -> int:
+        """[UNICODE_30BF]XP[UNICODE_8A08]"""
+        base_xp = difficulty * 10
+        return int(base_xp * mood_coefficient * adhd_assist)
+
+
+if __name__ == "__main__":
+    # [UNICODE_57FA]
+    def run_basic_integration_test():
+        test_instance = TestXPLevelResonanceIntegration()
+        level_system = LevelSystem()
+        resonance_system = ResonanceSystem()
+        
+        print("XP-[UNICODE_30EC]-[UNICODE_5171]...")
+        
+        # XP[UNICODE_8A08]
+        xp_result = test_instance._calculate_task_xp(3, 1.2, 1.1)
+        print(f"XP[UNICODE_8A08]: difficulty=3, mood=1.2, adhd=1.1 -> {xp_result} XP")
+        
+        # [UNICODE_30EC]
+        level_result = level_system.calculate_level(750)
+        print(f"[UNICODE_30EC]: 750 XP -> [UNICODE_30EC] {level_result}")
+        
+        # [UNICODE_5171]
+        resonance_result = resonance_system.check_resonance_event(8, 3)
+        print(f"[UNICODE_5171]: Yu=8, Player=3 -> {resonance_result}")
+        
+        print("[UNICODE_57FA]!")
+    
+    run_basic_integration_test()

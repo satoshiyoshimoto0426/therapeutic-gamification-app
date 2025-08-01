@@ -1,0 +1,486 @@
+"""
+[UNICODE_5185] - [UNICODE_30E1]
+[UNICODE_6CBB]
+"""
+
+from typing import Dict, List, Optional, Any
+from dataclasses import dataclass, asdict
+from enum import Enum
+import random
+import json
+from datetime import datetime, timedelta
+from battle_rewards import BattleRewardSystem, BattleRewards
+
+class DemonType(Enum):
+    """[UNICODE_9B54]"""
+    PROCRASTINATION_DRAGON = "procrastination_dragon"
+    ANXIETY_SHADOW = "anxiety_shadow"
+    DEPRESSION_VOID = "depression_void"
+    SOCIAL_FEAR_GOBLIN = "social_fear_goblin"
+
+class BattleResult(Enum):
+    """[UNICODE_30D0]"""
+    VICTORY = "victory"
+    DEFEAT = "defeat"
+    ONGOING = "ongoing"
+
+@dataclass
+class DemonStats:
+    """[UNICODE_9B54]"""
+    name: str
+    max_hp: int
+    current_hp: int
+    weaknesses: List[str]
+    therapeutic_theme: str
+    description: str
+
+@dataclass
+class BattleReward:
+    """[UNICODE_30D0]"""
+    coins: int
+    items: List[str]
+    xp: int
+    therapeutic_message: str
+
+class InnerDemonBattle:
+    """[UNICODE_5185]"""
+    
+    def __init__(self):
+        self.demon_types = self._initialize_demon_types()
+        self.active_battles = {}  # user_id -> battle_state
+        self.reward_system = BattleRewardSystem()
+    
+    def _initialize_demon_types(self) -> Dict[DemonType, Dict[str, Any]]:
+        """[UNICODE_9B54]"""
+        return {
+            DemonType.PROCRASTINATION_DRAGON: {
+                "name": "[UNICODE_5148]",
+                "max_hp": 100,
+                "weaknesses": [
+                    "routine_task_completion",
+                    "pomodoro_usage",
+                    "small_step_action",
+                    "deadline_adherence",
+                    "morning_routine"
+                ],
+                "therapeutic_theme": "[UNICODE_884C]",
+                "description": "[UNICODE_300C]",
+                "rewards": {
+                    "coins": 150,
+                    "items": ["focus_potion", "time_crystal", "motivation_gem"],
+                    "xp": 75,
+                    "therapeutic_message": "[UNICODE_5C0F]"
+                }
+            },
+            DemonType.ANXIETY_SHADOW: {
+                "name": "[UNICODE_4E0D]",
+                "max_hp": 80,
+                "weaknesses": [
+                    "breathing_exercise",
+                    "positive_affirmation",
+                    "mindfulness_practice",
+                    "social_connection",
+                    "grounding_technique"
+                ],
+                "therapeutic_theme": "[UNICODE_4E0D]",
+                "description": "[UNICODE_5FC3]",
+                "rewards": {
+                    "coins": 120,
+                    "items": ["calm_amulet", "courage_ring", "peace_stone"],
+                    "xp": 60,
+                    "therapeutic_message": "[UNICODE_4E0D]"
+                }
+            },
+            DemonType.DEPRESSION_VOID: {
+                "name": "[UNICODE_6182]",
+                "max_hp": 150,
+                "weaknesses": [
+                    "social_connection",
+                    "creative_expression",
+                    "physical_activity",
+                    "gratitude_practice",
+                    "meaningful_activity"
+                ],
+                "therapeutic_theme": "[UNICODE_7121]",
+                "description": "[UNICODE_5168]",
+                "rewards": {
+                    "coins": 200,
+                    "items": ["hope_crystal", "energy_elixir", "connection_charm"],
+                    "xp": 100,
+                    "therapeutic_message": "[UNICODE_3064]"
+                }
+            },
+            DemonType.SOCIAL_FEAR_GOBLIN: {
+                "name": "[UNICODE_793E]",
+                "max_hp": 60,
+                "weaknesses": [
+                    "small_social_task",
+                    "communication_practice",
+                    "eye_contact_practice",
+                    "group_participation",
+                    "assertiveness_training"
+                ],
+                "therapeutic_theme": "[UNICODE_793E]",
+                "description": "[UNICODE_4EBA]",
+                "rewards": {
+                    "coins": 100,
+                    "items": ["confidence_badge", "social_key", "communication_scroll"],
+                    "xp": 50,
+                    "therapeutic_message": "[UNICODE_5C0F]"
+                }
+            }
+        }
+    
+    def initiate_battle(self, user_id: str, demon_type: DemonType, 
+                       user_recent_actions: List[str]) -> Dict[str, Any]:
+        """[UNICODE_30D0]"""
+        demon_data = self.demon_types[demon_type].copy()
+        
+        # [UNICODE_9B54]
+        demon_stats = DemonStats(
+            name=demon_data["name"],
+            max_hp=demon_data["max_hp"],
+            current_hp=demon_data["max_hp"],
+            weaknesses=demon_data["weaknesses"],
+            therapeutic_theme=demon_data["therapeutic_theme"],
+            description=demon_data["description"]
+        )
+        
+        # [UNICODE_521D]
+        initial_damage = self._calculate_damage(user_recent_actions, demon_stats.weaknesses)
+        demon_stats.current_hp = max(0, demon_stats.current_hp - initial_damage)
+        
+        # [UNICODE_30D0]
+        battle_state = {
+            "demon_stats": demon_stats,
+            "demon_type": demon_type,
+            "start_time": datetime.now(),
+            "turn_count": 1,
+            "damage_dealt": initial_damage,
+            "user_actions": user_recent_actions.copy()
+        }
+        
+        self.active_battles[user_id] = battle_state
+        
+        # [UNICODE_30D0]
+        if demon_stats.current_hp <= 0:
+            return self._handle_victory(user_id, demon_data)
+        else:
+            return self._handle_ongoing_battle(user_id, demon_stats, initial_damage)
+    
+    def continue_battle(self, user_id: str, new_actions: List[str]) -> Dict[str, Any]:
+        """[UNICODE_30D0]"""
+        if user_id not in self.active_battles:
+            return {"error": "[UNICODE_30A2]"}
+        
+        battle_state = self.active_battles[user_id]
+        demon_stats = battle_state["demon_stats"]
+        demon_data = self.demon_types[battle_state["demon_type"]]
+        
+        # [UNICODE_65B0]
+        damage = self._calculate_damage(new_actions, demon_stats.weaknesses)
+        demon_stats.current_hp = max(0, demon_stats.current_hp - damage)
+        
+        # [UNICODE_30D0]
+        battle_state["turn_count"] += 1
+        battle_state["damage_dealt"] += damage
+        battle_state["user_actions"].extend(new_actions)
+        
+        # [UNICODE_30D0]
+        if demon_stats.current_hp <= 0:
+            return self._handle_victory(user_id, demon_data)
+        elif battle_state["turn_count"] > 10:  # [UNICODE_6700]10[UNICODE_30BF]
+            return self._handle_defeat(user_id, demon_data)
+        else:
+            return self._handle_ongoing_battle(user_id, demon_stats, damage)
+    
+    def _calculate_damage(self, actions: List[str], weaknesses: List[str]) -> int:
+        """[UNICODE_30A2]"""
+        damage = 0
+        for action in actions:
+            if action in weaknesses:
+                # [UNICODE_5F31]
+                damage += 25
+            elif any(action in weakness or weakness in action for weakness in weaknesses):
+                # [UNICODE_90E8]
+                damage += 15
+            else:
+                # [UNICODE_95A2]
+                damage += 5
+        
+        # [UNICODE_30E9]20%[UNICODE_FF09]
+        variance = random.uniform(0.8, 1.2)
+        return int(damage * variance)
+    
+    def _handle_victory(self, user_id: str, demon_data: Dict[str, Any]) -> Dict[str, Any]:
+        """[UNICODE_52DD]"""
+        battle_state = self.active_battles.pop(user_id)
+        
+        # [UNICODE_30D0]
+        battle_performance = {
+            "turns_taken": battle_state["turn_count"],
+            "damage_efficiency": battle_state["damage_dealt"] / demon_data["max_hp"],
+            "weakness_hits": self._count_weakness_hits(battle_state["user_actions"], demon_data["weaknesses"])
+        }
+        
+        # [UNICODE_5831]
+        battle_rewards = self.reward_system.calculate_victory_rewards(
+            battle_state["demon_type"].value, 
+            battle_performance
+        )
+        
+        return {
+            "result": BattleResult.VICTORY.value,
+            "demon_name": demon_data["name"],
+            "turns_taken": battle_state["turn_count"],
+            "total_damage": battle_state["damage_dealt"],
+            "battle_performance": battle_performance,
+            "rewards": {
+                "coins": battle_rewards.coins,
+                "xp": battle_rewards.xp,
+                "items": [
+                    {
+                        "id": item.id,
+                        "name": item.name,
+                        "description": item.description,
+                        "rarity": item.rarity.value,
+                        "therapeutic_effect": item.therapeutic_effect,
+                        "stat_bonus": item.stat_bonus
+                    } for item in battle_rewards.items
+                ]
+            },
+            "therapeutic_message": battle_rewards.therapeutic_message,
+            "cbt_reflection_prompt": battle_rewards.cbt_reflection_prompt,
+            "next_actions": self._suggest_reinforcement_actions(demon_data["weaknesses"])
+        }
+    
+    def _handle_defeat(self, user_id: str, demon_data: Dict[str, Any]) -> Dict[str, Any]:
+        """[UNICODE_6557]"""
+        battle_state = self.active_battles.pop(user_id)
+        
+        # [UNICODE_30D0]
+        battle_performance = {
+            "turns_taken": battle_state["turn_count"],
+            "damage_efficiency": battle_state["damage_dealt"] / demon_data["max_hp"],
+            "weakness_hits": self._count_weakness_hits(battle_state["user_actions"], demon_data["weaknesses"])
+        }
+        
+        # [UNICODE_6557]
+        defeat_rewards = self.reward_system.calculate_defeat_rewards(
+            battle_state["demon_type"].value,
+            battle_performance
+        )
+        
+        return {
+            "result": BattleResult.DEFEAT.value,
+            "demon_name": demon_data["name"],
+            "turns_taken": battle_state["turn_count"],
+            "battle_performance": battle_performance,
+            "support_message": defeat_rewards.therapeutic_message,
+            "cbt_reflection_prompt": defeat_rewards.cbt_reflection_prompt,
+            "alternative_strategies": self._suggest_alternative_strategies(demon_data["weaknesses"]),
+            "retry_suggestion": "[UNICODE_3053]",
+            "consolation_reward": {
+                "coins": defeat_rewards.coins,
+                "xp": defeat_rewards.xp,
+                "items": [
+                    {
+                        "id": item.id,
+                        "name": item.name,
+                        "description": item.description,
+                        "rarity": item.rarity.value,
+                        "therapeutic_effect": item.therapeutic_effect
+                    } for item in defeat_rewards.items
+                ],
+                "message": "[UNICODE_6311]"
+            }
+        }
+    
+    def _handle_ongoing_battle(self, user_id: str, demon_stats: DemonStats, 
+                             damage_dealt: int) -> Dict[str, Any]:
+        """[UNICODE_7D99]"""
+        battle_state = self.active_battles[user_id]
+        
+        return {
+            "result": BattleResult.ONGOING.value,
+            "demon_name": demon_stats.name,
+            "demon_hp": demon_stats.current_hp,
+            "demon_max_hp": demon_stats.max_hp,
+            "damage_dealt": damage_dealt,
+            "turn_count": battle_state["turn_count"],
+            "hp_percentage": (demon_stats.current_hp / demon_stats.max_hp) * 100,
+            "suggested_actions": self._get_effective_actions(demon_stats.weaknesses),
+            "encouragement": self._generate_encouragement_message(demon_stats, damage_dealt),
+            "battle_tips": self._get_battle_tips(demon_stats.therapeutic_theme)
+        }
+    
+    def _generate_victory_reflection(self, demon_data: Dict[str, Any]) -> str:
+        """[UNICODE_52DD]"""
+        theme = demon_data["therapeutic_theme"]
+        name = demon_data["name"]
+        
+        prompts = {
+            "[UNICODE_884C]": f"{name}[UNICODE_3092]",
+            "[UNICODE_4E0D]": f"{name}[UNICODE_3068]",
+            "[UNICODE_7121]": f"{name}[UNICODE_3092]",
+            "[UNICODE_793E]": f"{name}[UNICODE_3092]"
+        }
+        
+        return prompts.get(theme, f"{name}[UNICODE_3068]")
+    
+    def _generate_support_message(self, demon_data: Dict[str, Any]) -> str:
+        """[UNICODE_6557]"""
+        name = demon_data["name"]
+        theme = demon_data["therapeutic_theme"]
+        
+        messages = {
+            "[UNICODE_884C]": f"{name}[UNICODE_306F]",
+            "[UNICODE_4E0D]": f"{name}[UNICODE_3068]",
+            "[UNICODE_7121]": f"{name}[UNICODE_306F]",
+            "[UNICODE_793E]": f"{name}[UNICODE_306B]"
+        }
+        
+        return messages.get(theme, f"{name}[UNICODE_3068]")
+    
+    def _suggest_alternative_strategies(self, weaknesses: List[str]) -> List[str]:
+        """[UNICODE_4EE3]"""
+        strategy_map = {
+            "routine_task_completion": "[UNICODE_671D]1[UNICODE_3064]",
+            "pomodoro_usage": "5[UNICODE_5206]",
+            "breathing_exercise": "4-7-8[UNICODE_547C]1[UNICODE_56DE]",
+            "social_connection": "[UNICODE_5BB6]",
+            "creative_expression": "[UNICODE_597D]1[UNICODE_672C]",
+            "physical_activity": "[UNICODE_305D]3[UNICODE_56DE]"
+        }
+        
+        strategies = []
+        for weakness in weaknesses[:3]:  # [UNICODE_6700]3[UNICODE_3064]
+            if weakness in strategy_map:
+                strategies.append(strategy_map[weakness])
+        
+        return strategies
+    
+    def _get_effective_actions(self, weaknesses: List[str]) -> List[str]:
+        """[UNICODE_52B9]"""
+        return weaknesses[:3]  # [UNICODE_6700]3[UNICODE_3064]
+    
+    def _generate_encouragement_message(self, demon_stats: DemonStats, damage: int) -> str:
+        """[UNICODE_52B1]"""
+        hp_percentage = (demon_stats.current_hp / demon_stats.max_hp) * 100
+        
+        if damage > 20:
+            return f"[UNICODE_7D20]{demon_stats.name}[UNICODE_306B]"
+        elif hp_percentage < 30:
+            return f"{demon_stats.name}[UNICODE_306F]"
+        elif hp_percentage < 60:
+            return f"[UNICODE_7740]"
+        else:
+            return f"{demon_stats.name}[UNICODE_3068]"
+    
+    def _get_battle_tips(self, therapeutic_theme: str) -> List[str]:
+        """[UNICODE_30D0]"""
+        tips = {
+            "[UNICODE_884C]": [
+                "[UNICODE_5B8C]",
+                "[UNICODE_30BF]",
+                "[UNICODE_671D]1[UNICODE_3064]"
+            ],
+            "[UNICODE_4E0D]": [
+                "[UNICODE_6DF1]",
+                "[UNICODE_4ECA]",
+                "[UNICODE_4E0D]"
+            ],
+            "[UNICODE_7121]": [
+                "[UNICODE_4EBA]",
+                "[UNICODE_5C0F]",
+                "[UNICODE_611F]1[UNICODE_3064]"
+            ],
+            "[UNICODE_793E]": [
+                "[UNICODE_5C0F]",
+                "[UNICODE_76F8]",
+                "[UNICODE_81EA]"
+            ]
+        }
+        
+        return tips.get(therapeutic_theme, ["[UNICODE_3042]"])
+    
+    def _suggest_reinforcement_actions(self, weaknesses: List[str]) -> List[str]:
+        """[UNICODE_52DD]"""
+        reinforcement_map = {
+            "routine_task_completion": "[UNICODE_6BCE]",
+            "pomodoro_usage": "[UNICODE_5B9A]",
+            "breathing_exercise": "[UNICODE_30B9]",
+            "social_connection": "[UNICODE_65E5]",
+            "creative_expression": "[UNICODE_5275]",
+            "physical_activity": "[UNICODE_8EFD]",
+            "mindfulness_practice": "[UNICODE_30DE]",
+            "positive_affirmation": "[UNICODE_80AF]"
+        }
+        
+        actions = []
+        for weakness in weaknesses[:3]:  # [UNICODE_6700]3[UNICODE_3064]
+            if weakness in reinforcement_map:
+                actions.append(reinforcement_map[weakness])
+        
+        return actions
+    
+    def _count_weakness_hits(self, user_actions: List[str], weaknesses: List[str]) -> int:
+        """[UNICODE_5F31]"""
+        hits = 0
+        for action in user_actions:
+            if action in weaknesses:
+                hits += 1
+        return hits
+    
+    def get_battle_status(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """[UNICODE_30D0]"""
+        if user_id not in self.active_battles:
+            return None
+        
+        battle_state = self.active_battles[user_id]
+        demon_stats = battle_state["demon_stats"]
+        
+        return {
+            "demon_name": demon_stats.name,
+            "demon_hp": demon_stats.current_hp,
+            "demon_max_hp": demon_stats.max_hp,
+            "turn_count": battle_state["turn_count"],
+            "therapeutic_theme": demon_stats.therapeutic_theme,
+            "weaknesses": demon_stats.weaknesses,
+            "battle_duration": (datetime.now() - battle_state["start_time"]).seconds
+        }
+    
+    def get_available_demons(self) -> List[Dict[str, Any]]:
+        """[UNICODE_5229]"""
+        demons = []
+        for demon_type, data in self.demon_types.items():
+            demons.append({
+                "type": demon_type.value,
+                "name": data["name"],
+                "description": data["description"],
+                "therapeutic_theme": data["therapeutic_theme"],
+                "max_hp": data["max_hp"],
+                "weaknesses": data["weaknesses"]
+            })
+        return demons
+
+# API[UNICODE_30A8]
+def create_battle_system():
+    """[UNICODE_30D0]"""
+    return InnerDemonBattle()
+
+if __name__ == "__main__":
+    # [UNICODE_7C21]
+    battle_system = create_battle_system()
+    
+    # [UNICODE_5229]
+    print("=== [UNICODE_5229] ===")
+    demons = battle_system.get_available_demons()
+    for demon in demons:
+        print(f"{demon['name']}: {demon['description']}")
+    
+    # [UNICODE_30D0]
+    print("\n=== [UNICODE_30D0] ===")
+    user_actions = ["routine_task_completion", "pomodoro_usage"]
+    result = battle_system.initiate_battle("test_user", DemonType.PROCRASTINATION_DRAGON, user_actions)
+    print(json.dumps(result, ensure_ascii=False, indent=2))

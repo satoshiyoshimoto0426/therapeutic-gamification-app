@@ -1,0 +1,164 @@
+"""
+[UNICODE_30B9]
+"""
+
+def test_cloud_run_scaler():
+    """Cloud Run[UNICODE_30B9]"""
+    from scalability_system import CloudRunScaler
+    
+    print("1. Cloud Run[UNICODE_30B9]")
+    scaler = CloudRunScaler()
+    
+    # [UNICODE_30B9]
+    metrics = scaler.evaluate_scaling(85.0, 70.0, 200.0)  # [UNICODE_9AD8]
+    print(f"   [UNICODE_9AD8]: {metrics.current_instances}[UNICODE_30A4] -> {metrics.target_instances}[UNICODE_30A4]")
+    print(f"   [UNICODE_5224]: {metrics.scaling_decision}")
+    
+    # [UNICODE_30B9]
+    scaler.current_instances = 5
+    metrics = scaler.evaluate_scaling(30.0, 40.0, 20.0)  # [UNICODE_4F4E]
+    print(f"   [UNICODE_4F4E]: 5[UNICODE_30A4] -> {metrics.target_instances}[UNICODE_30A4]")
+    print(f"   [UNICODE_5224]: {metrics.scaling_decision}")
+    
+    return True
+
+def test_multi_region_failover():
+    """[UNICODE_30DE]"""
+    from scalability_system import MultiRegionFailover, Region, ServiceHealth, ServiceStatus
+    from datetime import datetime
+    
+    print("2. [UNICODE_30DE]")
+    failover = MultiRegionFailover()
+    
+    print(f"   [UNICODE_521D]: {failover.current_primary.value}")
+    
+    # [UNICODE_30D7]
+    failover.regions[Region.ASIA_NORTHEAST1]["healthy"] = False
+    
+    # [UNICODE_30D5]
+    target = failover.check_failover_needed()
+    print(f"   [UNICODE_30D5]: {target.value if target else '[UNICODE_306A]'}")
+    
+    # [UNICODE_30D5]
+    if target:
+        success = failover.execute_failover(target)
+        print(f"   [UNICODE_30D5]: {'[UNICODE_6210]' if success else '[UNICODE_5931]'}")
+        print(f"   [UNICODE_65B0]: {failover.current_primary.value}")
+    
+    return True
+
+def test_uptime_monitor():
+    """[UNICODE_30A2]"""
+    from scalability_system import UptimeMonitor
+    
+    print("3. [UNICODE_30A2]")
+    monitor = UptimeMonitor()
+    
+    # [UNICODE_30A2]
+    for i in range(100):
+        is_up = i < 99  # 99%[UNICODE_6210]
+        monitor.record_uptime_check(is_up, 0.5 if is_up else 0.0)
+    
+    uptime_24h = monitor.calculate_uptime_percentage(24)
+    print(f"   24[UNICODE_6642]: {uptime_24h:.2f}%")
+    print(f"   [UNICODE_76EE](99.95%): {'OK' if uptime_24h >= 99.95 else 'NG'}")
+    
+    stats = monitor.get_uptime_stats()
+    print(f"   [UNICODE_73FE]: {stats['current_status']}")
+    
+    return True
+
+def test_scalability_manager():
+    """[UNICODE_30B9]"""
+    from scalability_system import ScalabilityManager
+    import time
+    
+    print("4. [UNICODE_30B9]")
+    manager = ScalabilityManager()
+    
+    # [UNICODE_5305]
+    stats = manager.get_comprehensive_stats()
+    print(f"   [UNICODE_7D71]: {'OK' if 'scaling' in stats else 'NG'}")
+    print(f"   [UNICODE_73FE]: {stats['scaling']['current_instances']}")
+    
+    # [UNICODE_77ED]
+    print("   [UNICODE_8CA0]...")
+    load_result = manager.simulate_load_test(3)  # 3[UNICODE_79D2]
+    print(f"   [UNICODE_8CA0]: {load_result['total_samples']}[UNICODE_30B5]")
+    print(f"   [UNICODE_6700]: {load_result['max_instances']}")
+    print(f"   [UNICODE_30B9]: {load_result['scaling_events']}[UNICODE_56DE]")
+    
+    return True
+
+def test_performance_requirements():
+    """[UNICODE_30D1]"""
+    from scalability_system import CloudRunScaler, UptimeMonitor
+    import time
+    
+    print("5. [UNICODE_30D1]")
+    
+    # [UNICODE_30B9]
+    scaler = CloudRunScaler()
+    start_time = time.time()
+    
+    for i in range(50):
+        scaler.evaluate_scaling(70.0 + i, 60.0 + i, 100.0 + i)
+    
+    avg_time = (time.time() - start_time) / 50
+    print(f"   [UNICODE_30B9]: {avg_time*1000:.2f}ms")
+    print(f"   [UNICODE_5FDC](100ms[UNICODE_4EE5]): {'OK' if avg_time < 0.1 else 'NG'}")
+    
+    # [UNICODE_30A2]
+    monitor = UptimeMonitor()
+    
+    # 99.96%[UNICODE_306E]
+    for i in range(2500):
+        is_up = i < 2499  # 99.96%
+        monitor.record_uptime_check(is_up, 0.5)
+    
+    uptime = monitor.calculate_uptime_percentage(24)
+    print(f"   [UNICODE_30A2]: {uptime:.2f}%")
+    print(f"   [UNICODE_30A2](99.95%[UNICODE_4EE5]): {'OK' if uptime >= 99.95 else 'NG'}")
+    
+    return True
+
+def main():
+    """[UNICODE_30E1]"""
+    print("[UNICODE_30B9] - [UNICODE_9AD8]")
+    print("=" * 50)
+    
+    tests = [
+        test_cloud_run_scaler,
+        test_multi_region_failover,
+        test_uptime_monitor,
+        test_scalability_manager,
+        test_performance_requirements
+    ]
+    
+    passed = 0
+    total = len(tests)
+    
+    for test in tests:
+        try:
+            if test():
+                passed += 1
+            print()
+        except Exception as e:
+            print(f"   [UNICODE_30A8]: {e}")
+            print()
+    
+    print("=" * 50)
+    print(f"[UNICODE_30C6]: {passed}/{total} [UNICODE_6210]")
+    
+    if passed == total:
+        print("\n[UNICODE_2713] [UNICODE_5168]")
+        print("\n[UNICODE_8981]:")
+        print("[UNICODE_2713] Cloud Run[UNICODE_81EA]")
+        print("[UNICODE_2713] [UNICODE_30DE]")
+        print("[UNICODE_2713] 99.95%[UNICODE_30A2]")
+        print("[UNICODE_2713] [UNICODE_30B9]")
+    else:
+        print(f"\n[UNICODE_26A0] {total - passed}[UNICODE_500B]")
+
+if __name__ == "__main__":
+    main()

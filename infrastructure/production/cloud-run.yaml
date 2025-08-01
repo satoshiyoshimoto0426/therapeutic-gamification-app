@@ -1,0 +1,97 @@
+# Cloud Run本番環境設定
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: therapeutic-gamification-app
+  namespace: production
+  annotations:
+    run.googleapis.com/ingress: all
+    run.googleapis.com/execution-environment: gen2
+    run.googleapis.com/vpc-access-connector: projects/PROJECT_ID/locations/asia-northeast1/connectors/vpc-connector
+    run.googleapis.com/vpc-access-egress: private-ranges-only
+spec:
+  template:
+    metadata:
+      annotations:
+        # セキュリティ設定
+        run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/cpu-throttling: "false"
+        run.googleapis.com/memory: "2Gi"
+        run.googleapis.com/cpu: "2"
+        # スケーリング設定
+        autoscaling.knative.dev/minScale: "5"
+        autoscaling.knative.dev/maxScale: "1000"
+        run.googleapis.com/timeout: "300s"
+        # セキュリティコンテキスト
+        run.googleapis.com/sandbox: gvisor
+    spec:
+      containerConcurrency: 100
+      timeoutSeconds: 300
+      serviceAccountName: therapeutic-app-service-account@PROJECT_ID.iam.gserviceaccount.com
+      containers:
+      - image: gcr.io/PROJECT_ID/therapeutic-gamification-app:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ENVIRONMENT
+          value: "production"
+        - name: PROJECT_ID
+          value: "PROJECT_ID"
+        - name: FIRESTORE_DATABASE
+          value: "therapeutic-app-prod"
+        - name: CLOUD_STORAGE_BUCKET
+          value: "therapeutic-app-storage-prod"
+        # Secret Manager統合
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: openai-api-key
+              key: latest
+        - name: LINE_CHANNEL_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: line-channel-secret
+              key: latest
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: jwt-secret
+              key: latest
+        - name: STRIPE_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: stripe-secret-key
+              key: latest
+        resources:
+          limits:
+            cpu: "2"
+            memory: "2Gi"
+          requests:
+            cpu: "1"
+            memory: "1Gi"
+        # ヘルスチェック
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+        # セキュリティコンテキスト
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 65534
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL

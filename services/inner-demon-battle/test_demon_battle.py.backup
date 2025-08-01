@@ -1,0 +1,402 @@
+"""
+[UNICODE_5185]
+"""
+
+import unittest
+from unittest.mock import patch, MagicMock
+import sys
+import os
+from datetime import datetime
+
+# [UNICODE_30D1]
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+
+from main import (
+    InnerDemonBattle, DemonType, BattleResult, DemonStats, BattleReward
+)
+
+class TestInnerDemonBattle(unittest.TestCase):
+    """[UNICODE_5185]"""
+    
+    def setUp(self):
+        """[UNICODE_30C6]"""
+        self.battle_system = InnerDemonBattle()
+        self.test_user_id = "test_user_123"
+    
+    def test_demon_types_initialization(self):
+        """[UNICODE_9B54]"""
+        # 4[UNICODE_7A2E]
+        self.assertEqual(len(self.battle_system.demon_types), 4)
+        
+        # [UNICODE_5404]
+        expected_demons = [
+            DemonType.PROCRASTINATION_DRAGON,
+            DemonType.ANXIETY_SHADOW,
+            DemonType.DEPRESSION_VOID,
+            DemonType.SOCIAL_FEAR_GOBLIN
+        ]
+        
+        for demon_type in expected_demons:
+            self.assertIn(demon_type, self.battle_system.demon_types)
+            demon_data = self.battle_system.demon_types[demon_type]
+            
+            # [UNICODE_5FC5]
+            self.assertIn("name", demon_data)
+            self.assertIn("max_hp", demon_data)
+            self.assertIn("weaknesses", demon_data)
+            self.assertIn("therapeutic_theme", demon_data)
+            self.assertIn("description", demon_data)
+            self.assertIn("rewards", demon_data)
+    
+    def test_procrastination_dragon_properties(self):
+        """[UNICODE_5148]"""
+        dragon = self.battle_system.demon_types[DemonType.PROCRASTINATION_DRAGON]
+        
+        self.assertEqual(dragon["name"], "[UNICODE_5148]")
+        self.assertEqual(dragon["max_hp"], 100)
+        self.assertEqual(dragon["therapeutic_theme"], "[UNICODE_884C]")
+        
+        # [UNICODE_5F31]
+        expected_weaknesses = [
+            "routine_task_completion",
+            "pomodoro_usage",
+            "small_step_action",
+            "deadline_adherence",
+            "morning_routine"
+        ]
+        self.assertEqual(dragon["weaknesses"], expected_weaknesses)
+        
+        # [UNICODE_5831]
+        rewards = dragon["rewards"]
+        self.assertEqual(rewards["coins"], 150)
+        self.assertEqual(rewards["xp"], 75)
+        self.assertIn("focus_potion", rewards["items"])
+    
+    def test_anxiety_shadow_properties(self):
+        """[UNICODE_4E0D]"""
+        shadow = self.battle_system.demon_types[DemonType.ANXIETY_SHADOW]
+        
+        self.assertEqual(shadow["name"], "[UNICODE_4E0D]")
+        self.assertEqual(shadow["max_hp"], 80)
+        self.assertEqual(shadow["therapeutic_theme"], "[UNICODE_4E0D]")
+        
+        # [UNICODE_5F31]
+        expected_weaknesses = [
+            "breathing_exercise",
+            "positive_affirmation",
+            "mindfulness_practice",
+            "social_connection",
+            "grounding_technique"
+        ]
+        self.assertEqual(shadow["weaknesses"], expected_weaknesses)
+    
+    def test_depression_void_properties(self):
+        """[UNICODE_6182]"""
+        void = self.battle_system.demon_types[DemonType.DEPRESSION_VOID]
+        
+        self.assertEqual(void["name"], "[UNICODE_6182]")
+        self.assertEqual(void["max_hp"], 150)
+        self.assertEqual(void["therapeutic_theme"], "[UNICODE_7121]")
+        
+        # [UNICODE_6700]
+        max_hp_values = [demon["max_hp"] for demon in self.battle_system.demon_types.values()]
+        self.assertEqual(void["max_hp"], max(max_hp_values))
+    
+    def test_social_fear_goblin_properties(self):
+        """[UNICODE_793E]"""
+        goblin = self.battle_system.demon_types[DemonType.SOCIAL_FEAR_GOBLIN]
+        
+        self.assertEqual(goblin["name"], "[UNICODE_793E]")
+        self.assertEqual(goblin["max_hp"], 60)
+        self.assertEqual(goblin["therapeutic_theme"], "[UNICODE_793E]")
+        
+        # [UNICODE_6700]
+        min_hp_values = [demon["max_hp"] for demon in self.battle_system.demon_types.values()]
+        self.assertEqual(goblin["max_hp"], min(min_hp_values))
+    
+    def test_damage_calculation_direct_weakness(self):
+        """[UNICODE_76F4]"""
+        weaknesses = ["routine_task_completion", "pomodoro_usage"]
+        actions = ["routine_task_completion", "pomodoro_usage"]
+        
+        with patch('random.uniform', return_value=1.0):  # [UNICODE_30E9]
+            damage = self.battle_system._calculate_damage(actions, weaknesses)
+            expected_damage = 25 + 25  # [UNICODE_5404]25[UNICODE_30C0]
+            self.assertEqual(damage, expected_damage)
+    
+    def test_damage_calculation_partial_match(self):
+        """[UNICODE_90E8]"""
+        weaknesses = ["routine_task_completion"]
+        actions = ["routine_task"]  # [UNICODE_90E8]
+        
+        with patch('random.uniform', return_value=1.0):
+            damage = self.battle_system._calculate_damage(actions, weaknesses)
+            expected_damage = 15  # [UNICODE_90E8]15[UNICODE_30C0]
+            self.assertEqual(damage, expected_damage)
+    
+    def test_damage_calculation_no_match(self):
+        """[UNICODE_30DE]"""
+        weaknesses = ["routine_task_completion"]
+        actions = ["unrelated_action"]
+        
+        with patch('random.uniform', return_value=1.0):
+            damage = self.battle_system._calculate_damage(actions, weaknesses)
+            expected_damage = 5  # [UNICODE_95A2]5[UNICODE_30C0]
+            self.assertEqual(damage, expected_damage)
+    
+    def test_initiate_battle_victory(self):
+        """[UNICODE_30D0]"""
+        # [UNICODE_9AD8]
+        powerful_actions = ["routine_task_completion"] * 5  # 125[UNICODE_30C0]
+        
+        with patch('random.uniform', return_value=1.0):
+            result = self.battle_system.initiate_battle(
+                self.test_user_id, 
+                DemonType.PROCRASTINATION_DRAGON, 
+                powerful_actions
+            )
+        
+        self.assertEqual(result["result"], BattleResult.VICTORY.value)
+        self.assertEqual(result["demon_name"], "[UNICODE_5148]")
+        self.assertIn("rewards", result)
+        self.assertIn("therapeutic_message", result)
+        self.assertIn("reflection_prompt", result)
+        
+        # [UNICODE_30D0]
+        self.assertNotIn(self.test_user_id, self.battle_system.active_battles)
+    
+    def test_initiate_battle_ongoing(self):
+        """[UNICODE_30D0]"""
+        # [UNICODE_4E2D]
+        moderate_actions = ["routine_task_completion"]  # 25[UNICODE_30C0]
+        
+        with patch('random.uniform', return_value=1.0):
+            result = self.battle_system.initiate_battle(
+                self.test_user_id,
+                DemonType.PROCRASTINATION_DRAGON,
+                moderate_actions
+            )
+        
+        self.assertEqual(result["result"], BattleResult.ONGOING.value)
+        self.assertEqual(result["demon_name"], "[UNICODE_5148]")
+        self.assertEqual(result["demon_hp"], 75)  # 100 - 25
+        self.assertEqual(result["demon_max_hp"], 100)
+        self.assertIn("suggested_actions", result)
+        self.assertIn("encouragement", result)
+        
+        # [UNICODE_30D0]
+        self.assertIn(self.test_user_id, self.battle_system.active_battles)
+    
+    def test_continue_battle_victory(self):
+        """[UNICODE_30D0]"""
+        # [UNICODE_6700]
+        initial_actions = ["routine_task_completion"]
+        
+        with patch('random.uniform', return_value=1.0):
+            self.battle_system.initiate_battle(
+                self.test_user_id,
+                DemonType.PROCRASTINATION_DRAGON,
+                initial_actions
+            )
+            
+            # [UNICODE_8FFD]
+            additional_actions = ["pomodoro_usage"] * 3  # 75[UNICODE_30C0]
+            result = self.battle_system.continue_battle(self.test_user_id, additional_actions)
+        
+        self.assertEqual(result["result"], BattleResult.VICTORY.value)
+        self.assertIn("rewards", result)
+        self.assertIn("turns_taken", result)
+        
+        # [UNICODE_30D0]
+        self.assertNotIn(self.test_user_id, self.battle_system.active_battles)
+    
+    def test_continue_battle_defeat(self):
+        """[UNICODE_30D0]"""
+        # [UNICODE_6700]
+        weak_actions = ["unrelated_action"]
+        
+        with patch('random.uniform', return_value=1.0):
+            self.battle_system.initiate_battle(
+                self.test_user_id,
+                DemonType.PROCRASTINATION_DRAGON,
+                weak_actions
+            )
+            
+            # 10[UNICODE_30BF]
+            for _ in range(10):
+                result = self.battle_system.continue_battle(self.test_user_id, weak_actions)
+        
+        self.assertEqual(result["result"], BattleResult.DEFEAT.value)
+        self.assertIn("support_message", result)
+        self.assertIn("alternative_strategies", result)
+        self.assertIn("consolation_reward", result)
+        
+        # [UNICODE_6170]
+        consolation = result["consolation_reward"]
+        self.assertEqual(consolation["coins"], 37)  # 150 // 4
+        self.assertEqual(consolation["xp"], 18)     # 75 // 4
+    
+    def test_continue_battle_no_active_battle(self):
+        """[UNICODE_30A2]"""
+        result = self.battle_system.continue_battle("nonexistent_user", ["action"])
+        self.assertIn("error", result)
+    
+    def test_get_battle_status(self):
+        """[UNICODE_30D0]"""
+        # [UNICODE_30D0]
+        actions = ["breathing_exercise"]  # [UNICODE_4E0D]
+        
+        with patch('random.uniform', return_value=1.0):
+            self.battle_system.initiate_battle(
+                self.test_user_id,
+                DemonType.ANXIETY_SHADOW,
+                actions
+            )
+        
+        status = self.battle_system.get_battle_status(self.test_user_id)
+        
+        self.assertIsNotNone(status)
+        self.assertEqual(status["demon_name"], "[UNICODE_4E0D]")
+        self.assertEqual(status["demon_hp"], 55)  # 80 - 25
+        self.assertEqual(status["demon_max_hp"], 80)
+        self.assertEqual(status["turn_count"], 1)
+        self.assertEqual(status["therapeutic_theme"], "[UNICODE_4E0D]")
+    
+    def test_get_battle_status_no_battle(self):
+        """[UNICODE_30D0]"""
+        status = self.battle_system.get_battle_status("nonexistent_user")
+        self.assertIsNone(status)
+    
+    def test_get_available_demons(self):
+        """[UNICODE_5229]"""
+        demons = self.battle_system.get_available_demons()
+        
+        self.assertEqual(len(demons), 4)
+        
+        # [UNICODE_5404]
+        demon_names = [demon["name"] for demon in demons]
+        expected_names = ["[UNICODE_5148]", "[UNICODE_4E0D]", "[UNICODE_6182]", "[UNICODE_793E]"]
+        
+        for name in expected_names:
+            self.assertIn(name, demon_names)
+        
+        # [UNICODE_5FC5]
+        for demon in demons:
+            self.assertIn("type", demon)
+            self.assertIn("name", demon)
+            self.assertIn("description", demon)
+            self.assertIn("therapeutic_theme", demon)
+            self.assertIn("max_hp", demon)
+            self.assertIn("weaknesses", demon)
+    
+    def test_victory_reflection_generation(self):
+        """[UNICODE_52DD]"""
+        demon_data = self.battle_system.demon_types[DemonType.PROCRASTINATION_DRAGON]
+        reflection = self.battle_system._generate_victory_reflection(demon_data)
+        
+        self.assertIsInstance(reflection, str)
+        self.assertIn("[UNICODE_5148]", reflection)
+        self.assertIn("[UNICODE_884C]", reflection)
+    
+    def test_support_message_generation(self):
+        """[UNICODE_6557]"""
+        demon_data = self.battle_system.demon_types[DemonType.ANXIETY_SHADOW]
+        support_message = self.battle_system._generate_support_message(demon_data)
+        
+        self.assertIsInstance(support_message, str)
+        self.assertIn("[UNICODE_4E0D]", support_message)
+        self.assertGreater(len(support_message), 20)  # [UNICODE_610F]
+    
+    def test_alternative_strategies_suggestion(self):
+        """[UNICODE_4EE3]"""
+        weaknesses = ["routine_task_completion", "pomodoro_usage", "breathing_exercise"]
+        strategies = self.battle_system._suggest_alternative_strategies(weaknesses)
+        
+        self.assertIsInstance(strategies, list)
+        self.assertLessEqual(len(strategies), 3)  # [UNICODE_6700]3[UNICODE_3064]
+        
+        for strategy in strategies:
+            self.assertIsInstance(strategy, str)
+            self.assertGreater(len(strategy), 10)  # [UNICODE_610F]
+    
+    def test_encouragement_message_high_damage(self):
+        """[UNICODE_9AD8]"""
+        demon_stats = DemonStats(
+            name="[UNICODE_30C6]",
+            max_hp=100,
+            current_hp=50,
+            weaknesses=[],
+            therapeutic_theme="[UNICODE_30C6]",
+            description="[UNICODE_30C6]"
+        )
+        
+        message = self.battle_system._generate_encouragement_message(demon_stats, 25)
+        self.assertIn("[UNICODE_7D20]", message)
+        self.assertIn("[UNICODE_5927]", message)
+    
+    def test_encouragement_message_low_hp(self):
+        """[UNICODE_4F4E]HP[UNICODE_6642]"""
+        demon_stats = DemonStats(
+            name="[UNICODE_30C6]",
+            max_hp=100,
+            current_hp=20,  # 20% HP
+            weaknesses=[],
+            therapeutic_theme="[UNICODE_30C6]",
+            description="[UNICODE_30C6]"
+        )
+        
+        message = self.battle_system._generate_encouragement_message(demon_stats, 10)
+        self.assertIn("[UNICODE_5F31]", message)
+        self.assertIn("[UNICODE_52DD]", message)
+    
+    def test_battle_tips_generation(self):
+        """[UNICODE_30D0]"""
+        tips = self.battle_system._get_battle_tips("[UNICODE_884C]")
+        
+        self.assertIsInstance(tips, list)
+        self.assertGreater(len(tips), 0)
+        
+        for tip in tips:
+            self.assertIsInstance(tip, str)
+            self.assertGreater(len(tip), 10)
+
+class TestDemonStats(unittest.TestCase):
+    """DemonStats[UNICODE_30C7]"""
+    
+    def test_demon_stats_creation(self):
+        """DemonStats[UNICODE_4F5C]"""
+        stats = DemonStats(
+            name="[UNICODE_30C6]",
+            max_hp=100,
+            current_hp=80,
+            weaknesses=["test_weakness"],
+            therapeutic_theme="[UNICODE_30C6]",
+            description="[UNICODE_30C6]"
+        )
+        
+        self.assertEqual(stats.name, "[UNICODE_30C6]")
+        self.assertEqual(stats.max_hp, 100)
+        self.assertEqual(stats.current_hp, 80)
+        self.assertEqual(stats.weaknesses, ["test_weakness"])
+        self.assertEqual(stats.therapeutic_theme, "[UNICODE_30C6]")
+        self.assertEqual(stats.description, "[UNICODE_30C6]")
+
+class TestBattleReward(unittest.TestCase):
+    """BattleReward[UNICODE_30C7]"""
+    
+    def test_battle_reward_creation(self):
+        """BattleReward[UNICODE_4F5C]"""
+        reward = BattleReward(
+            coins=100,
+            items=["test_item"],
+            xp=50,
+            therapeutic_message="[UNICODE_30C6]"
+        )
+        
+        self.assertEqual(reward.coins, 100)
+        self.assertEqual(reward.items, ["test_item"])
+        self.assertEqual(reward.xp, 50)
+        self.assertEqual(reward.therapeutic_message, "[UNICODE_30C6]")
+
+if __name__ == "__main__":
+    unittest.main()

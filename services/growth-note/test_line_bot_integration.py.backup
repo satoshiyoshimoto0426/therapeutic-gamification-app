@@ -1,0 +1,311 @@
+"""
+LINE Bot[UNICODE_632F]UI[UNICODE_7D71]
+"""
+
+import pytest
+import json
+from datetime import datetime, timedelta
+from line_bot_integration import ReflectionLINEInterface, ReflectionSession
+from main import GrowthNoteSystem
+
+class TestReflectionLINEInterface:
+    
+    def setup_method(self):
+        """[UNICODE_5404]"""
+        self.growth_note_system = GrowthNoteSystem()
+        self.line_interface = ReflectionLINEInterface(self.growth_note_system)
+    
+    def test_create_reflection_prompt_message(self):
+        """22:00[UNICODE_632F]"""
+        user_context = {
+            "mood": 3,
+            "completed_tasks": 2,
+            "recent_struggles": ["social"]
+        }
+        
+        message = self.line_interface.create_reflection_prompt_message("user123", user_context)
+        
+        assert message["type"] == "flex"
+        assert message["altText"] == "[UNICODE_4ECA]"
+        assert "bubble" in message["contents"]["type"]
+        
+        # [UNICODE_30D8]
+        header = message["contents"]["header"]
+        assert "[UNICODE_4ECA]" in header["contents"][0]["text"]
+        
+        # [UNICODE_30D5]
+        footer = message["contents"]["footer"]
+        buttons = footer["contents"]
+        assert len(buttons) == 2
+        assert "[UNICODE_30B0]" in buttons[0]["action"]["label"]
+        assert "[UNICODE_660E]" in buttons[1]["action"]["label"]
+        
+        # [UNICODE_30BB]
+        assert "user123" in self.line_interface.active_sessions
+        session = self.line_interface.active_sessions["user123"]
+        assert session.user_id == "user123"
+        assert len(session.prompts) == 4
+    
+    def test_create_growth_note_form(self):
+        """[UNICODE_30B0]"""
+        # [UNICODE_307E]
+        user_context = {"mood": 3, "completed_tasks": 2}
+        self.line_interface.create_reflection_prompt_message("user123", user_context)
+        
+        form = self.line_interface.create_growth_note_form("user123")
+        
+        assert form["type"] == "flex"
+        assert form["altText"] == "[UNICODE_30B0]"
+        assert form["contents"]["type"] == "carousel"
+        
+        # 4[UNICODE_3064]
+        bubbles = form["contents"]["contents"]
+        assert len(bubbles) == 4
+        
+        # [UNICODE_5404]
+        expected_titles = [
+            "[UNICODE_1F61F] [UNICODE_2460]",
+            "[UNICODE_2728] [UNICODE_2461]", 
+            "[UNICODE_1F60A] [UNICODE_2462]",
+            "[UNICODE_1F680] [UNICODE_2463]"
+        ]
+        
+        for i, bubble in enumerate(bubbles):
+            assert bubble["type"] == "bubble"
+            assert bubble["size"] == "kilo"
+            assert expected_titles[i] in bubble["header"]["contents"][0]["text"]
+            assert bubble["footer"]["contents"][0]["action"]["type"] == "postback"
+    
+    def test_create_growth_note_form_no_session(self):
+        """[UNICODE_30BB]"""
+        form = self.line_interface.create_growth_note_form("nonexistent_user")
+        
+        assert form["type"] == "text"
+        assert "[UNICODE_30A8]" in form["text"]
+        assert "[UNICODE_30BB]" in form["text"]
+    
+    def test_create_input_form(self):
+        """[UNICODE_500B]"""
+        form = self.line_interface.create_input_form(
+            "current_problems", 
+            "[UNICODE_73FE]",
+            "session123"
+        )
+        
+        assert form["type"] == "flex"
+        assert "[UNICODE_73FE]" in form["altText"]
+        assert form["contents"]["type"] == "bubble"
+        
+        # [UNICODE_30D8]
+        header = form["contents"]["header"]
+        assert "[UNICODE_1F61F] [UNICODE_73FE]" in header["contents"][0]["text"]
+        
+        # [UNICODE_30DC]
+        body = form["contents"]["body"]
+        assert "[UNICODE_73FE]" in body["contents"][0]["text"]
+        
+        # [UNICODE_30D5]
+        footer = form["contents"]["footer"]
+        assert "[UNICODE_5165]" in footer["contents"][0]["text"]
+    
+    def test_process_reflection_input_partial(self):
+        """[UNICODE_90E8]"""
+        # [UNICODE_30BB]
+        user_context = {"mood": 3, "completed_tasks": 2}
+        self.line_interface.create_reflection_prompt_message("user123", user_context)
+        
+        # 1[UNICODE_3064]
+        response = self.line_interface.process_reflection_input(
+            "user123",
+            "current_problems",
+            "[UNICODE_4EBA]"
+        )
+        
+        assert response["type"] == "text"
+        assert "[UNICODE_56DE]" in response["text"]
+        assert "[UNICODE_9032]: 1/4" in response["text"]
+        assert "quickReply" in response
+        
+        # [UNICODE_30BB]
+        session = self.line_interface.active_sessions["user123"]
+        assert "current_problems" in session.responses
+        assert session.responses["current_problems"] == "[UNICODE_4EBA]"
+        assert not session.completed
+    
+    def test_process_reflection_input_complete(self):
+        """[UNICODE_5B8C]"""
+        # [UNICODE_30BB]
+        user_context = {"mood": 3, "completed_tasks": 2}
+        self.line_interface.create_reflection_prompt_message("user123", user_context)
+        
+        # 4[UNICODE_3064]
+        self.line_interface.process_reflection_input("user123", "current_problems", "[UNICODE_4EBA]")
+        self.line_interface.process_reflection_input("user123", "ideal_world", "[UNICODE_53CB]")
+        self.line_interface.process_reflection_input("user123", "ideal_emotions", "[UNICODE_5E78]")
+        
+        # [UNICODE_6700]
+        response = self.line_interface.process_reflection_input(
+            "user123",
+            "tomorrow_actions",
+            "[UNICODE_660E]"
+        )
+        
+        assert response["type"] == "flex"
+        assert "[UNICODE_632F]" in response["altText"]
+        
+        # [UNICODE_5B8C]
+        contents = response["contents"]
+        assert contents["type"] == "bubble"
+        assert "[UNICODE_1F389] [UNICODE_632F]" in contents["header"]["contents"][0]["text"]
+        
+        # XP[UNICODE_8868]
+        body_contents = contents["body"]["contents"]
+        xp_text = next((item["text"] for item in body_contents if "[UNICODE_7372]XP" in item["text"]), None)
+        assert xp_text is not None
+        assert "+25 XP" in xp_text or "XP" in xp_text
+        
+        # [UNICODE_30BB]
+        session = self.line_interface.active_sessions["user123"]
+        assert session.completed
+        assert session.xp_earned > 0
+        assert len(session.responses) == 4
+    
+    def test_process_reflection_input_no_session(self):
+        """[UNICODE_30BB]"""
+        response = self.line_interface.process_reflection_input(
+            "nonexistent_user",
+            "current_problems",
+            "[UNICODE_30C6]"
+        )
+        
+        assert response["type"] == "text"
+        assert "[UNICODE_30A8]" in response["text"]
+        assert "[UNICODE_30BB]" in response["text"]
+    
+    def test_create_reflection_reminder(self):
+        """[UNICODE_632F]"""
+        reminder = self.line_interface.create_reflection_reminder("user123", 3)
+        
+        assert reminder["type"] == "flex"
+        assert reminder["altText"] == "[UNICODE_632F]"
+        assert reminder["contents"]["type"] == "bubble"
+        
+        # [UNICODE_30D8]
+        header = reminder["contents"]["header"]
+        assert "[UNICODE_1F31F] [UNICODE_632F]" in header["contents"][0]["text"]
+        
+        # [UNICODE_30DC]
+        body_contents = reminder["contents"]["body"]["contents"]
+        missed_days_text = next((item.get("text", "") for item in body_contents if "3[UNICODE_65E5]" in item.get("text", "")), None)
+        assert missed_days_text is not None
+        
+        # [UNICODE_30D5]
+        footer = reminder["contents"]["footer"]
+        buttons = footer["contents"]
+        assert len(buttons) == 2
+        assert "[UNICODE_4ECA]" in buttons[0]["action"]["label"]
+        assert "[UNICODE_660E]" in buttons[1]["action"]["label"]
+    
+    def test_get_session_status(self):
+        """[UNICODE_30BB]"""
+        # [UNICODE_30BB]
+        status = self.line_interface.get_session_status("nonexistent_user")
+        assert status is None
+        
+        # [UNICODE_30BB]
+        user_context = {"mood": 3, "completed_tasks": 2}
+        self.line_interface.create_reflection_prompt_message("user123", user_context)
+        
+        status = self.line_interface.get_session_status("user123")
+        assert status is not None
+        assert isinstance(status, ReflectionSession)
+        assert status.user_id == "user123"
+        assert not status.completed
+    
+    def test_cleanup_old_sessions(self):
+        """[UNICODE_53E4]"""
+        # [UNICODE_8907]
+        user_context = {"mood": 3, "completed_tasks": 2}
+        self.line_interface.create_reflection_prompt_message("user1", user_context)
+        self.line_interface.create_reflection_prompt_message("user2", user_context)
+        
+        # 1[UNICODE_3064]
+        old_session = self.line_interface.active_sessions["user1"]
+        old_session.started_at = datetime.now() - timedelta(hours=25)
+        
+        # [UNICODE_30AF]
+        cleaned_count = self.line_interface.cleanup_old_sessions(24)
+        
+        assert cleaned_count == 1
+        assert "user1" not in self.line_interface.active_sessions
+        assert "user2" in self.line_interface.active_sessions
+    
+    def test_emotion_display_mapping(self):
+        """[UNICODE_611F]"""
+        from main import EmotionalTone
+        
+        # [UNICODE_5404]
+        display = self.line_interface._get_emotion_display(EmotionalTone.VERY_POSITIVE)
+        assert "[UNICODE_3068]" in display and "[UNICODE_2728]" in display
+        
+        display = self.line_interface._get_emotion_display(EmotionalTone.POSITIVE)
+        assert "[UNICODE_30DD]" in display and "[UNICODE_1F60A]" in display
+        
+        display = self.line_interface._get_emotion_display(EmotionalTone.NEUTRAL)
+        assert "[UNICODE_4E2D]" in display and "[UNICODE_1F610]" in display
+        
+        display = self.line_interface._get_emotion_display(EmotionalTone.NEGATIVE)
+        assert "[UNICODE_843D]" in display and "[UNICODE_1F614]" in display
+        
+        display = self.line_interface._get_emotion_display(EmotionalTone.VERY_NEGATIVE)
+        assert "[UNICODE_3068]" in display and "[UNICODE_1F622]" in display
+    
+    def test_action_display_mapping(self):
+        """[UNICODE_884C]"""
+        from main import ActionOrientation
+        
+        # [UNICODE_5404]
+        display = self.line_interface._get_action_display(ActionOrientation.HIGH)
+        assert "[UNICODE_9AD8]" in display and "[UNICODE_1F680]" in display
+        
+        display = self.line_interface._get_action_display(ActionOrientation.MEDIUM)
+        assert "[UNICODE_4E2D]" in display and "[UNICODE_1F44D]" in display
+        
+        display = self.line_interface._get_action_display(ActionOrientation.LOW)
+        assert "[UNICODE_4F4E]" in display and "[UNICODE_1F914]" in display
+    
+    def test_reflection_session_dataclass(self):
+        """ReflectionSession[UNICODE_30C7]"""
+        session = ReflectionSession(
+            user_id="test_user",
+            session_id="test_session",
+            started_at=datetime.now(),
+            prompts={"test": "prompt"},
+            responses={"test": "response"}
+        )
+        
+        assert session.user_id == "test_user"
+        assert session.session_id == "test_session"
+        assert isinstance(session.started_at, datetime)
+        assert session.prompts == {"test": "prompt"}
+        assert session.responses == {"test": "response"}
+        assert not session.completed  # [UNICODE_30C7]
+        assert session.xp_earned == 0  # [UNICODE_30C7]
+
+def test_demo_function():
+    """[UNICODE_30C7]"""
+    from line_bot_integration import demo_line_bot_integration
+    
+    line_interface = demo_line_bot_integration()
+    
+    assert isinstance(line_interface, ReflectionLINEInterface)
+    assert "user123" in line_interface.active_sessions
+    
+    # [UNICODE_30BB]
+    session = line_interface.active_sessions["user123"]
+    assert session.completed
+    assert len(session.responses) == 4
+    assert session.xp_earned > 0
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

@@ -1,0 +1,11 @@
+{
+  "timestamp": "20250730_100946",
+  "test_results": {
+    "service_availability": false
+  },
+  "summary": {
+    "total_tests": 0,
+    "passed_tests": 0,
+    "success_rate": 0.0
+  }
+}

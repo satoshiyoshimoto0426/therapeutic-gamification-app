@@ -1,0 +1,311 @@
+"""
+[UNICODE_30C6]
+"""
+import pytest
+import asyncio
+from datetime import datetime, timedelta
+from main import AlphaPlaytestEngine, TestUserStatus, ABTestVariant, FeedbackType
+import uuid
+
+class TestUserManagementSystem:
+    """[UNICODE_30C6]"""
+    
+    @pytest.fixture
+    def playtest_engine(self):
+        """[UNICODE_30C6]"""
+        return AlphaPlaytestEngine()
+    
+    @pytest.mark.asyncio
+    async def test_user_registration(self, playtest_engine):
+        """[UNICODE_30E6]"""
+        email = "test@example.com"
+        demographics = {"age": 25, "gender": "male", "condition": "adhd"}
+        
+        user = await playtest_engine.register_test_user(email, demographics)
+        
+        assert user.user_id is not None
+        assert user.status == TestUserStatus.INVITED
+        assert user.assigned_variant in ABTestVariant
+        assert user.demographics == demographics
+        assert user.consent_given is True
+        
+        # [UNICODE_30E6]
+        assert user.user_id in playtest_engine.test_users
+    
+    @pytest.mark.asyncio
+    async def test_user_limit_enforcement(self, playtest_engine):
+        """[UNICODE_30E6]"""
+        # [UNICODE_6700]3[UNICODE_306B]
+        playtest_engine.max_test_users = 3
+        
+        # 3[UNICODE_4EBA]
+        for i in range(3):
+            await playtest_engine.register_test_user(f"test{i}@example.com")
+        
+        # 4[UNICODE_4EBA]
+        with pytest.raises(Exception) as exc_info:
+            await playtest_engine.register_test_user("test4@example.com")
+        
+        assert "[UNICODE_4E0A]" in str(exc_info.value)
+    
+    @pytest.mark.asyncio
+    async def test_ab_variant_assignment(self, playtest_engine):
+        """A/B[UNICODE_30C6]"""
+        users = []
+        
+        # 9[UNICODE_4EBA]3[UNICODE_3064]
+        for i in range(9):
+            user = await playtest_engine.register_test_user(f"test{i}@example.com")
+            users.append(user)
+        
+        # [UNICODE_30D0]
+        variant_counts = {}
+        for user in users:
+            variant = user.assigned_variant
+            variant_counts[variant] = variant_counts.get(variant, 0) + 1
+        
+        # [UNICODE_5404]3[UNICODE_4EBA]
+        for variant in ABTestVariant:
+            assert variant_counts[variant] == 3
+    
+    @pytest.mark.asyncio
+    async def test_email_anonymization(self, playtest_engine):
+        """[UNICODE_30E1]"""
+        original_email = "sensitive@example.com"
+        user = await playtest_engine.register_test_user(original_email)
+        
+        # [UNICODE_5143]
+        assert user.email != original_email
+        assert len(user.email) == 16  # [UNICODE_30CF]
+        assert "@" not in user.email  # [UNICODE_30E1]
+    
+    @pytest.mark.asyncio
+    async def test_user_status_transitions(self, playtest_engine):
+        """[UNICODE_30E6]"""
+        user = await playtest_engine.register_test_user("test@example.com")
+        
+        # [UNICODE_521D]INVITED
+        assert user.status == TestUserStatus.INVITED
+        
+        # [UNICODE_884C]ACTIVE[UNICODE_306B]
+        await playtest_engine.log_user_behavior(
+            user.user_id, "login", {"timestamp": datetime.now().isoformat()}
+        )
+        
+        assert user.status == TestUserStatus.ACTIVE
+        assert user.last_active_date is not None
+    
+    def test_privacy_settings_default(self, playtest_engine):
+        """[UNICODE_30D7]"""
+        user = asyncio.run(playtest_engine.register_test_user("test@example.com"))
+        
+        expected_settings = {
+            "data_collection": True,
+            "analytics": True,
+            "feedback_collection": True
+        }
+        
+        assert user.privacy_settings == expected_settings
+
+class TestBehaviorLogging:
+    """[UNICODE_884C]"""
+    
+    @pytest.fixture
+    def playtest_engine_with_user(self):
+        """[UNICODE_30E6]"""
+        engine = AlphaPlaytestEngine()
+        user = asyncio.run(engine.register_test_user("test@example.com"))
+        return engine, user.user_id
+    
+    @pytest.mark.asyncio
+    async def test_behavior_logging(self, playtest_engine_with_user):
+        """[UNICODE_884C]"""
+        engine, user_id = playtest_engine_with_user
+        
+        event_data = {
+            "action": "task_completion",
+            "task_id": "task_123",
+            "completion_time": 300,
+            "difficulty": 3
+        }
+        
+        success = await engine.log_user_behavior(
+            user_id, "task_completion", event_data, "session_123"
+        )
+        
+        assert success is True
+        assert len(engine.behavior_logs) == 1
+        
+        log = engine.behavior_logs[0]
+        assert log.user_id == user_id
+        assert log.event_type == "task_completion"
+        assert log.session_id == "session_123"
+        assert log.anonymized is True
+    
+    @pytest.mark.asyncio
+    async def test_data_anonymization(self, playtest_engine_with_user):
+        """[UNICODE_30C7]"""
+        engine, user_id = playtest_engine_with_user
+        
+        sensitive_data = {
+            "email": "user@example.com",
+            "name": "John Doe",
+            "ip_address": "192.168.1.1",
+            "location": {"lat": 35.6762, "lng": 139.6503},
+            "timestamp": "2024-01-01T12:00:00",
+            "safe_data": "this should remain"
+        }
+        
+        await engine.log_user_behavior(user_id, "test_event", sensitive_data)
+        
+        log = engine.behavior_logs[0]
+        event_data = log.event_data
+        
+        # [UNICODE_6A5F]
+        assert "email" not in event_data
+        assert "name" not in event_data
+        assert "ip_address" not in event_data
+        
+        # [UNICODE_4F4D]
+        assert event_data["location"]["lat"] == 35.68  # [UNICODE_5C0F]2[UNICODE_6841]
+        assert event_data["location"]["lng"] == 139.65
+        
+        # [UNICODE_5B89]
+        assert event_data["safe_data"] == "this should remain"
+    
+    @pytest.mark.asyncio
+    async def test_privacy_settings_respect(self, playtest_engine_with_user):
+        """[UNICODE_30D7]"""
+        engine, user_id = playtest_engine_with_user
+        
+        # [UNICODE_30C7]
+        user = engine.test_users[user_id]
+        user.privacy_settings["data_collection"] = False
+        
+        # [UNICODE_30ED]
+        success = await engine.log_user_behavior(
+            user_id, "test_event", {"data": "test"}
+        )
+        
+        # [UNICODE_30ED]
+        assert success is False
+        assert len(engine.behavior_logs) == 0
+    
+    @pytest.mark.asyncio
+    async def test_log_retention_cleanup(self, playtest_engine_with_user):
+        """[UNICODE_30ED]"""
+        engine, user_id = playtest_engine_with_user
+        
+        # [UNICODE_53E4]
+        old_log = engine.behavior_logs[0] if engine.behavior_logs else None
+        if old_log:
+            old_log.timestamp = datetime.now() - timedelta(days=100)
+        else:
+            # [UNICODE_53E4]
+            from main import BehaviorLog
+            old_log = BehaviorLog(
+                log_id=str(uuid.uuid4()),
+                user_id=user_id,
+                session_id="old_session",
+                event_type="old_event",
+                event_data={},
+                timestamp=datetime.now() - timedelta(days=100),
+                anonymized=True
+            )
+            engine.behavior_logs.append(old_log)
+        
+        # [UNICODE_65B0]
+        await engine.log_user_behavior(user_id, "new_event", {"data": "new"})
+        
+        # [UNICODE_30AF]
+        await engine._cleanup_old_logs()
+        
+        # [UNICODE_53E4]
+        remaining_logs = [log for log in engine.behavior_logs if log.event_type == "new_event"]
+        old_logs = [log for log in engine.behavior_logs if log.event_type == "old_event"]
+        
+        assert len(remaining_logs) > 0
+        assert len(old_logs) == 0
+
+class TestRealTimeAnalytics:
+    """[UNICODE_30EA]"""
+    
+    @pytest.fixture
+    def populated_engine(self):
+        """[UNICODE_30C7]"""
+        engine = AlphaPlaytestEngine()
+        
+        # [UNICODE_30C6]
+        users = []
+        for i in range(10):
+            user = asyncio.run(engine.register_test_user(f"test{i}@example.com"))
+            users.append(user)
+        
+        # [UNICODE_4E00]
+        for i in range(3):
+            users[i].status = TestUserStatus.COMPLETED
+            users[i].completion_date = datetime.now()
+        
+        # [UNICODE_884C]
+        for i, user in enumerate(users[:5]):
+            asyncio.run(engine.log_user_behavior(
+                user.user_id, "login", {"session_start": True}, f"session_{i}"
+            ))
+            asyncio.run(engine.log_user_behavior(
+                user.user_id, "task_completion", {"task_id": f"task_{i}"}, f"session_{i}"
+            ))
+        
+        return engine
+    
+    @pytest.mark.asyncio
+    async def test_analytics_report_generation(self, populated_engine):
+        """[UNICODE_5206]"""
+        report = await populated_engine.generate_analytics_report()
+        
+        assert report.total_users == 10
+        assert report.active_users == 7  # 10 - 3 completed
+        assert report.completion_rate == 0.3  # 3/10
+        assert report.average_session_duration >= 0
+        assert isinstance(report.retention_rates, dict)
+        assert isinstance(report.feature_usage, dict)
+        assert report.bug_reports_count >= 0
+        assert report.satisfaction_score >= 0
+    
+    @pytest.mark.asyncio
+    async def test_session_duration_calculation(self, populated_engine):
+        """[UNICODE_30BB]"""
+        durations = await populated_engine._calculate_session_durations()
+        
+        # [UNICODE_30BB]
+        assert len(durations) > 0
+        
+        # [UNICODE_5168]
+        for duration in durations:
+            assert duration >= 0
+    
+    @pytest.mark.asyncio
+    async def test_retention_rate_calculation(self, populated_engine):
+        """[UNICODE_30EA]"""
+        retention_rates = await populated_engine._calculate_retention_rates()
+        
+        expected_periods = ["day_1", "day_3", "day_7", "day_14", "day_30"]
+        
+        for period in expected_periods:
+            assert period in retention_rates
+            assert 0 <= retention_rates[period] <= 1
+    
+    @pytest.mark.asyncio
+    async def test_feature_usage_calculation(self, populated_engine):
+        """[UNICODE_6A5F]"""
+        usage_rates = await populated_engine._calculate_feature_usage()
+        
+        # [UNICODE_30ED]
+        assert "login" in usage_rates
+        assert "task_completion" in usage_rates
+        
+        # [UNICODE_4F7F]0-1[UNICODE_306E]
+        for feature, rate in usage_rates.items():
+            assert 0 <= rate <= 1
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

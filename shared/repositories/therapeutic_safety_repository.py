@@ -1,0 +1,473 @@
+"""
+Therapeutic safety repository for content moderation and CBT intervention logging
+Handles safety checks, content filtering, and therapeutic intervention tracking
+"""
+
+from typing import Dict, List, Optional, Any
+from datetime import datetime, timedelta
+from google.cloud import firestore
+from enum import Enum
+
+from .base_repository import BaseRepository
+from ..utils.exceptions import ValidationError, NotFoundError
+
+
+class ContentType(str, Enum):
+    STORY = "story"
+    TASK = "task"
+    MOOD = "mood"
+    CHAT = "chat"
+    REFLECTION = "reflection"
+
+
+class InterventionType(str, Enum):
+    CBT_REFRAME = "cbt_reframe"
+    SAFETY_WARNING = "safety_warning"
+    RESOURCE_SUGGESTION = "resource_suggestion"
+    CRISIS_SUPPORT = "crisis_support"
+    MINDFULNESS_PROMPT = "mindfulness_prompt"
+
+
+class SafetyLog:
+    """Therapeutic safety log data class"""
+    
+    def __init__(self, **kwargs):
+        self.uid = kwargs["uid"]
+        self.content_type = ContentType(kwargs["content_type"])
+        self.original_content = kwargs["original_content"]
+        self.safety_score = kwargs["safety_score"]  # 0.0-1.0, higher is safer
+        self.flagged = kwargs.get("flagged", False)
+        self.intervention_triggered = kwargs.get("intervention_triggered", False)
+        self.moderation_result = kwargs.get("moderation_result", {})
+        self.custom_filter_result = kwargs.get("custom_filter_result", {})
+        self.cbt_intervention_type = kwargs.get("cbt_intervention_type")
+        self.intervention_content = kwargs.get("intervention_content")
+        self.user_response = kwargs.get("user_response")
+        self.follow_up_required = kwargs.get("follow_up_required", False)
+        self.timestamp = kwargs.get("timestamp", datetime.utcnow())
+
+
+class TherapeuticSafetyRepository(BaseRepository[SafetyLog]):
+    """Repository for therapeutic safety logs and interventions"""
+    
+    def __init__(self, db_client: firestore.Client):
+        super().__init__(db_client, "therapeutic_safety_logs")
+    
+    def _to_entity(self, doc_data: Dict[str, Any], doc_id: str = None) -> SafetyLog:
+        """Convert Firestore document to SafetyLog entity"""
+        return SafetyLog(
+            uid=doc_data["uid"],
+            content_type=doc_data["content_type"],
+            original_content=doc_data["original_content"],
+            safety_score=doc_data["safety_score"],
+            flagged=doc_data.get("flagged", False),
+            intervention_triggered=doc_data.get("intervention_triggered", False),
+            moderation_result=doc_data.get("moderation_result", {}),
+            custom_filter_result=doc_data.get("custom_filter_result", {}),
+            cbt_intervention_type=doc_data.get("cbt_intervention_type"),
+            intervention_content=doc_data.get("intervention_content"),
+            user_response=doc_data.get("user_response"),
+            follow_up_required=doc_data.get("follow_up_required", False),
+            timestamp=doc_data.get("timestamp", datetime.utcnow())
+        )
+    
+    def _to_document(self, entity: SafetyLog) -> Dict[str, Any]:
+        """Convert SafetyLog entity to Firestore document"""
+        return {
+            "uid": entity.uid,
+            "content_type": entity.content_type.value,
+            "original_content": entity.original_content,
+            "safety_score": entity.safety_score,
+            "flagged": entity.flagged,
+            "intervention_triggered": entity.intervention_triggered,
+            "moderation_result": entity.moderation_result,
+            "custom_filter_result": entity.custom_filter_result,
+            "cbt_intervention_type": entity.cbt_intervention_type.value if entity.cbt_intervention_type else None,
+            "intervention_content": entity.intervention_content,
+            "user_response": entity.user_response,
+            "follow_up_required": entity.follow_up_required,
+            "timestamp": entity.timestamp
+        }
+    
+    async def log_safety_check(self, uid: str, content_type: ContentType, 
+                             original_content: str, safety_score: float,
+                             moderation_result: Dict[str, Any] = None,
+                             custom_filter_result: Dict[str, Any] = None) -> str:
+        """Log a safety check result"""
+        try:
+            if not 0.0 <= safety_score <= 1.0:
+                raise ValidationError("Safety score must be between 0.0 and 1.0")
+            
+            # Determine if content should be flagged (threshold: 0.7)
+            flagged = safety_score < 0.7
+            
+            safety_log = SafetyLog(
+                uid=uid,
+                content_type=content_type,
+                original_content=original_content,
+                safety_score=safety_score,
+                flagged=flagged,
+                moderation_result=moderation_result or {},
+                custom_filter_result=custom_filter_result or {}
+            )
+            
+            log_id = await self.create(safety_log)
+            
+            self.logger.info(f"Logged safety check for user {uid}: score={safety_score}, flagged={flagged}")
+            return log_id
+            
+        except Exception as e:
+            self.logger.error(f"Failed to log safety check for user {uid}: {str(e)}")
+            raise
+    
+    async def trigger_cbt_intervention(self, uid: str, content_type: ContentType,
+                                     original_content: str, intervention_type: InterventionType,
+                                     intervention_content: str, safety_score: float = 0.5) -> str:
+        """Trigger and log a CBT intervention"""
+        try:
+            safety_log = SafetyLog(
+                uid=uid,
+                content_type=content_type,
+                original_content=original_content,
+                safety_score=safety_score,
+                flagged=True,
+                intervention_triggered=True,
+                cbt_intervention_type=intervention_type,
+                intervention_content=intervention_content,
+                follow_up_required=intervention_type in [InterventionType.CRISIS_SUPPORT, InterventionType.SAFETY_WARNING]
+            )
+            
+            log_id = await self.create(safety_log)
+            
+            # Schedule follow-up if required
+            if safety_log.follow_up_required:
+                await self._schedule_follow_up(uid, log_id, intervention_type)
+            
+            self.logger.info(f"Triggered CBT intervention for user {uid}: {intervention_type.value}")
+            return log_id
+            
+        except Exception as e:
+            self.logger.error(f"Failed to trigger CBT intervention for user {uid}: {str(e)}")
+            raise
+    
+    async def _schedule_follow_up(self, uid: str, log_id: str, intervention_type: InterventionType) -> None:
+        """Schedule follow-up for high-priority interventions"""
+        try:
+            follow_up_data = {
+                "uid": uid,
+                "safety_log_id": log_id,
+                "intervention_type": intervention_type.value,
+                "scheduled_for": datetime.utcnow() + timedelta(hours=24),  # 24-hour follow-up
+                "completed": False,
+                "created_at": datetime.utcnow()
+            }
+            
+            # Store in follow_up_schedule collection
+            follow_up_collection = self.db.collection("intervention_follow_ups")
+            follow_up_collection.add(follow_up_data)
+            
+        except Exception as e:
+            self.logger.error(f"Failed to schedule follow-up for user {uid}: {str(e)}")
+            # Don't raise - this is supplementary functionality
+    
+    async def record_user_response(self, log_id: str, user_response: str) -> bool:
+        """Record user's response to intervention"""
+        try:
+            updates = {
+                "user_response": user_response,
+                "response_timestamp": datetime.utcnow()
+            }
+            
+            result = await self.update(log_id, updates)
+            
+            if result:
+                self.logger.info(f"Recorded user response for safety log {log_id}")
+            
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"Failed to record user response for log {log_id}: {str(e)}")
+            raise
+    
+    async def get_user_safety_history(self, uid: str, days: int = 30) -> List[Dict[str, Any]]:
+        """Get user's safety check history"""
+        try:
+            end_date = datetime.utcnow()
+            start_date = end_date - timedelta(days=days)
+            
+            query = (self.collection_ref
+                    .where("uid", "==", uid)
+                    .where("timestamp", ">=", start_date)
+                    .where("timestamp", "<=", end_date)
+                    .order_by("timestamp", direction=firestore.Query.DESCENDING))
+            
+            docs = query.get()
+            
+            history = []
+            for doc in docs:
+                data = doc.to_dict()
+                history.append({
+                    "log_id": doc.id,
+                    "content_type": data["content_type"],
+                    "safety_score": data["safety_score"],
+                    "flagged": data.get("flagged", False),
+                    "intervention_triggered": data.get("intervention_triggered", False),
+                    "intervention_type": data.get("cbt_intervention_type"),
+                    "timestamp": data["timestamp"],
+                    "follow_up_required": data.get("follow_up_required", False)
+                })
+            
+            return history
+            
+        except Exception as e:
+            self.logger.error(f"Failed to get safety history for user {uid}: {str(e)}")
+            raise
+    
+    async def get_flagged_content(self, limit: int = 50, content_type: ContentType = None) -> List[Dict[str, Any]]:
+        """Get flagged content for review"""
+        try:
+            query = self.collection_ref.where("flagged", "==", True)
+            
+            if content_type:
+                query = query.where("content_type", "==", content_type.value)
+            
+            query = query.order_by("timestamp", direction=firestore.Query.DESCENDING).limit(limit)
+            
+            docs = query.get()
+            
+            flagged_content = []
+            for doc in docs:
+                data = doc.to_dict()
+                flagged_content.append({
+                    "log_id": doc.id,
+                    "uid": data["uid"],
+                    "content_type": data["content_type"],
+                    "original_content": data["original_content"],
+                    "safety_score": data["safety_score"],
+                    "intervention_triggered": data.get("intervention_triggered", False),
+                    "intervention_type": data.get("cbt_intervention_type"),
+                    "timestamp": data["timestamp"],
+                    "follow_up_required": data.get("follow_up_required", False)
+                })
+            
+            return flagged_content
+            
+        except Exception as e:
+            self.logger.error(f"Failed to get flagged content: {str(e)}")
+            raise
+    
+    async def get_intervention_analytics(self, days: int = 30) -> Dict[str, Any]:
+        """Get intervention analytics"""
+        try:
+            end_date = datetime.utcnow()
+            start_date = end_date - timedelta(days=days)
+            
+            query = (self.collection_ref
+                    .where("timestamp", ">=", start_date)
+                    .where("timestamp", "<=", end_date))
+            
+            docs = query.get()
+            
+            # Initialize counters
+            total_checks = len(docs)
+            flagged_count = 0
+            intervention_count = 0
+            intervention_types = {}
+            content_types = {}
+            safety_scores = []
+            
+            for doc in docs:
+                data = doc.to_dict()
+                
+                if data.get("flagged", False):
+                    flagged_count += 1
+                
+                if data.get("intervention_triggered", False):
+                    intervention_count += 1
+                    
+                    intervention_type = data.get("cbt_intervention_type")
+                    if intervention_type:
+                        intervention_types[intervention_type] = intervention_types.get(intervention_type, 0) + 1
+                
+                content_type = data["content_type"]
+                content_types[content_type] = content_types.get(content_type, 0) + 1
+                
+                safety_scores.append(data["safety_score"])
+            
+            # Calculate statistics
+            avg_safety_score = sum(safety_scores) / len(safety_scores) if safety_scores else 0
+            flag_rate = (flagged_count / total_checks * 100) if total_checks > 0 else 0
+            intervention_rate = (intervention_count / total_checks * 100) if total_checks > 0 else 0
+            
+            analytics = {
+                "period_days": days,
+                "total_safety_checks": total_checks,
+                "flagged_content": flagged_count,
+                "interventions_triggered": intervention_count,
+                "flag_rate_percentage": round(flag_rate, 2),
+                "intervention_rate_percentage": round(intervention_rate, 2),
+                "average_safety_score": round(avg_safety_score, 3),
+                "intervention_types": intervention_types,
+                "content_types": content_types
+            }
+            
+            return analytics
+            
+        except Exception as e:
+            self.logger.error(f"Failed to get intervention analytics: {str(e)}")
+            raise
+    
+    async def get_pending_follow_ups(self, limit: int = 20) -> List[Dict[str, Any]]:
+        """Get pending follow-ups"""
+        try:
+            current_time = datetime.utcnow()
+            
+            follow_up_collection = self.db.collection("intervention_follow_ups")
+            query = (follow_up_collection
+                    .where("completed", "==", False)
+                    .where("scheduled_for", "<=", current_time)
+                    .order_by("scheduled_for")
+                    .limit(limit))
+            
+            docs = query.get()
+            
+            follow_ups = []
+            for doc in docs:
+                data = doc.to_dict()
+                follow_ups.append({
+                    "follow_up_id": doc.id,
+                    "uid": data["uid"],
+                    "safety_log_id": data["safety_log_id"],
+                    "intervention_type": data["intervention_type"],
+                    "scheduled_for": data["scheduled_for"],
+                    "created_at": data["created_at"]
+                })
+            
+            return follow_ups
+            
+        except Exception as e:
+            self.logger.error(f"Failed to get pending follow-ups: {str(e)}")
+            raise
+    
+    async def complete_follow_up(self, follow_up_id: str, notes: str = "") -> bool:
+        """Mark follow-up as completed"""
+        try:
+            follow_up_collection = self.db.collection("intervention_follow_ups")
+            
+            updates = {
+                "completed": True,
+                "completed_at": datetime.utcnow(),
+                "completion_notes": notes
+            }
+            
+            doc_ref = follow_up_collection.document(follow_up_id)
+            doc_ref.update(updates)
+            
+            self.logger.info(f"Completed follow-up {follow_up_id}")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Failed to complete follow-up {follow_up_id}: {str(e)}")
+            raise
+    
+    async def get_user_risk_assessment(self, uid: str, days: int = 7) -> Dict[str, Any]:
+        """Get user risk assessment based on recent activity"""
+        try:
+            recent_history = await self.get_user_safety_history(uid, days)
+            
+            if not recent_history:
+                return {
+                    "risk_level": "unknown",
+                    "confidence": 0.0,
+                    "recent_flags": 0,
+                    "recent_interventions": 0,
+                    "average_safety_score": 1.0
+                }
+            
+            # Calculate risk metrics
+            recent_flags = sum(1 for log in recent_history if log["flagged"])
+            recent_interventions = sum(1 for log in recent_history if log["intervention_triggered"])
+            safety_scores = [log["safety_score"] for log in recent_history]
+            avg_safety_score = sum(safety_scores) / len(safety_scores)
+            
+            # Determine risk level
+            if recent_interventions > 2 or avg_safety_score < 0.5:
+                risk_level = "high"
+                confidence = 0.9
+            elif recent_flags > 3 or avg_safety_score < 0.7:
+                risk_level = "medium"
+                confidence = 0.7
+            elif recent_flags > 0 or avg_safety_score < 0.8:
+                risk_level = "low"
+                confidence = 0.6
+            else:
+                risk_level = "minimal"
+                confidence = 0.8
+            
+            assessment = {
+                "risk_level": risk_level,
+                "confidence": confidence,
+                "recent_flags": recent_flags,
+                "recent_interventions": recent_interventions,
+                "average_safety_score": round(avg_safety_score, 3),
+                "total_checks": len(recent_history),
+                "assessment_period_days": days
+            }
+            
+            return assessment
+            
+        except Exception as e:
+            self.logger.error(f"Failed to get risk assessment for user {uid}: {str(e)}")
+            raise
+    
+    async def generate_cbt_intervention_content(self, intervention_type: InterventionType, 
+                                              context: Dict[str, Any] = None) -> str:
+        """Generate CBT intervention content based on type and context"""
+        try:
+            if context is None:
+                context = {}
+            
+            # Template-based intervention content generation
+            templates = {
+                InterventionType.CBT_REFRAME: [
+                    "I notice you might be having some difficult thoughts. Let's try looking at this from a different perspective.",
+                    "Sometimes our thoughts can feel overwhelming. What evidence do we have for and against this thought?",
+                    "It sounds like you're going through a tough time. What would you tell a good friend in this situation?"
+                ],
+                InterventionType.SAFETY_WARNING: [
+                    "I'm concerned about what you've shared. Your safety and wellbeing are important.",
+                    "It sounds like you might be struggling. Please know that support is available.",
+                    "I want to make sure you're safe. Would you like to talk to someone who can help?"
+                ],
+                InterventionType.RESOURCE_SUGGESTION: [
+                    "Here are some resources that might be helpful for what you're going through.",
+                    "You don't have to face this alone. There are people and resources available to support you.",
+                    "I'd like to share some tools that others have found helpful in similar situations."
+                ],
+                InterventionType.CRISIS_SUPPORT: [
+                    "I'm very concerned about your safety. Please reach out to a crisis helpline or emergency services immediately.",
+                    "Your life has value and meaning. Please contact emergency services or a crisis helpline right now.",
+                    "This sounds like a crisis situation. Please get immediate help by calling emergency services."
+                ],
+                InterventionType.MINDFULNESS_PROMPT: [
+                    "Let's take a moment to pause and breathe. Can you notice three things you can see around you?",
+                    "Sometimes it helps to ground ourselves in the present moment. What can you hear right now?",
+                    "Let's try a quick mindfulness exercise. Take three deep breaths with me."
+                ]
+            }
+            
+            # Select appropriate template
+            template_options = templates.get(intervention_type, ["I'm here to support you."])
+            
+            # For now, return the first template (could be enhanced with AI generation)
+            intervention_content = template_options[0]
+            
+            # Add crisis resources for high-priority interventions
+            if intervention_type in [InterventionType.CRISIS_SUPPORT, InterventionType.SAFETY_WARNING]:
+                intervention_content += "\n\nCrisis Resources:\n? National Suicide Prevention Lifeline: 988\n? Crisis Text Line: Text HOME to 741741\n? Emergency Services: 911"
+            
+            return intervention_content
+            
+        except Exception as e:
+            self.logger.error(f"Failed to generate CBT intervention content: {str(e)}")
+            return "I'm here to support you. Please reach out if you need help."

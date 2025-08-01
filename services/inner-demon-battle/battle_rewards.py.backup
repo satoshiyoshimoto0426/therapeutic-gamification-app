@@ -1,0 +1,484 @@
+"""
+[UNICODE_30D0]CBT[UNICODE_7D71]
+[UNICODE_9B54]CBT[UNICODE_30D9]
+"""
+
+from typing import Dict, List, Optional, Any
+from dataclasses import dataclass
+from enum import Enum
+import random
+from datetime import datetime
+
+class ItemRarity(Enum):
+    """[UNICODE_30A2]"""
+    COMMON = "common"
+    UNCOMMON = "uncommon"
+    RARE = "rare"
+    EPIC = "epic"
+    LEGENDARY = "legendary"
+
+@dataclass
+class BattleItem:
+    """[UNICODE_30D0]"""
+    id: str
+    name: str
+    description: str
+    rarity: ItemRarity
+    therapeutic_effect: str
+    stat_bonus: Dict[str, int]
+
+@dataclass
+class BattleRewards:
+    """[UNICODE_30D0]"""
+    coins: int
+    xp: int
+    items: List[BattleItem]
+    therapeutic_message: str
+    cbt_reflection_prompt: str
+
+class BattleRewardSystem:
+    """[UNICODE_30D0]"""
+    
+    def __init__(self):
+        self.item_pool = self._initialize_item_pool()
+        self.rarity_rates = {
+            ItemRarity.COMMON: 0.50,
+            ItemRarity.UNCOMMON: 0.30,
+            ItemRarity.RARE: 0.15,
+            ItemRarity.EPIC: 0.04,
+            ItemRarity.LEGENDARY: 0.01
+        }
+    
+    def _initialize_item_pool(self) -> Dict[str, List[BattleItem]]:
+        """[UNICODE_30A2]"""
+        return {
+            "procrastination_dragon": [
+                BattleItem(
+                    id="focus_potion",
+                    name="[UNICODE_96C6]",
+                    description="[UNICODE_77ED]",
+                    rarity=ItemRarity.COMMON,
+                    therapeutic_effect="[UNICODE_96C6]",
+                    stat_bonus={"focus": 2, "motivation": 1}
+                ),
+                BattleItem(
+                    id="time_crystal",
+                    name="[UNICODE_6642]",
+                    description="[UNICODE_6642]",
+                    rarity=ItemRarity.UNCOMMON,
+                    therapeutic_effect="[UNICODE_6642]",
+                    stat_bonus={"focus": 3, "wisdom": 2}
+                ),
+                BattleItem(
+                    id="motivation_gem",
+                    name="[UNICODE_3084]",
+                    description="[UNICODE_884C]",
+                    rarity=ItemRarity.RARE,
+                    therapeutic_effect="[UNICODE_884C]",
+                    stat_bonus={"motivation": 4, "resilience": 2}
+                ),
+                BattleItem(
+                    id="procrastination_slayer",
+                    name="[UNICODE_5148]",
+                    description="[UNICODE_5148]",
+                    rarity=ItemRarity.LEGENDARY,
+                    therapeutic_effect="[UNICODE_884C]",
+                    stat_bonus={"focus": 8, "motivation": 6, "resilience": 4}
+                )
+            ],
+            "anxiety_shadow": [
+                BattleItem(
+                    id="calm_amulet",
+                    name="[UNICODE_5E73]",
+                    description="[UNICODE_5FC3]",
+                    rarity=ItemRarity.COMMON,
+                    therapeutic_effect="[UNICODE_4E0D]",
+                    stat_bonus={"resilience": 2, "social": 1}
+                ),
+                BattleItem(
+                    id="courage_ring",
+                    name="[UNICODE_52C7]",
+                    description="[UNICODE_6050]",
+                    rarity=ItemRarity.UNCOMMON,
+                    therapeutic_effect="[UNICODE_52C7]",
+                    stat_bonus={"resilience": 3, "social": 2}
+                ),
+                BattleItem(
+                    id="peace_stone",
+                    name="[UNICODE_5B89]",
+                    description="[UNICODE_6DF1]",
+                    rarity=ItemRarity.RARE,
+                    therapeutic_effect="[UNICODE_5FC3]",
+                    stat_bonus={"resilience": 4, "wisdom": 3}
+                ),
+                BattleItem(
+                    id="anxiety_vanquisher",
+                    name="[UNICODE_4E0D]",
+                    description="[UNICODE_3042]",
+                    rarity=ItemRarity.LEGENDARY,
+                    therapeutic_effect="[UNICODE_4E0D]",
+                    stat_bonus={"resilience": 8, "social": 6, "wisdom": 4}
+                )
+            ],
+            "depression_void": [
+                BattleItem(
+                    id="hope_crystal",
+                    name="[UNICODE_5E0C]",
+                    description="[UNICODE_6697]",
+                    rarity=ItemRarity.COMMON,
+                    therapeutic_effect="[UNICODE_5E0C]",
+                    stat_bonus={"motivation": 2, "creativity": 1}
+                ),
+                BattleItem(
+                    id="energy_elixir",
+                    name="[UNICODE_6D3B]",
+                    description="[UNICODE_5931]",
+                    rarity=ItemRarity.UNCOMMON,
+                    therapeutic_effect="[UNICODE_6D3B]",
+                    stat_bonus={"motivation": 3, "resilience": 2}
+                ),
+                BattleItem(
+                    id="connection_charm",
+                    name="[UNICODE_3064]",
+                    description="[UNICODE_4EBA]",
+                    rarity=ItemRarity.RARE,
+                    therapeutic_effect="[UNICODE_793E]",
+                    stat_bonus={"social": 4, "creativity": 3}
+                ),
+                BattleItem(
+                    id="void_destroyer",
+                    name="[UNICODE_865A]",
+                    description="[UNICODE_3042]",
+                    rarity=ItemRarity.LEGENDARY,
+                    therapeutic_effect="[UNICODE_865A]",
+                    stat_bonus={"motivation": 8, "creativity": 6, "social": 4}
+                )
+            ],
+            "social_fear_goblin": [
+                BattleItem(
+                    id="confidence_badge",
+                    name="[UNICODE_81EA]",
+                    description="[UNICODE_81EA]",
+                    rarity=ItemRarity.COMMON,
+                    therapeutic_effect="[UNICODE_81EA]",
+                    stat_bonus={"social": 2, "motivation": 1}
+                ),
+                BattleItem(
+                    id="social_key",
+                    name="[UNICODE_793E]",
+                    description="[UNICODE_4EBA]",
+                    rarity=ItemRarity.UNCOMMON,
+                    therapeutic_effect="[UNICODE_793E]",
+                    stat_bonus={"social": 3, "creativity": 2}
+                ),
+                BattleItem(
+                    id="communication_scroll",
+                    name="[UNICODE_30B3]",
+                    description="[UNICODE_52B9]",
+                    rarity=ItemRarity.RARE,
+                    therapeutic_effect="[UNICODE_30B3]",
+                    stat_bonus={"social": 4, "wisdom": 3}
+                ),
+                BattleItem(
+                    id="social_master_crown",
+                    name="[UNICODE_793E]",
+                    description="[UNICODE_3042]",
+                    rarity=ItemRarity.LEGENDARY,
+                    therapeutic_effect="[UNICODE_793E]",
+                    stat_bonus={"social": 8, "creativity": 6, "wisdom": 4}
+                )
+            ]
+        }
+    
+    def calculate_victory_rewards(self, demon_type: str, battle_performance: Dict[str, Any]) -> BattleRewards:
+        """[UNICODE_52DD]"""
+        base_rewards = self._get_base_rewards(demon_type)
+        
+        # [UNICODE_30D1]
+        performance_multiplier = self._calculate_performance_multiplier(battle_performance)
+        
+        # [UNICODE_30B3]XP[UNICODE_8A08]
+        coins = int(base_rewards["coins"] * performance_multiplier)
+        xp = int(base_rewards["xp"] * performance_multiplier)
+        
+        # [UNICODE_30A2]
+        items = self._generate_battle_items(demon_type, performance_multiplier)
+        
+        # CBT[UNICODE_632F]
+        cbt_prompt = self._generate_cbt_reflection(demon_type, battle_performance)
+        
+        return BattleRewards(
+            coins=coins,
+            xp=xp,
+            items=items,
+            therapeutic_message=base_rewards["therapeutic_message"],
+            cbt_reflection_prompt=cbt_prompt
+        )
+    
+    def calculate_defeat_rewards(self, demon_type: str, battle_performance: Dict[str, Any]) -> BattleRewards:
+        """[UNICODE_6557]"""
+        base_rewards = self._get_base_rewards(demon_type)
+        
+        # [UNICODE_6170]25%[UNICODE_FF09]
+        coins = base_rewards["coins"] // 4
+        xp = base_rewards["xp"] // 4
+        
+        # [UNICODE_6170]1[UNICODE_500B]
+        items = self._generate_consolation_items(demon_type)
+        
+        # [UNICODE_30B5]CBT[UNICODE_632F]
+        support_message = self._generate_support_message(demon_type)
+        cbt_prompt = self._generate_defeat_cbt_reflection(demon_type, battle_performance)
+        
+        return BattleRewards(
+            coins=coins,
+            xp=xp,
+            items=items,
+            therapeutic_message=support_message,
+            cbt_reflection_prompt=cbt_prompt
+        )
+    
+    def _get_base_rewards(self, demon_type: str) -> Dict[str, Any]:
+        """[UNICODE_57FA]"""
+        base_rewards = {
+            "procrastination_dragon": {
+                "coins": 150,
+                "xp": 75,
+                "therapeutic_message": "[UNICODE_5C0F]"
+            },
+            "anxiety_shadow": {
+                "coins": 120,
+                "xp": 60,
+                "therapeutic_message": "[UNICODE_4E0D]"
+            },
+            "depression_void": {
+                "coins": 200,
+                "xp": 100,
+                "therapeutic_message": "[UNICODE_3064]"
+            },
+            "social_fear_goblin": {
+                "coins": 100,
+                "xp": 50,
+                "therapeutic_message": "[UNICODE_5C0F]"
+            }
+        }
+        
+        return base_rewards.get(demon_type, base_rewards["procrastination_dragon"])
+    
+    def _calculate_performance_multiplier(self, battle_performance: Dict[str, Any]) -> float:
+        """[UNICODE_30D1]"""
+        base_multiplier = 1.0
+        
+        # [UNICODE_30BF]
+        turns = battle_performance.get("turns_taken", 5)
+        if turns <= 2:
+            base_multiplier += 0.5  # 50%[UNICODE_30DC]
+        elif turns <= 3:
+            base_multiplier += 0.3  # 30%[UNICODE_30DC]
+        elif turns <= 4:
+            base_multiplier += 0.1  # 10%[UNICODE_30DC]
+        
+        # [UNICODE_30C0]
+        damage_efficiency = battle_performance.get("damage_efficiency", 0.5)
+        if damage_efficiency > 0.8:
+            base_multiplier += 0.3
+        elif damage_efficiency > 0.6:
+            base_multiplier += 0.2
+        elif damage_efficiency > 0.4:
+            base_multiplier += 0.1
+        
+        # [UNICODE_5F31]
+        weakness_hits = battle_performance.get("weakness_hits", 0)
+        base_multiplier += min(0.4, weakness_hits * 0.1)  # [UNICODE_6700]40%[UNICODE_30DC]
+        
+        return min(2.0, base_multiplier)  # [UNICODE_6700]200%
+    
+    def _generate_battle_items(self, demon_type: str, performance_multiplier: float) -> List[BattleItem]:
+        """[UNICODE_30D0]"""
+        items = []
+        item_pool = self.item_pool.get(demon_type, [])
+        
+        if not item_pool:
+            return items
+        
+        # [UNICODE_30A2]
+        base_item_count = 1
+        if performance_multiplier > 1.5:
+            base_item_count = 3
+        elif performance_multiplier > 1.2:
+            base_item_count = 2
+        
+        for _ in range(base_item_count):
+            # [UNICODE_30EC]
+            rarity = self._determine_item_rarity(performance_multiplier)
+            
+            # [UNICODE_8A72]
+            rarity_items = [item for item in item_pool if item.rarity == rarity]
+            if rarity_items:
+                items.append(random.choice(rarity_items))
+            else:
+                # [UNICODE_30D5]
+                common_items = [item for item in item_pool if item.rarity == ItemRarity.COMMON]
+                if common_items:
+                    items.append(random.choice(common_items))
+        
+        return items
+    
+    def _generate_consolation_items(self, demon_type: str) -> List[BattleItem]:
+        """[UNICODE_6170]"""
+        item_pool = self.item_pool.get(demon_type, [])
+        common_items = [item for item in item_pool if item.rarity == ItemRarity.COMMON]
+        
+        if common_items:
+            return [random.choice(common_items)]
+        return []
+    
+    def _determine_item_rarity(self, performance_multiplier: float) -> ItemRarity:
+        """[UNICODE_30A2]"""
+        # [UNICODE_30D1]
+        adjusted_rates = self.rarity_rates.copy()
+        
+        if performance_multiplier > 1.5:
+            # [UNICODE_9AD8]
+            adjusted_rates[ItemRarity.LEGENDARY] *= 3
+            adjusted_rates[ItemRarity.EPIC] *= 2
+            adjusted_rates[ItemRarity.RARE] *= 1.5
+        elif performance_multiplier > 1.2:
+            adjusted_rates[ItemRarity.EPIC] *= 1.5
+            adjusted_rates[ItemRarity.RARE] *= 1.3
+        
+        # [UNICODE_78BA]
+        total_rate = sum(adjusted_rates.values())
+        normalized_rates = {k: v/total_rate for k, v in adjusted_rates.items()}
+        
+        # [UNICODE_30E9]
+        rand = random.random()
+        cumulative = 0
+        
+        for rarity, rate in normalized_rates.items():
+            cumulative += rate
+            if rand <= cumulative:
+                return rarity
+        
+        return ItemRarity.COMMON
+    
+    def _generate_cbt_reflection(self, demon_type: str, battle_performance: Dict[str, Any]) -> str:
+        """CBT[UNICODE_632F]"""
+        cbt_prompts = {
+            "procrastination_dragon": [
+                "[UNICODE_5148]",
+                "[UNICODE_300C]",
+                "[UNICODE_5C0F]",
+                "[UNICODE_4ECA]"
+            ],
+            "anxiety_shadow": [
+                "[UNICODE_4E0D]",
+                "[UNICODE_4E0D]",
+                "[UNICODE_547C]",
+                "[UNICODE_4E0D]"
+            ],
+            "depression_void": [
+                "[UNICODE_6182]",
+                "[UNICODE_4EBA]",
+                "[UNICODE_300C]",
+                "[UNICODE_5C0F]"
+            ],
+            "social_fear_goblin": [
+                "[UNICODE_793E]",
+                "[UNICODE_300C]",
+                "[UNICODE_5C0F]",
+                "[UNICODE_4ECA]"
+            ]
+        }
+        
+        prompts = cbt_prompts.get(demon_type, cbt_prompts["procrastination_dragon"])
+        
+        # [UNICODE_30D0]
+        turns = battle_performance.get("turns_taken", 3)
+        if turns <= 2:
+            # [UNICODE_77ED]
+            return f"{prompts[0]} [UNICODE_77ED]"
+        elif turns >= 5:
+            # [UNICODE_9577]
+            return f"{prompts[1]} [UNICODE_7C98]"
+        else:
+            return random.choice(prompts)
+    
+    def _generate_defeat_cbt_reflection(self, demon_type: str, battle_performance: Dict[str, Any]) -> str:
+        """[UNICODE_6557]CBT[UNICODE_632F]"""
+        defeat_prompts = {
+            "procrastination_dragon": [
+                "[UNICODE_5148]",
+                "[UNICODE_5B8C]",
+                "[UNICODE_6B21]"
+            ],
+            "anxiety_shadow": [
+                "[UNICODE_4E0D]",
+                "[UNICODE_4E0D]",
+                "[UNICODE_4E0D]"
+            ],
+            "depression_void": [
+                "[UNICODE_6182]",
+                "[UNICODE_5B8C]",
+                "[UNICODE_652F]"
+            ],
+            "social_fear_goblin": [
+                "[UNICODE_793E]",
+                "[UNICODE_4EBA]",
+                "[UNICODE_793E]"
+            ]
+        }
+        
+        prompts = defeat_prompts.get(demon_type, defeat_prompts["procrastination_dragon"])
+        return random.choice(prompts)
+    
+    def _generate_support_message(self, demon_type: str) -> str:
+        """[UNICODE_6557]"""
+        support_messages = {
+            "procrastination_dragon": "[UNICODE_5148]",
+            "anxiety_shadow": "[UNICODE_4E0D]",
+            "depression_void": "[UNICODE_6182]",
+            "social_fear_goblin": "[UNICODE_793E]"
+        }
+        
+        return support_messages.get(demon_type, support_messages["procrastination_dragon"])
+
+# [UNICODE_7D71]
+def create_reward_system():
+    """[UNICODE_5831]"""
+    return BattleRewardSystem()
+
+if __name__ == "__main__":
+    # [UNICODE_7C21]
+    reward_system = create_reward_system()
+    
+    # [UNICODE_52DD]
+    print("=== [UNICODE_52DD] ===")
+    battle_performance = {
+        "turns_taken": 2,
+        "damage_efficiency": 0.9,
+        "weakness_hits": 4
+    }
+    
+    victory_rewards = reward_system.calculate_victory_rewards("procrastination_dragon", battle_performance)
+    print(f"[UNICODE_30B3]: {victory_rewards.coins}")
+    print(f"XP: {victory_rewards.xp}")
+    print(f"[UNICODE_30A2]: {len(victory_rewards.items)}")
+    for item in victory_rewards.items:
+        print(f"  - {item.name} ({item.rarity.value}): {item.description}")
+    print(f"CBT[UNICODE_632F]: {victory_rewards.cbt_reflection_prompt}")
+    
+    # [UNICODE_6557]
+    print("\n=== [UNICODE_6557] ===")
+    defeat_performance = {
+        "turns_taken": 10,
+        "damage_efficiency": 0.3,
+        "weakness_hits": 1
+    }
+    
+    defeat_rewards = reward_system.calculate_defeat_rewards("anxiety_shadow", defeat_performance)
+    print(f"[UNICODE_6170]: {defeat_rewards.coins}")
+    print(f"[UNICODE_6170]XP: {defeat_rewards.xp}")
+    print(f"[UNICODE_6170]: {defeat_rewards.items[0].name if defeat_rewards.items else '[UNICODE_306A]'}")
+    print(f"[UNICODE_30B5]: {defeat_rewards.therapeutic_message}")
+    print(f"CBT[UNICODE_632F]: {defeat_rewards.cbt_reflection_prompt}")

@@ -1,0 +1,265 @@
+# Cloud Logging設定
+apiVersion: logging.googleapis.com/v1
+kind: LogSink
+metadata:
+  name: therapeutic-app-audit-logs
+  project: PROJECT_ID
+spec:
+  destination: "storage.googleapis.com/therapeutic-app-audit-logs-prod"
+  filter: |
+    resource.type="cloud_run_revision"
+    resource.labels.service_name="therapeutic-gamification-app"
+    (
+      jsonPayload.event_type="user_authentication" OR
+      jsonPayload.event_type="guardian_access" OR
+      jsonPayload.event_type="data_access" OR
+      jsonPayload.event_type="safety_violation" OR
+      jsonPayload.event_type="cbt_intervention" OR
+      jsonPayload.event_type="task_completion" OR
+      jsonPayload.event_type="story_generation"
+    )
+  
+  description: "治療アプリの監査ログ"
+  includeChildren: true
+  
+  # BigQuery出力設定
+  bigqueryOptions:
+    usePartitionedTables: true
+    usesTimestampColumnPartitioning: true
+
+---
+# エラーログシンク
+apiVersion: logging.googleapis.com/v1
+kind: LogSink
+metadata:
+  name: therapeutic-app-error-logs
+  project: PROJECT_ID
+spec:
+  destination: "bigquery.googleapis.com/projects/PROJECT_ID/datasets/therapeutic_app_errors"
+  filter: |
+    resource.type="cloud_run_revision"
+    resource.labels.service_name="therapeutic-gamification-app"
+    severity>=ERROR
+  
+  description: "治療アプリのエラーログ"
+  includeChildren: true
+
+---
+# 治療安全性ログシンク
+apiVersion: logging.googleapis.com/v1
+kind: LogSink
+metadata:
+  name: therapeutic-safety-logs
+  project: PROJECT_ID
+spec:
+  destination: "bigquery.googleapis.com/projects/PROJECT_ID/datasets/therapeutic_safety_logs"
+  filter: |
+    resource.type="cloud_run_revision"
+    resource.labels.service_name="therapeutic-gamification-app"
+    (
+      jsonPayload.component="therapeutic_safety" OR
+      jsonPayload.component="content_moderation" OR
+      jsonPayload.component="cbt_intervention" OR
+      jsonPayload.f1_score EXISTS OR
+      jsonPayload.safety_violation EXISTS
+    )
+  
+  description: "治療安全性関連ログ"
+  includeChildren: true
+  
+  bigqueryOptions:
+    usePartitionedTables: true
+    usesTimestampColumnPartitioning: true
+
+---
+# パフォーマンスログシンク
+apiVersion: logging.googleapis.com/v1
+kind: LogSink
+metadata:
+  name: therapeutic-performance-logs
+  project: PROJECT_ID
+spec:
+  destination: "bigquery.googleapis.com/projects/PROJECT_ID/datasets/therapeutic_performance_logs"
+  filter: |
+    resource.type="cloud_run_revision"
+    resource.labels.service_name="therapeutic-gamification-app"
+    (
+      jsonPayload.response_time EXISTS OR
+      jsonPayload.memory_usage EXISTS OR
+      jsonPayload.cpu_usage EXISTS OR
+      jsonPayload.concurrent_users EXISTS OR
+      jsonPayload.api_latency EXISTS
+    )
+  
+  description: "パフォーマンス関連ログ"
+  includeChildren: true
+
+---
+# ログベースメトリクス設定
+apiVersion: logging.googleapis.com/v1
+kind: LogMetric
+metadata:
+  name: therapeutic-safety-f1-score-metric
+  project: PROJECT_ID
+spec:
+  description: "治療安全性F1スコアのログベースメトリクス"
+  filter: |
+    resource.type="cloud_run_revision"
+    resource.labels.service_name="therapeutic-gamification-app"
+    jsonPayload.f1_score EXISTS
+  
+  metricDescriptor:
+    metricKind: GAUGE
+    valueType: DOUBLE
+    displayName: "Safety F1 Score from Logs"
+  
+  valueExtractor: "EXTRACT(jsonPayload.f1_score)"
+  
+  labelExtractors:
+    service: "EXTRACT(jsonPayload.service)"
+    model_version: "EXTRACT(jsonPayload.model_version)"
+
+---
+apiVersion: logging.googleapis.com/v1
+kind: LogMetric
+metadata:
+  name: therapeutic-api-latency-metric
+  project: PROJECT_ID
+spec:
+  description: "API応答時間のログベースメトリクス"
+  filter: |
+    resource.type="cloud_run_revision"
+    resource.labels.service_name="therapeutic-gamification-app"
+    jsonPayload.api_latency EXISTS
+  
+  metricDescriptor:
+    metricKind: GAUGE
+    valueType: DOUBLE
+    displayName: "API Latency from Logs"
+    unit: "ms"
+  
+  valueExtractor: "EXTRACT(jsonPayload.api_latency)"
+  
+  labelExtractors:
+    endpoint: "EXTRACT(jsonPayload.endpoint)"
+    method: "EXTRACT(jsonPayload.method)"
+
+---
+apiVersion: logging.googleapis.com/v1
+kind: LogMetric
+metadata:
+  name: therapeutic-user-engagement-metric
+  project: PROJECT_ID
+spec:
+  description: "ユーザーエンゲージメントのログベースメトリクス"
+  filter: |
+    resource.type="cloud_run_revision"
+    resource.labels.service_name="therapeutic-gamification-app"
+    jsonPayload.engagement_score EXISTS
+  
+  metricDescriptor:
+    metricKind: GAUGE
+    valueType: DOUBLE
+    displayName: "User Engagement Score from Logs"
+  
+  valueExtractor: "EXTRACT(jsonPayload.engagement_score)"
+  
+  labelExtractors:
+    user_state: "EXTRACT(jsonPayload.user_state)"
+    age_group: "EXTRACT(jsonPayload.age_group)"
+
+---
+# ログ保持ポリシー
+apiVersion: logging.googleapis.com/v1
+kind: LogBucket
+metadata:
+  name: therapeutic-app-logs
+  project: PROJECT_ID
+  location: asia-northeast1
+spec:
+  description: "治療アプリのログバケット"
+  retentionDays: 2555  # 7年保持（治療データ保持期間）
+  locked: false
+  
+  # ログルーティング設定
+  restrictedFields:
+  - "jsonPayload.user_id"
+  - "jsonPayload.personal_data"
+  - "jsonPayload.medical_info"
+
+---
+# 構造化ログ設定
+apiVersion: logging.googleapis.com/v1
+kind: LoggingConfig
+metadata:
+  name: therapeutic-app-structured-logging
+  project: PROJECT_ID
+spec:
+  # 必須フィールド定義
+  requiredFields:
+  - name: "timestamp"
+    type: "timestamp"
+    description: "ログ生成時刻"
+  - name: "severity"
+    type: "string"
+    description: "ログレベル"
+  - name: "service"
+    type: "string"
+    description: "サービス名"
+  - name: "component"
+    type: "string"
+    description: "コンポーネント名"
+  - name: "event_type"
+    type: "string"
+    description: "イベントタイプ"
+  - name: "user_id"
+    type: "string"
+    description: "ユーザーID（ハッシュ化）"
+  - name: "session_id"
+    type: "string"
+    description: "セッションID"
+  - name: "request_id"
+    type: "string"
+    description: "リクエストID"
+  
+  # 治療安全性専用フィールド
+  safetyFields:
+  - name: "f1_score"
+    type: "double"
+    description: "F1スコア"
+  - name: "safety_violation"
+    type: "boolean"
+    description: "安全性違反フラグ"
+  - name: "moderation_result"
+    type: "object"
+    description: "モデレーション結果"
+  - name: "cbt_intervention_triggered"
+    type: "boolean"
+    description: "CBT介入トリガーフラグ"
+  
+  # パフォーマンス専用フィールド
+  performanceFields:
+  - name: "response_time"
+    type: "double"
+    description: "応答時間（ミリ秒）"
+  - name: "memory_usage"
+    type: "double"
+    description: "メモリ使用率"
+  - name: "cpu_usage"
+    type: "double"
+    description: "CPU使用率"
+  - name: "concurrent_users"
+    type: "integer"
+    description: "同時接続ユーザー数"
+  
+  # データプライバシー設定
+  privacySettings:
+    hashPersonalData: true
+    excludeFields:
+    - "jsonPayload.raw_user_input"
+    - "jsonPayload.personal_details"
+    - "jsonPayload.medical_history"
+    
+    # 16文字メッセージハッシュ設定
+    messageHashLength: 16
+    hashAlgorithm: "SHA-256"

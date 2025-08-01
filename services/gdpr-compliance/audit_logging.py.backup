@@ -1,0 +1,881 @@
+"""
+GDPR[UNICODE_6E96]
+
+[UNICODE_6A5F]
+- [UNICODE_500B]
+- GDPR[UNICODE_6E96]
+- [UNICODE_30C7]DPIA[UNICODE_FF09]
+- [UNICODE_30B3]
+"""
+
+from enum import Enum
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Any, Callable
+from datetime import datetime, timedelta
+import json
+import uuid
+import logging
+import hashlib
+
+
+class AuditEventType(Enum):
+    """[UNICODE_76E3]"""
+    DATA_ACCESS = "data_access"
+    DATA_MODIFICATION = "data_modification"
+    DATA_DELETION = "data_deletion"
+    CONSENT_GRANTED = "consent_granted"
+    CONSENT_WITHDRAWN = "consent_withdrawn"
+    RIGHTS_REQUEST = "rights_request"
+    DATA_EXPORT = "data_export"
+    PRIVACY_SETTING_CHANGE = "privacy_setting_change"
+    SECURITY_INCIDENT = "security_incident"
+    COMPLIANCE_VIOLATION = "compliance_violation"
+
+
+class ComplianceStatus(Enum):
+    """[UNICODE_30B3]"""
+    COMPLIANT = "compliant"
+    WARNING = "warning"
+    VIOLATION = "violation"
+    CRITICAL = "critical"
+
+
+class RiskLevel(Enum):
+    """[UNICODE_30EA]"""
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+@dataclass
+class AuditLogEntry:
+    """[UNICODE_76E3]"""
+    log_id: str
+    event_type: AuditEventType
+    user_id: str
+    actor_id: str  # [UNICODE_64CD]
+    timestamp: datetime
+    data_categories: List[str]
+    action_description: str
+    ip_address: str = ""
+    user_agent: str = ""
+    session_id: str = ""
+    legal_basis: str = ""
+    processing_purpose: str = ""
+    data_volume: int = 0  # [UNICODE_51E6]
+    success: bool = True
+    error_message: str = ""
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class ComplianceRule:
+    """[UNICODE_30B3]"""
+    rule_id: str
+    name: str
+    description: str
+    gdpr_article: str
+    rule_type: str  # "data_retention", "consent_management", "access_control", etc.
+    severity: RiskLevel
+    check_function: str  # [UNICODE_5B9F]
+    parameters: Dict[str, Any] = field(default_factory=dict)
+    enabled: bool = True
+    last_checked: Optional[datetime] = None
+    violation_count: int = 0
+
+
+@dataclass
+class ComplianceViolation:
+    """[UNICODE_30B3]"""
+    violation_id: str
+    rule_id: str
+    user_id: str
+    detected_at: datetime
+    severity: RiskLevel
+    description: str
+    affected_data_categories: List[str]
+    remediation_required: bool
+    remediation_deadline: Optional[datetime] = None
+    resolved: bool = False
+    resolved_at: Optional[datetime] = None
+    resolution_notes: str = ""
+
+
+class AuditLoggingSystem:
+    """[UNICODE_76E3]"""
+    
+    def __init__(self):
+        self.audit_logs: List[AuditLogEntry] = []
+        self.log_retention_days = 2555  # 7[UNICODE_5E74]
+        self.logger = logging.getLogger(__name__)
+        self._setup_logging()
+    
+    def _setup_logging(self):
+        """[UNICODE_30ED]"""
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
+        handler.setFormatter(formatter)
+        self.logger.addHandler(handler)
+        self.logger.setLevel(logging.INFO)
+    
+    def log_data_access(self, user_id: str, actor_id: str, data_categories: List[str],
+                       action_description: str, ip_address: str = "", user_agent: str = "",
+                       session_id: str = "", legal_basis: str = "", 
+                       processing_purpose: str = "", data_volume: int = 0) -> str:
+        """[UNICODE_30C7]"""
+        return self._create_audit_log(
+            event_type=AuditEventType.DATA_ACCESS,
+            user_id=user_id,
+            actor_id=actor_id,
+            data_categories=data_categories,
+            action_description=action_description,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            session_id=session_id,
+            legal_basis=legal_basis,
+            processing_purpose=processing_purpose,
+            data_volume=data_volume
+        )
+    
+    def log_data_modification(self, user_id: str, actor_id: str, data_categories: List[str],
+                            action_description: str, changes: Dict[str, Any],
+                            ip_address: str = "", user_agent: str = "") -> str:
+        """[UNICODE_30C7]"""
+        return self._create_audit_log(
+            event_type=AuditEventType.DATA_MODIFICATION,
+            user_id=user_id,
+            actor_id=actor_id,
+            data_categories=data_categories,
+            action_description=action_description,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            metadata={"changes": changes}
+        )
+    
+    def log_data_deletion(self, user_id: str, actor_id: str, data_categories: List[str],
+                         action_description: str, deletion_reason: str,
+                         ip_address: str = "", user_agent: str = "") -> str:
+        """[UNICODE_30C7]"""
+        return self._create_audit_log(
+            event_type=AuditEventType.DATA_DELETION,
+            user_id=user_id,
+            actor_id=actor_id,
+            data_categories=data_categories,
+            action_description=action_description,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            metadata={"deletion_reason": deletion_reason}
+        )
+    
+    def log_consent_event(self, user_id: str, event_type: AuditEventType,
+                         consent_scope: str, legal_basis: str,
+                         ip_address: str = "", user_agent: str = "") -> str:
+        """[UNICODE_540C]"""
+        return self._create_audit_log(
+            event_type=event_type,
+            user_id=user_id,
+            actor_id=user_id,  # [UNICODE_30E6]
+            data_categories=["consent_data"],
+            action_description=f"[UNICODE_540C]{event_type.value}: {consent_scope}",
+            ip_address=ip_address,
+            user_agent=user_agent,
+            legal_basis=legal_basis,
+            processing_purpose="consent_management"
+        )
+    
+    def log_rights_request(self, user_id: str, right_type: str, request_id: str,
+                          ip_address: str = "", user_agent: str = "") -> str:
+        """[UNICODE_6A29]"""
+        return self._create_audit_log(
+            event_type=AuditEventType.RIGHTS_REQUEST,
+            user_id=user_id,
+            actor_id=user_id,
+            data_categories=["rights_request"],
+            action_description=f"[UNICODE_6A29]: {right_type}",
+            ip_address=ip_address,
+            user_agent=user_agent,
+            metadata={"request_id": request_id, "right_type": right_type}
+        )
+    
+    def log_data_export(self, user_id: str, export_format: str, data_categories: List[str],
+                       export_size: int, checksum: str, ip_address: str = "") -> str:
+        """[UNICODE_30C7]"""
+        return self._create_audit_log(
+            event_type=AuditEventType.DATA_EXPORT,
+            user_id=user_id,
+            actor_id=user_id,
+            data_categories=data_categories,
+            action_description=f"[UNICODE_30C7] ({export_format})",
+            ip_address=ip_address,
+            data_volume=export_size,
+            metadata={
+                "export_format": export_format,
+                "checksum": checksum,
+                "export_size": export_size
+            }
+        )
+    
+    def log_security_incident(self, user_id: str, incident_type: str, severity: str,
+                            description: str, ip_address: str = "") -> str:
+        """[UNICODE_30BB]"""
+        return self._create_audit_log(
+            event_type=AuditEventType.SECURITY_INCIDENT,
+            user_id=user_id,
+            actor_id="system",
+            data_categories=["security_log"],
+            action_description=f"[UNICODE_30BB]: {incident_type}",
+            ip_address=ip_address,
+            success=False,
+            metadata={
+                "incident_type": incident_type,
+                "severity": severity,
+                "description": description
+            }
+        )
+    
+    def _create_audit_log(self, event_type: AuditEventType, user_id: str, actor_id: str,
+                         data_categories: List[str], action_description: str,
+                         ip_address: str = "", user_agent: str = "", session_id: str = "",
+                         legal_basis: str = "", processing_purpose: str = "",
+                         data_volume: int = 0, success: bool = True,
+                         error_message: str = "", metadata: Dict[str, Any] = None) -> str:
+        """[UNICODE_76E3]"""
+        log_id = str(uuid.uuid4())
+        
+        log_entry = AuditLogEntry(
+            log_id=log_id,
+            event_type=event_type,
+            user_id=user_id,
+            actor_id=actor_id,
+            timestamp=datetime.now(),
+            data_categories=data_categories,
+            action_description=action_description,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            session_id=session_id,
+            legal_basis=legal_basis,
+            processing_purpose=processing_purpose,
+            data_volume=data_volume,
+            success=success,
+            error_message=error_message,
+            metadata=metadata or {}
+        )
+        
+        self.audit_logs.append(log_entry)
+        
+        # [UNICODE_69CB]
+        self.logger.info(
+            f"AUDIT_LOG: {event_type.value} | User: {user_id} | Actor: {actor_id} | "
+            f"Categories: {','.join(data_categories)} | Success: {success}"
+        )
+        
+        return log_id
+    
+    def get_user_audit_logs(self, user_id: str, start_date: datetime = None,
+                           end_date: datetime = None, event_types: List[AuditEventType] = None) -> List[AuditLogEntry]:
+        """[UNICODE_30E6]"""
+        logs = [log for log in self.audit_logs if log.user_id == user_id]
+        
+        if start_date:
+            logs = [log for log in logs if log.timestamp >= start_date]
+        
+        if end_date:
+            logs = [log for log in logs if log.timestamp <= end_date]
+        
+        if event_types:
+            logs = [log for log in logs if log.event_type in event_types]
+        
+        return sorted(logs, key=lambda x: x.timestamp, reverse=True)
+    
+    def get_audit_summary(self, start_date: datetime = None, end_date: datetime = None) -> Dict:
+        """[UNICODE_76E3]"""
+        logs = self.audit_logs
+        
+        if start_date:
+            logs = [log for log in logs if log.timestamp >= start_date]
+        
+        if end_date:
+            logs = [log for log in logs if log.timestamp <= end_date]
+        
+        summary = {
+            "total_events": len(logs),
+            "unique_users": len(set(log.user_id for log in logs)),
+            "event_types": {},
+            "success_rate": 0.0,
+            "data_volume_total": sum(log.data_volume for log in logs),
+            "top_actors": {},
+            "top_data_categories": {}
+        }
+        
+        # [UNICODE_30A4]
+        for log in logs:
+            event_type = log.event_type.value
+            summary["event_types"][event_type] = summary["event_types"].get(event_type, 0) + 1
+        
+        # [UNICODE_6210]
+        if logs:
+            successful_logs = [log for log in logs if log.success]
+            summary["success_rate"] = len(successful_logs) / len(logs)
+        
+        # [UNICODE_30C8]
+        actor_counts = {}
+        for log in logs:
+            actor_counts[log.actor_id] = actor_counts.get(log.actor_id, 0) + 1
+        
+        summary["top_actors"] = dict(sorted(actor_counts.items(), 
+                                          key=lambda x: x[1], reverse=True)[:10])
+        
+        # [UNICODE_30C8]
+        category_counts = {}
+        for log in logs:
+            for category in log.data_categories:
+                category_counts[category] = category_counts.get(category, 0) + 1
+        
+        summary["top_data_categories"] = dict(sorted(category_counts.items(),
+                                                   key=lambda x: x[1], reverse=True)[:10])
+        
+        return summary
+    
+    def cleanup_old_logs(self) -> int:
+        """[UNICODE_53E4]"""
+        cutoff_date = datetime.now() - timedelta(days=self.log_retention_days)
+        
+        old_logs = [log for log in self.audit_logs if log.timestamp < cutoff_date]
+        self.audit_logs = [log for log in self.audit_logs if log.timestamp >= cutoff_date]
+        
+        cleaned_count = len(old_logs)
+        if cleaned_count > 0:
+            self.logger.info(f"Cleaned up {cleaned_count} old audit logs")
+        
+        return cleaned_count
+    
+    def export_audit_logs(self, format: str = "json", start_date: datetime = None,
+                         end_date: datetime = None) -> str:
+        """[UNICODE_76E3]"""
+        logs = self.audit_logs
+        
+        if start_date:
+            logs = [log for log in logs if log.timestamp >= start_date]
+        
+        if end_date:
+            logs = [log for log in logs if log.timestamp <= end_date]
+        
+        if format == "json":
+            return json.dumps([
+                {
+                    "log_id": log.log_id,
+                    "event_type": log.event_type.value,
+                    "user_id": log.user_id,
+                    "actor_id": log.actor_id,
+                    "timestamp": log.timestamp.isoformat(),
+                    "data_categories": log.data_categories,
+                    "action_description": log.action_description,
+                    "ip_address": log.ip_address,
+                    "success": log.success,
+                    "metadata": log.metadata
+                }
+                for log in logs
+            ], ensure_ascii=False, indent=2)
+        
+        return ""
+
+
+class ComplianceMonitoringSystem:
+    """[UNICODE_30B3]"""
+    
+    def __init__(self, audit_system: AuditLoggingSystem):
+        self.audit_system = audit_system
+        self.compliance_rules = self._initialize_compliance_rules()
+        self.violations: List[ComplianceViolation] = []
+        self.monitoring_enabled = True
+        self.check_interval_hours = 24
+        self.last_full_check: Optional[datetime] = None
+    
+    def _initialize_compliance_rules(self) -> Dict[str, ComplianceRule]:
+        """[UNICODE_30B3]"""
+        rules = [
+            ComplianceRule(
+                rule_id="data_retention_check",
+                name="[UNICODE_30C7]",
+                description="[UNICODE_30C7]",
+                gdpr_article="[UNICODE_7B2C]5[UNICODE_6761]",
+                rule_type="data_retention",
+                severity=RiskLevel.HIGH,
+                check_function="check_data_retention_compliance"
+            ),
+            ComplianceRule(
+                rule_id="consent_validity_check",
+                name="[UNICODE_540C]",
+                description="[UNICODE_540C]",
+                gdpr_article="[UNICODE_7B2C]7[UNICODE_6761]",
+                rule_type="consent_management",
+                severity=RiskLevel.MEDIUM,
+                check_function="check_consent_validity"
+            ),
+            ComplianceRule(
+                rule_id="access_control_check",
+                name="[UNICODE_30A2]",
+                description="[UNICODE_9069]",
+                gdpr_article="[UNICODE_7B2C]32[UNICODE_6761]",
+                rule_type="access_control",
+                severity=RiskLevel.HIGH,
+                check_function="check_access_control_compliance"
+            ),
+            ComplianceRule(
+                rule_id="rights_response_time_check",
+                name="[UNICODE_6A29]",
+                description="[UNICODE_6A29]",
+                gdpr_article="[UNICODE_7B2C]12[UNICODE_6761]",
+                rule_type="rights_management",
+                severity=RiskLevel.MEDIUM,
+                check_function="check_rights_response_time"
+            ),
+            ComplianceRule(
+                rule_id="data_breach_notification_check",
+                name="[UNICODE_30C7]",
+                description="[UNICODE_30C7]",
+                gdpr_article="[UNICODE_7B2C]33-34[UNICODE_6761]",
+                rule_type="breach_management",
+                severity=RiskLevel.CRITICAL,
+                check_function="check_breach_notification_compliance"
+            ),
+            ComplianceRule(
+                rule_id="privacy_by_design_check",
+                name="[UNICODE_30D7]",
+                description="[UNICODE_30D7]",
+                gdpr_article="[UNICODE_7B2C]25[UNICODE_6761]",
+                rule_type="privacy_by_design",
+                severity=RiskLevel.MEDIUM,
+                check_function="check_privacy_by_design_compliance"
+            )
+        ]
+        
+        return {rule.rule_id: rule for rule in rules}
+    
+    def run_compliance_check(self, rule_ids: List[str] = None) -> Dict[str, Any]:
+        """[UNICODE_30B3]"""
+        if not self.monitoring_enabled:
+            return {"status": "monitoring_disabled"}
+        
+        rules_to_check = rule_ids or list(self.compliance_rules.keys())
+        results = {
+            "check_timestamp": datetime.now().isoformat(),
+            "rules_checked": len(rules_to_check),
+            "violations_found": 0,
+            "overall_status": ComplianceStatus.COMPLIANT.value,
+            "rule_results": {}
+        }
+        
+        for rule_id in rules_to_check:
+            if rule_id not in self.compliance_rules:
+                continue
+            
+            rule = self.compliance_rules[rule_id]
+            if not rule.enabled:
+                continue
+            
+            try:
+                # [UNICODE_691C]
+                check_result = self._execute_compliance_check(rule)
+                rule.last_checked = datetime.now()
+                
+                results["rule_results"][rule_id] = {
+                    "rule_name": rule.name,
+                    "status": check_result["status"],
+                    "violations": check_result.get("violations", []),
+                    "recommendations": check_result.get("recommendations", [])
+                }
+                
+                # [UNICODE_9055]
+                if check_result["status"] != ComplianceStatus.COMPLIANT.value:
+                    results["violations_found"] += len(check_result.get("violations", []))
+                    self._record_violations(rule, check_result.get("violations", []))
+                
+                # [UNICODE_5168]
+                if check_result["status"] == ComplianceStatus.CRITICAL.value:
+                    results["overall_status"] = ComplianceStatus.CRITICAL.value
+                elif (check_result["status"] == ComplianceStatus.VIOLATION.value and 
+                      results["overall_status"] != ComplianceStatus.CRITICAL.value):
+                    results["overall_status"] = ComplianceStatus.VIOLATION.value
+                elif (check_result["status"] == ComplianceStatus.WARNING.value and 
+                      results["overall_status"] == ComplianceStatus.COMPLIANT.value):
+                    results["overall_status"] = ComplianceStatus.WARNING.value
+            
+            except Exception as e:
+                results["rule_results"][rule_id] = {
+                    "rule_name": rule.name,
+                    "status": "error",
+                    "error": str(e)
+                }
+        
+        self.last_full_check = datetime.now()
+        return results
+    
+    def _execute_compliance_check(self, rule: ComplianceRule) -> Dict[str, Any]:
+        """[UNICODE_500B]"""
+        check_function = getattr(self, rule.check_function, None)
+        if not check_function:
+            return {
+                "status": "error",
+                "message": f"Check function {rule.check_function} not found"
+            }
+        
+        return check_function(rule)
+    
+    def check_data_retention_compliance(self, rule: ComplianceRule) -> Dict[str, Any]:
+        """[UNICODE_30C7]"""
+        violations = []
+        
+        # [UNICODE_76E3]
+        cutoff_date = datetime.now() - timedelta(days=2555)  # 7[UNICODE_5E74]
+        old_logs = [log for log in self.audit_system.audit_logs 
+                   if log.timestamp < cutoff_date]
+        
+        if old_logs:
+            violations.append({
+                "description": f"{len(old_logs)}[UNICODE_4EF6]",
+                "affected_records": len(old_logs),
+                "recommendation": "[UNICODE_53E4]"
+            })
+        
+        status = ComplianceStatus.VIOLATION.value if violations else ComplianceStatus.COMPLIANT.value
+        
+        return {
+            "status": status,
+            "violations": violations,
+            "recommendations": ["[UNICODE_5B9A]"]
+        }
+    
+    def check_consent_validity(self, rule: ComplianceRule) -> Dict[str, Any]:
+        """[UNICODE_540C]"""
+        violations = []
+        
+        # [UNICODE_540C]
+        consent_logs = [log for log in self.audit_system.audit_logs 
+                       if log.event_type in [AuditEventType.CONSENT_GRANTED, AuditEventType.CONSENT_WITHDRAWN]]
+        
+        # [UNICODE_671F]
+        expired_consents = 0  # [UNICODE_5B9F]
+        
+        if expired_consents > 0:
+            violations.append({
+                "description": f"{expired_consents}[UNICODE_4EF6]",
+                "affected_records": expired_consents,
+                "recommendation": "[UNICODE_671F]"
+            })
+        
+        status = ComplianceStatus.WARNING.value if violations else ComplianceStatus.COMPLIANT.value
+        
+        return {
+            "status": status,
+            "violations": violations,
+            "recommendations": ["[UNICODE_540C]"]
+        }
+    
+    def check_access_control_compliance(self, rule: ComplianceRule) -> Dict[str, Any]:
+        """[UNICODE_30A2]"""
+        violations = []
+        
+        # [UNICODE_4E0D]
+        access_logs = [log for log in self.audit_system.audit_logs 
+                      if log.event_type == AuditEventType.DATA_ACCESS and not log.success]
+        
+        failed_access_count = len(access_logs)
+        
+        if failed_access_count > 10:  # [UNICODE_95BE]
+            violations.append({
+                "description": f"{failed_access_count}[UNICODE_4EF6]",
+                "affected_records": failed_access_count,
+                "recommendation": "[UNICODE_30A2]"
+            })
+        
+        status = ComplianceStatus.WARNING.value if violations else ComplianceStatus.COMPLIANT.value
+        
+        return {
+            "status": status,
+            "violations": violations,
+            "recommendations": ["[UNICODE_5B9A]"]
+        }
+    
+    def check_rights_response_time(self, rule: ComplianceRule) -> Dict[str, Any]:
+        """[UNICODE_6A29]"""
+        violations = []
+        
+        # [UNICODE_6A29]
+        rights_logs = [log for log in self.audit_system.audit_logs 
+                      if log.event_type == AuditEventType.RIGHTS_REQUEST]
+        
+        # 30[UNICODE_65E5]
+        overdue_requests = 0  # [UNICODE_5B9F]
+        
+        if overdue_requests > 0:
+            violations.append({
+                "description": f"{overdue_requests}[UNICODE_4EF6]",
+                "affected_records": overdue_requests,
+                "recommendation": "[UNICODE_671F]"
+            })
+        
+        status = ComplianceStatus.VIOLATION.value if violations else ComplianceStatus.COMPLIANT.value
+        
+        return {
+            "status": status,
+            "violations": violations,
+            "recommendations": ["[UNICODE_6A29]"]
+        }
+    
+    def check_breach_notification_compliance(self, rule: ComplianceRule) -> Dict[str, Any]:
+        """[UNICODE_30C7]"""
+        violations = []
+        
+        # [UNICODE_30BB]
+        incident_logs = [log for log in self.audit_system.audit_logs 
+                        if log.event_type == AuditEventType.SECURITY_INCIDENT]
+        
+        # 72[UNICODE_6642]
+        unnotified_breaches = 0  # [UNICODE_5B9F]
+        
+        if unnotified_breaches > 0:
+            violations.append({
+                "description": f"{unnotified_breaches}[UNICODE_4EF6]",
+                "affected_records": unnotified_breaches,
+                "recommendation": "72[UNICODE_6642]"
+            })
+        
+        status = ComplianceStatus.CRITICAL.value if violations else ComplianceStatus.COMPLIANT.value
+        
+        return {
+            "status": status,
+            "violations": violations,
+            "recommendations": ["[UNICODE_30C7]"]
+        }
+    
+    def check_privacy_by_design_compliance(self, rule: ComplianceRule) -> Dict[str, Any]:
+        """[UNICODE_30D7]"""
+        violations = []
+        
+        # [UNICODE_30D7]
+        privacy_logs = [log for log in self.audit_system.audit_logs 
+                       if log.event_type == AuditEventType.PRIVACY_SETTING_CHANGE]
+        
+        # [UNICODE_30C7]
+        non_compliant_settings = 0  # [UNICODE_5B9F]
+        
+        if non_compliant_settings > 0:
+            violations.append({
+                "description": f"{non_compliant_settings}[UNICODE_4EF6]",
+                "affected_records": non_compliant_settings,
+                "recommendation": "[UNICODE_30C7]"
+            })
+        
+        status = ComplianceStatus.WARNING.value if violations else ComplianceStatus.COMPLIANT.value
+        
+        return {
+            "status": status,
+            "violations": violations,
+            "recommendations": ["[UNICODE_30D7]"]
+        }
+    
+    def _record_violations(self, rule: ComplianceRule, violations: List[Dict]):
+        """[UNICODE_9055]"""
+        for violation_data in violations:
+            violation_id = str(uuid.uuid4())
+            
+            violation = ComplianceViolation(
+                violation_id=violation_id,
+                rule_id=rule.rule_id,
+                user_id="system",  # [UNICODE_30B7]
+                detected_at=datetime.now(),
+                severity=rule.severity,
+                description=violation_data["description"],
+                affected_data_categories=violation_data.get("affected_categories", []),
+                remediation_required=rule.severity in [RiskLevel.HIGH, RiskLevel.CRITICAL],
+                remediation_deadline=datetime.now() + timedelta(days=30) if rule.severity == RiskLevel.CRITICAL else None
+            )
+            
+            self.violations.append(violation)
+            rule.violation_count += 1
+    
+    def get_compliance_dashboard(self) -> Dict[str, Any]:
+        """[UNICODE_30B3]"""
+        active_violations = [v for v in self.violations if not v.resolved]
+        
+        dashboard = {
+            "overall_status": self._calculate_overall_status(),
+            "last_check": self.last_full_check.isoformat() if self.last_full_check else None,
+            "total_rules": len(self.compliance_rules),
+            "enabled_rules": len([r for r in self.compliance_rules.values() if r.enabled]),
+            "active_violations": len(active_violations),
+            "critical_violations": len([v for v in active_violations if v.severity == RiskLevel.CRITICAL]),
+            "high_violations": len([v for v in active_violations if v.severity == RiskLevel.HIGH]),
+            "medium_violations": len([v for v in active_violations if v.severity == RiskLevel.MEDIUM]),
+            "low_violations": len([v for v in active_violations if v.severity == RiskLevel.LOW]),
+            "violations_by_rule": self._get_violations_by_rule(),
+            "remediation_required": len([v for v in active_violations if v.remediation_required]),
+            "overdue_remediations": len([v for v in active_violations 
+                                       if v.remediation_deadline and v.remediation_deadline < datetime.now()])
+        }
+        
+        return dashboard
+    
+    def _calculate_overall_status(self) -> str:
+        """[UNICODE_5168]"""
+        active_violations = [v for v in self.violations if not v.resolved]
+        
+        if any(v.severity == RiskLevel.CRITICAL for v in active_violations):
+            return ComplianceStatus.CRITICAL.value
+        elif any(v.severity == RiskLevel.HIGH for v in active_violations):
+            return ComplianceStatus.VIOLATION.value
+        elif any(v.severity == RiskLevel.MEDIUM for v in active_violations):
+            return ComplianceStatus.WARNING.value
+        else:
+            return ComplianceStatus.COMPLIANT.value
+    
+    def _get_violations_by_rule(self) -> Dict[str, int]:
+        """[UNICODE_30EB]"""
+        violations_by_rule = {}
+        active_violations = [v for v in self.violations if not v.resolved]
+        
+        for violation in active_violations:
+            rule_id = violation.rule_id
+            violations_by_rule[rule_id] = violations_by_rule.get(rule_id, 0) + 1
+        
+        return violations_by_rule
+    
+    def resolve_violation(self, violation_id: str, resolution_notes: str) -> bool:
+        """[UNICODE_9055]"""
+        for violation in self.violations:
+            if violation.violation_id == violation_id:
+                violation.resolved = True
+                violation.resolved_at = datetime.now()
+                violation.resolution_notes = resolution_notes
+                return True
+        
+        return False
+
+
+class DPIAAssistant:
+    """[UNICODE_30C7]DPIA[UNICODE_FF09]"""
+    
+    def __init__(self):
+        self.dpia_templates = self._initialize_dpia_templates()
+        self.risk_factors = self._initialize_risk_factors()
+    
+    def _initialize_dpia_templates(self) -> Dict[str, Dict]:
+        """DPIA[UNICODE_30C6]"""
+        return {
+            "therapeutic_app": {
+                "name": "[UNICODE_6CBB]DPIA",
+                "sections": [
+                    "[UNICODE_51E6]",
+                    "[UNICODE_5FC5]",
+                    "[UNICODE_500B]",
+                    "[UNICODE_30EA]",
+                    "[UNICODE_7D50]"
+                ],
+                "risk_categories": [
+                    "[UNICODE_6CBB]",
+                    "[UNICODE_672A]",
+                    "[UNICODE_81EA]",
+                    "[UNICODE_30C7]"
+                ]
+            }
+        }
+    
+    def _initialize_risk_factors(self) -> Dict[str, Dict]:
+        """[UNICODE_30EA]"""
+        return {
+            "high_risk_processing": {
+                "automated_decision_making": {
+                    "description": "[UNICODE_81EA]",
+                    "risk_level": RiskLevel.HIGH,
+                    "mitigation_required": True
+                },
+                "sensitive_data": {
+                    "description": "[UNICODE_6A5F]",
+                    "risk_level": RiskLevel.HIGH,
+                    "mitigation_required": True
+                },
+                "vulnerable_individuals": {
+                    "description": "[UNICODE_672A]",
+                    "risk_level": RiskLevel.HIGH,
+                    "mitigation_required": True
+                },
+                "large_scale_processing": {
+                    "description": "[UNICODE_5927]",
+                    "risk_level": RiskLevel.MEDIUM,
+                    "mitigation_required": False
+                }
+            }
+        }
+    
+    def assess_dpia_necessity(self, processing_description: Dict[str, Any]) -> Dict[str, Any]:
+        """DPIA[UNICODE_5FC5]"""
+        risk_score = 0
+        identified_risks = []
+        
+        # [UNICODE_9AD8]
+        for risk_type, risk_info in self.risk_factors["high_risk_processing"].items():
+            if processing_description.get(risk_type, False):
+                risk_score += risk_info["risk_level"].value if hasattr(risk_info["risk_level"], 'value') else 2
+                identified_risks.append({
+                    "type": risk_type,
+                    "description": risk_info["description"],
+                    "risk_level": risk_info["risk_level"].value if hasattr(risk_info["risk_level"], 'value') else "medium"
+                })
+        
+        dpia_required = risk_score >= 6 or any(
+            risk["risk_level"] == "high" for risk in identified_risks
+        )
+        
+        return {
+            "dpia_required": dpia_required,
+            "risk_score": risk_score,
+            "identified_risks": identified_risks,
+            "recommendation": "DPIA[UNICODE_306E]" if dpia_required else "DPIA[UNICODE_306F]"
+        }
+    
+    def generate_dpia_template(self, template_type: str = "therapeutic_app") -> Dict[str, Any]:
+        """DPIA[UNICODE_30C6]"""
+        if template_type not in self.dpia_templates:
+            template_type = "therapeutic_app"
+        
+        template = self.dpia_templates[template_type]
+        
+        return {
+            "template_name": template["name"],
+            "sections": template["sections"],
+            "risk_categories": template["risk_categories"],
+            "generated_at": datetime.now().isoformat(),
+            "completion_checklist": [
+                "[UNICODE_51E6]",
+                "[UNICODE_6CD5]",
+                "[UNICODE_30C7]",
+                "[UNICODE_6280]",
+                "[UNICODE_5229]",
+                "[UNICODE_76E3]"
+            ]
+        }
+
+
+if __name__ == "__main__":
+    # [UNICODE_4F7F]
+    audit_system = AuditLoggingSystem()
+    compliance_system = ComplianceMonitoringSystem(audit_system)
+    
+    # [UNICODE_76E3]
+    audit_system.log_data_access(
+        user_id="user_001",
+        actor_id="system",
+        data_categories=["therapeutic_data"],
+        action_description="[UNICODE_6CBB]",
+        ip_address="192.168.1.100",
+        legal_basis="[UNICODE_6B63]",
+        processing_purpose="[UNICODE_6CBB]"
+    )
+    
+    # [UNICODE_30B3]
+    compliance_result = compliance_system.run_compliance_check()
+    print(json.dumps(compliance_result, ensure_ascii=False, indent=2))

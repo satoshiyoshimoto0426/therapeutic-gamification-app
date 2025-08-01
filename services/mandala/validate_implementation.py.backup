@@ -1,0 +1,275 @@
+"""
+Mandala[UNICODE_5B9F]
+
+[UNICODE_30BB]API[UNICODE_5B9F]
+
+Requirements: 4.1, 4.3
+"""
+
+import sys
+import os
+import json
+from datetime import datetime
+
+# Add project root to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+from shared.interfaces.mandala_system import MandalaSystemInterface, CellStatus
+from shared.interfaces.mandala_validation import MandalaValidator, MandalaBusinessRules
+
+
+def test_mandala_grid_creation():
+    """Mandala[UNICODE_30B0]"""
+    print("=== Mandala[UNICODE_30B0] ===")
+    
+    interface = MandalaSystemInterface()
+    test_uid = "validation_user_001"
+    
+    # [UNICODE_30B0]
+    grid = interface.get_or_create_grid(test_uid)
+    print(f"[UNICODE_2713] [UNICODE_30B0]: UID={grid.uid}")
+    print(f"[UNICODE_2713] [UNICODE_7DCF]: {grid.total_cells}")
+    print(f"[UNICODE_2713] [UNICODE_30A2]: {grid.unlocked_count}")
+    
+    # [UNICODE_4E2D]
+    core_value_count = 0
+    for x in range(9):
+        for y in range(9):
+            cell = grid.get_cell(x, y)
+            if cell and cell.status == CellStatus.CORE_VALUE:
+                core_value_count += 1
+                print(f"  - [UNICODE_4FA1]({x},{y}): {cell.quest_title}")
+    
+    print(f"[UNICODE_2713] [UNICODE_4E2D]: {core_value_count}/9")
+    
+    return interface, test_uid
+
+
+def test_cell_unlock_functionality(interface, test_uid):
+    """[UNICODE_30BB]"""
+    print("\n=== [UNICODE_30BB] ===")
+    
+    # [UNICODE_4E2D]
+    test_positions = [
+        (4, 2, "[UNICODE_671D]", "5[UNICODE_5206]", 25, 2),
+        (4, 6, "[UNICODE_591C]", "[UNICODE_4ECA]", 30, 2),
+        (2, 4, "[UNICODE_8AAD]", "30[UNICODE_5206]", 35, 3),
+        (6, 4, "[UNICODE_904B]", "[UNICODE_8EFD]", 40, 3)
+    ]
+    
+    for x, y, title, desc, xp, difficulty in test_positions:
+        quest_data = {
+            "quest_title": title,
+            "quest_description": desc,
+            "xp_reward": xp,
+            "difficulty": difficulty,
+            "therapeutic_focus": "Self-Discipline"
+        }
+        
+        success = interface.unlock_cell_for_user(test_uid, x, y, quest_data)
+        if success:
+            print(f"[UNICODE_2713] [UNICODE_30BB]: ({x},{y}) - {title}")
+        else:
+            print(f"[UNICODE_2717] [UNICODE_30BB]: ({x},{y}) - {title}")
+    
+    # [UNICODE_30A2]
+    grid = interface.get_or_create_grid(test_uid)
+    print(f"[UNICODE_2713] [UNICODE_30A2]: {grid.unlocked_count}")
+    
+    return grid
+
+
+def test_cell_completion_functionality(interface, test_uid, grid):
+    """[UNICODE_30BB]"""
+    print("\n=== [UNICODE_30BB] ===")
+    
+    # [UNICODE_30A2]
+    unlocked_cells = grid.get_unlocked_cells()
+    completed_count = 0
+    
+    for cell in unlocked_cells[:2]:  # [UNICODE_6700]2[UNICODE_3064]
+        x, y = cell.position
+        success = interface.complete_cell_for_user(test_uid, x, y)
+        if success:
+            print(f"[UNICODE_2713] [UNICODE_30BB]: ({x},{y}) - {cell.quest_title}")
+            completed_count += 1
+        else:
+            print(f"[UNICODE_2717] [UNICODE_30BB]: ({x},{y}) - {cell.quest_title}")
+    
+    # [UNICODE_5B8C]
+    updated_grid = interface.get_or_create_grid(test_uid)
+    completed_cells = updated_grid.get_completed_cells()
+    print(f"[UNICODE_2713] [UNICODE_5B8C]: {len(completed_cells)}")
+    
+    return updated_grid
+
+
+def test_validation_functionality():
+    """[UNICODE_30D0]"""
+    print("\n=== [UNICODE_30D0] ===")
+    
+    validator = MandalaValidator()
+    business_rules = MandalaBusinessRules()
+    
+    # [UNICODE_30B0]
+    interface = MandalaSystemInterface()
+    grid = interface.get_or_create_grid("validation_test")
+    
+    structure_result = validator.validate_grid_structure(grid)
+    print(f"[UNICODE_2713] [UNICODE_30B0]: {'[UNICODE_6210]' if structure_result.is_valid else '[UNICODE_5931]'}")
+    if structure_result.warnings:
+        for warning in structure_result.warnings:
+            print(f"  [UNICODE_8B66]: {warning}")
+    
+    # [UNICODE_30A2]
+    valid_quest_data = {
+        "quest_title": "[UNICODE_6709]",
+        "quest_description": "[UNICODE_6709]",
+        "xp_reward": 25,
+        "difficulty": 2
+    }
+    
+    unlock_result = validator.validate_unlock_request(grid, 4, 2, valid_quest_data)
+    print(f"[UNICODE_2713] [UNICODE_30A2]: {'[UNICODE_6210]' if unlock_result.is_valid else '[UNICODE_5931]'}")
+    
+    # [UNICODE_7121]
+    invalid_quest_data = {
+        "quest_title": "",  # [UNICODE_7A7A]
+        "quest_description": "[UNICODE_8AAC]",
+        "xp_reward": 2000,  # [UNICODE_7BC4]XP
+        "difficulty": 10    # [UNICODE_7BC4]
+    }
+    
+    invalid_result = validator.validate_unlock_request(grid, 4, 2, invalid_quest_data)
+    print(f"[UNICODE_2713] [UNICODE_7121]: {'[UNICODE_5931]' if not invalid_result.is_valid else '[UNICODE_4E88]'}")
+    if not invalid_result.is_valid:
+        print(f"  [UNICODE_30A8]: {invalid_result.error_message}")
+    
+    # [UNICODE_30D3]
+    daily_unlock_result = business_rules.can_unlock_today(grid, 0)
+    print(f"[UNICODE_2713] [UNICODE_65E5]: {'[UNICODE_6210]' if daily_unlock_result.is_valid else '[UNICODE_5931]'}")
+    
+    # [UNICODE_5236]
+    limit_exceeded_result = business_rules.can_unlock_today(grid, 5)
+    print(f"[UNICODE_2713] [UNICODE_5236]: {'[UNICODE_5931]' if not limit_exceeded_result.is_valid else '[UNICODE_4E88]'}")
+
+
+def test_api_response_generation(interface, test_uid):
+    """API[UNICODE_5FDC]"""
+    print("\n=== API[UNICODE_5FDC] ===")
+    
+    # API[UNICODE_5FDC]
+    api_response = interface.get_grid_api_response(test_uid)
+    
+    print(f"[UNICODE_2713] API[UNICODE_5FDC]")
+    print(f"  - UID: {api_response['uid']}")
+    print(f"  - [UNICODE_7DCF]: {api_response['total_cells']}")
+    print(f"  - [UNICODE_30A2]: {api_response['unlocked_count']}")
+    print(f"  - [UNICODE_5B8C]: {api_response['completion_rate']:.2%}")
+    print(f"  - [UNICODE_6700]: {api_response['last_updated']}")
+    
+    # [UNICODE_30B0]
+    grid_data = api_response['grid']
+    print(f"[UNICODE_2713] [UNICODE_30B0]: {len(grid_data)}x{len(grid_data[0])}")
+    
+    # [UNICODE_4E2D]
+    core_values = api_response['core_values']
+    print(f"[UNICODE_2713] [UNICODE_4E2D]: {len(core_values)}[UNICODE_500B]")
+    
+    # [UNICODE_30D0]
+    validator = MandalaValidator()
+    validation_result = validator.validate_api_response_data(api_response)
+    print(f"[UNICODE_2713] API[UNICODE_5FDC]: {'[UNICODE_6210]' if validation_result.is_valid else '[UNICODE_5931]'}")
+    
+    return api_response
+
+
+def test_daily_reminder_functionality(interface, test_uid):
+    """[UNICODE_65E5]"""
+    print("\n=== [UNICODE_65E5] ===")
+    
+    # [UNICODE_30EA]
+    reminder = interface.get_daily_reminder_for_user(test_uid)
+    print(f"[UNICODE_2713] [UNICODE_65E5]: {reminder}")
+    
+    # [UNICODE_8907]
+    reminders = set()
+    for _ in range(5):
+        reminder = interface.get_daily_reminder_for_user(test_uid)
+        reminders.add(reminder)
+    
+    print(f"[UNICODE_2713] [UNICODE_30EA]: {len(reminders)}[UNICODE_7A2E]")
+
+
+def test_serialization_functionality(interface, test_uid):
+    """[UNICODE_30B7]"""
+    print("\n=== [UNICODE_30B7] ===")
+    
+    # [UNICODE_30B0]
+    save_data = interface.save_grid(test_uid)
+    print(f"[UNICODE_2713] [UNICODE_30B0]: {len(json.dumps(save_data))}[UNICODE_30D0]")
+    
+    # [UNICODE_65B0]
+    new_interface = MandalaSystemInterface()
+    new_interface.load_grid(test_uid, save_data)
+    
+    # [UNICODE_5FA9]
+    restored_response = new_interface.get_grid_api_response(test_uid)
+    original_response = interface.get_grid_api_response(test_uid)
+    
+    # [UNICODE_30C7]
+    data_match = (
+        restored_response['unlocked_count'] == original_response['unlocked_count'] and
+        restored_response['total_cells'] == original_response['total_cells'] and
+        len(restored_response['core_values']) == len(original_response['core_values'])
+    )
+    
+    print(f"[UNICODE_2713] [UNICODE_30C7]: {'[UNICODE_6210]' if data_match else '[UNICODE_5931]'}")
+
+
+def main():
+    """[UNICODE_30E1]"""
+    print("Mandala[UNICODE_5B9F]")
+    print("=" * 50)
+    
+    try:
+        # 1. [UNICODE_30B0]
+        interface, test_uid = test_mandala_grid_creation()
+        
+        # 2. [UNICODE_30BB]
+        grid = test_cell_unlock_functionality(interface, test_uid)
+        
+        # 3. [UNICODE_30BB]
+        updated_grid = test_cell_completion_functionality(interface, test_uid, grid)
+        
+        # 4. [UNICODE_30D0]
+        test_validation_functionality()
+        
+        # 5. API[UNICODE_5FDC]
+        api_response = test_api_response_generation(interface, test_uid)
+        
+        # 6. [UNICODE_65E5]
+        test_daily_reminder_functionality(interface, test_uid)
+        
+        # 7. [UNICODE_30B7]
+        test_serialization_functionality(interface, test_uid)
+        
+        print("\n" + "=" * 50)
+        print("[UNICODE_2705] [UNICODE_5168]")
+        print(f"[UNICODE_6700]:")
+        print(f"  - [UNICODE_30A2]: {updated_grid.unlocked_count}")
+        print(f"  - [UNICODE_5B8C]: {len(updated_grid.get_completed_cells())}")
+        print(f"  - [UNICODE_4E2D]: {len(updated_grid.core_values)}")
+        
+    except Exception as e:
+        print(f"\n[UNICODE_274C] [UNICODE_691C]: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return False
+    
+    return True
+
+
+if __name__ == "__main__":
+    success = main()
+    exit(0 if success else 1)

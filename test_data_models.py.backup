@@ -1,0 +1,234 @@
+#!/usr/bin/env python3
+"""
+[UNICODE_5171]
+Task 2: [UNICODE_5171]
+"""
+
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from datetime import datetime
+from shared.interfaces.core_types import (
+    UserProfile, TaskRecord, StoryState, CrystalAttribute, 
+    TaskType, TaskStatus
+)
+from shared.interfaces.task_system import Task, TaskXPCalculator, TaskDifficulty
+from shared.interfaces.crystal_validation import CrystalValidator, CrystalGrowthCalculator
+from shared.interfaces.validation import DataIntegrityValidator
+
+def test_core_data_models():
+    """[UNICODE_30B3]"""
+    print("=== [UNICODE_30B3] ===")
+    
+    # 1. UserProfile[UNICODE_306E]
+    print("1. UserProfile[UNICODE_306E]...")
+    user_profile = UserProfile(
+        uid="test_user_001",
+        email="test@example.com",
+        display_name="[UNICODE_30C6]",
+        player_level=5,
+        yu_level=3,
+        total_xp=250,
+        created_at=datetime.utcnow(),
+        last_active=datetime.utcnow()
+    )
+    
+    print(f"   [UNICODE_2713] [UNICODE_30E6]: {user_profile.display_name}")
+    print(f"   [UNICODE_2713] [UNICODE_30D7]: {user_profile.player_level}")
+    print(f"   [UNICODE_2713] [UNICODE_30AF]: {len(user_profile.crystal_gauges)}")
+    
+    # UserProfile[UNICODE_306E]
+    validation_result = DataIntegrityValidator.validate_user_profile_consistency(user_profile)
+    print(f"   [UNICODE_2713] [UNICODE_30D0]: {'[UNICODE_6709]' if validation_result['valid'] else '[UNICODE_7121]'}")
+    if validation_result['warnings']:
+        print(f"   [UNICODE_26A0] [UNICODE_8B66]: {validation_result['warnings']}")
+    
+    # 2. TaskRecord[UNICODE_306E]XP[UNICODE_8A08]
+    print("\n2. TaskRecord[UNICODE_306E]XP[UNICODE_8A08]...")
+    task = Task(
+        task_id="test_task_001",
+        uid="test_user_001",
+        task_type=TaskType.ONE_SHOT,
+        title="[UNICODE_30C6]",
+        description="[UNICODE_3053]",
+        difficulty=TaskDifficulty.MEDIUM
+    )
+    
+    print(f"   [UNICODE_2713] [UNICODE_30BF]: {task.title}")
+    print(f"   [UNICODE_2713] [UNICODE_57FA]XP: {task.base_xp}")
+    
+    # [UNICODE_30BF]
+    task.start_task()
+    xp_earned = task.complete_task(mood_score=4, actual_duration=25)
+    
+    print(f"   [UNICODE_2713] [UNICODE_7372]XP: {xp_earned}")
+    print(f"   [UNICODE_2713] [UNICODE_30B9]: {task.status}")
+    
+    # 3. StoryState[UNICODE_306E]
+    print("\n3. StoryState[UNICODE_306E]...")
+    story_state = StoryState(
+        uid="test_user_001",
+        current_chapter="self_discipline",
+        current_node="intro_node_1",
+        available_edges=["edge_1", "edge_2"],
+        story_history=[],
+        unlocked_chapters=["self_discipline"],
+        unlocked_nodes=["intro_node_1"],
+        completed_nodes=[],
+        choice_history=[],
+        companion_relationships={},
+        ending_scores={},
+        story_flags={},
+        last_updated=datetime.utcnow()
+    )
+    
+    print(f"   [UNICODE_2713] [UNICODE_30B9]: {story_state.current_chapter}")
+    print(f"   [UNICODE_2713] [UNICODE_73FE]: {story_state.current_node}")
+    print(f"   [UNICODE_2713] [UNICODE_5229]: {len(story_state.available_edges)}")
+
+def test_crystal_system():
+    """[UNICODE_30AF]"""
+    print("\n=== [UNICODE_30AF] ===")
+    
+    # 1. [UNICODE_30AF]
+    print("1. [UNICODE_30AF]...")
+    growth_amount = CrystalGrowthCalculator.calculate_growth_amount(
+        CrystalAttribute.SELF_DISCIPLINE,
+        "task_completion"  # CrystalGrowthEvent[UNICODE_306E]
+    )
+    print(f"   [UNICODE_2713] [UNICODE_81EA] + [UNICODE_30BF]: {growth_amount} [UNICODE_30DD]")
+    
+    # 2. [UNICODE_6CBB]
+    message = CrystalGrowthCalculator.get_therapeutic_message(
+        CrystalAttribute.SELF_DISCIPLINE,
+        "task_completion",
+        growth_amount
+    )
+    print(f"   [UNICODE_2713] [UNICODE_6CBB]: {message}")
+    
+    # 3. [UNICODE_30D0]
+    print("\n2. [UNICODE_30D0]...")
+    
+    # [UNICODE_6210]
+    valid_growth = CrystalValidator.validate_growth_amount(5)
+    invalid_growth = CrystalValidator.validate_growth_amount(25)  # [UNICODE_5236]
+    
+    print(f"   [UNICODE_2713] [UNICODE_6709](5): {valid_growth}")
+    print(f"   [UNICODE_2713] [UNICODE_7121](25): {invalid_growth}")
+    
+    # [UNICODE_30AF]
+    valid_value = CrystalValidator.validate_crystal_value(75)
+    invalid_value = CrystalValidator.validate_crystal_value(150)  # [UNICODE_7BC4]
+    
+    print(f"   [UNICODE_2713] [UNICODE_6709](75): {valid_value}")
+    print(f"   [UNICODE_2713] [UNICODE_7121](150): {invalid_value}")
+
+def test_xp_calculation():
+    """XP[UNICODE_8A08]"""
+    print("\n=== XP[UNICODE_8A08] ===")
+    
+    # 1. [UNICODE_8A73]XP[UNICODE_8A08]
+    print("1. [UNICODE_8A73]XP[UNICODE_8A08]...")
+    task = Task(
+        task_id="xp_test_task",
+        uid="test_user",
+        task_type=TaskType.SKILL_UP,
+        title="XP[UNICODE_8A08]",
+        difficulty=TaskDifficulty.HARD,
+        estimated_duration=45
+    )
+    
+    result = TaskXPCalculator.calculate_detailed_xp(
+        task=task,
+        mood_score=4,
+        actual_duration=40  # [UNICODE_4E88]
+    )
+    
+    print(f"   [UNICODE_2713] [UNICODE_57FA]XP: {result.base_xp}")
+    print(f"   [UNICODE_2713] [UNICODE_6C17]: {result.mood_coefficient}")
+    print(f"   [UNICODE_2713] ADHD[UNICODE_652F]: {result.adhd_assist_multiplier}")
+    print(f"   [UNICODE_2713] [UNICODE_6642]: {result.time_efficiency_bonus}")
+    print(f"   [UNICODE_2713] [UNICODE_512A]: {result.priority_bonus}")
+    print(f"   [UNICODE_2713] [UNICODE_6700]XP: {result.final_xp}")
+    
+    # 2. XP[UNICODE_30D7]
+    print("\n2. XP[UNICODE_30D7]...")
+    preview_xp = TaskXPCalculator.get_xp_preview(
+        task_type=TaskType.ROUTINE,
+        difficulty=TaskDifficulty.EASY,
+        mood_score=3
+    )
+    print(f"   [UNICODE_2713] [UNICODE_30EB]([UNICODE_7C21])[UNICODE_306E]XP[UNICODE_30D7]: {preview_xp}")
+
+def test_validation_system():
+    """[UNICODE_30D0]"""
+    print("\n=== [UNICODE_30D0] ===")
+    
+    # 1. [UNICODE_30BF]
+    print("1. [UNICODE_30BF]...")
+    
+    # [UNICODE_30C6]
+    user_profile = UserProfile(
+        uid="test_user",
+        email="test@example.com",
+        display_name="[UNICODE_30C6]",
+        daily_task_limit=16,
+        created_at=datetime.utcnow(),
+        last_active=datetime.utcnow()
+    )
+    
+    task_record = TaskRecord(
+        task_id="validation_test",
+        uid="test_user",
+        task_type=TaskType.ONE_SHOT,
+        title="[UNICODE_30D0]",
+        description="[UNICODE_30D0]",
+        difficulty=3,
+        created_at=datetime.utcnow()
+    )
+    
+    # [UNICODE_65E2]
+    existing_tasks = []
+    
+    validation_result = DataIntegrityValidator.validate_task_business_rules(
+        task_record, user_profile, existing_tasks
+    )
+    
+    print(f"   [UNICODE_2713] [UNICODE_30D0]: {'[UNICODE_6709]' if validation_result['valid'] else '[UNICODE_7121]'}")
+    print(f"   [UNICODE_2713] [UNICODE_4ECA]: {validation_result['daily_task_count']}")
+    print(f"   [UNICODE_2713] [UNICODE_6B8B]: {validation_result['remaining_tasks']}")
+    
+    if validation_result['warnings']:
+        print(f"   [UNICODE_26A0] [UNICODE_8B66]: {validation_result['warnings']}")
+
+def main():
+    """[UNICODE_30E1]"""
+    print("[UNICODE_5171]")
+    print("=" * 60)
+    
+    try:
+        test_core_data_models()
+        test_crystal_system()
+        test_xp_calculation()
+        test_validation_system()
+        
+        print("\n" + "=" * 60)
+        print("[UNICODE_2705] [UNICODE_5168]")
+        print("\n[UNICODE_30BF]2[UNICODE_300C]:")
+        print("  [UNICODE_2713] 2.1 [UNICODE_30B3]")
+        print("  [UNICODE_2713] 2.2 8[UNICODE_5C5E]")
+        print("  [UNICODE_2713] 2.3 [UNICODE_30BF]XP[UNICODE_8A08]")
+        print("  [UNICODE_2713] [UNICODE_30C7]")
+        
+    except Exception as e:
+        print(f"\n[UNICODE_274C] [UNICODE_30C6]: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+    
+    return True
+
+if __name__ == "__main__":
+    success = main()
+    sys.exit(0 if success else 1)

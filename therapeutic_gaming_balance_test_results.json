@@ -1,0 +1,155 @@
+{
+  "test_suite": "治療効果とゲーム性のバランス最適化テスト",
+  "timestamp": "2025-07-28T11:29:29.581422",
+  "tests": [
+    {
+      "test_name": "治療効果評価",
+      "passed": true,
+      "details": [
+        {
+          "step": "治療効果評価実行",
+          "overall_score": 0.6751591545709192,
+          "metrics_count": 7,
+          "strengths_count": 3,
+          "improvement_areas_count": 2,
+          "risk_factors_count": 0
+        },
+        {
+          "step": "個別指標検証",
+          "self_efficacy": 0.8200000000000001,
+          "mood_stability": 0.7716666666666666,
+          "task_completion_confidence": 0.9027807486631015
+        }
+      ]
+    },
+    {
+      "test_name": "ゲーム性エンゲージメント評価",
+      "passed": true,
+      "details": [
+        {
+          "step": "ゲーム性評価実行",
+          "overall_score": 0.705,
+          "engagement_quality": "good",
+          "addiction_risk": 0.07,
+          "healthy_indicators_count": 6
+        },
+        {
+          "step": "健全性指標検証",
+          "engagement_level": 0.6950000000000001,
+          "progression_satisfaction": 0.7,
+          "challenge_balance": 0.9800000000000001,
+          "addiction_risk_acceptable": true
+        }
+      ]
+    },
+    {
+      "test_name": "治療効果・ゲーム性バランス分析",
+      "passed": true,
+      "details": [
+        {
+          "step": "バランス分析実行",
+          "therapeutic_score": 0.5917346938775511,
+          "gaming_score": 0.5819047619047619,
+          "balance_ratio": 1.0168926817862989,
+          "balance_risk": "moderate",
+          "intervention_needed": false,
+          "recommendations_count": 2
+        },
+        {
+          "step": "バランス品質評価",
+          "balance_quality": "moderate",
+          "therapeutic_effectiveness": "needs_improvement",
+          "gaming_healthiness": "healthy"
+        }
+      ]
+    },
+    {
+      "test_name": "エンゲージメント指標監視",
+      "passed": true,
+      "details": [
+        {
+          "step": "7日間エンゲージメント監視",
+          "monitored_days": 7,
+          "avg_active_time": 80.0,
+          "avg_task_completion": 0.78,
+          "final_retention_score": 0.23333333333333334
+        },
+        {
+          "step": "エンゲージメントトレンド分析",
+          "active_time_trend": 30,
+          "completion_rate_trend": 0.12,
+          "trend_direction": "improving"
+        }
+      ]
+    },
+    {
+      "test_name": "治療安全性検証",
+      "passed": true,
+      "details": [
+        {
+          "step": "健全ケース安全性検証",
+          "overall_safety": "safe",
+          "therapeutic_status": "safe",
+          "addiction_risk_status": "safe",
+          "balance_status": "stable",
+          "recommendations_count": 0
+        },
+        {
+          "step": "リスクケース安全性検証",
+          "overall_safety": "unknown",
+          "addiction_risk_detected": true,
+          "intervention_recommended": true,
+          "safety_degraded": true
+        }
+      ]
+    },
+    {
+      "test_name": "バランス最適化推奨事項",
+      "passed": true,
+      "details": [
+        {
+          "step": "シナリオ別推奨事項テスト",
+          "scenarios_tested": 3,
+          "scenario_results": [
+            {
+              "scenario": "治療効果低下ケース",
+              "therapeutic_score": 0.35714285714285715,
+              "gaming_score": 0.7102857142857143,
+              "balance_risk": "high",
+              "recommendations_count": 3,
+              "intervention_needed": true
+            },
+            {
+              "scenario": "ゲーム依存リスクケース",
+              "therapeutic_score": 0.6023809523809524,
+              "gaming_score": 0.7908571428571429,
+              "balance_risk": "high",
+              "recommendations_count": 2,
+              "intervention_needed": true
+            },
+            {
+              "scenario": "バランス良好ケース",
+              "therapeutic_score": 0.6187074829931973,
+              "gaming_score": 0.683047619047619,
+              "balance_risk": "moderate",
+              "recommendations_count": 1,
+              "intervention_needed": false
+            }
+          ]
+        },
+        {
+          "step": "推奨事項品質評価",
+          "total_recommendations": 6,
+          "interventions_needed": 2,
+          "avg_recommendations_per_scenario": 2.0
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "total_tests": 6,
+    "passed_tests": 6,
+    "failed_tests": 0,
+    "success_rate": 100.0
+  }
+}

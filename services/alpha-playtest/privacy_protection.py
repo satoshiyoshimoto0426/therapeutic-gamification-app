@@ -1,0 +1,396 @@
+"""
+プレビュー
+"""
+import hashlib
+import json
+import re
+from datetime import datetime, timedelta
+from typing import Dict, Any, List, Optional
+from dataclasses import dataclass
+from enum import Enum
+import logging
+
+logger = logging.getLogger(__name__)
+
+class DataSensitivityLevel(Enum):
+    """デフォルト"""
+    PUBLIC = "public"           # ?
+    INTERNAL = "internal"       # 内部
+    CONFIDENTIAL = "confidential"  # ?
+    RESTRICTED = "restricted"   # ?
+
+class ConsentType(Enum):
+    """?"""
+    DATA_COLLECTION = "data_collection"
+    ANALYTICS = "analytics"
+    FEEDBACK_COLLECTION = "feedback_collection"
+    RESEARCH_PARTICIPATION = "research_participation"
+    MARKETING = "marketing"
+
+@dataclass
+class ConsentRecord:
+    """?"""
+    user_id: str
+    consent_type: ConsentType
+    granted: bool
+    timestamp: datetime
+    version: str = "1.0"
+    ip_address_hash: Optional[str] = None
+
+@dataclass
+class DataProcessingRecord:
+    """デフォルト"""
+    record_id: str
+    user_id: str
+    data_type: str
+    processing_purpose: str
+    timestamp: datetime
+    retention_until: datetime
+    anonymized: bool = False
+
+class PrivacyProtectionEngine:
+    """プレビュー"""
+    
+    def __init__(self):
+        self.consent_records: Dict[str, List[ConsentRecord]] = {}
+        self.processing_records: List[DataProcessingRecord] = []
+        self.anonymization_rules = self._initialize_anonymization_rules()
+        self.retention_policies = self._initialize_retention_policies()
+        
+    def _initialize_anonymization_rules(self) -> Dict[str, Any]:
+        """?"""
+        return {
+            "email": {
+                "method": "hash",
+                "salt": "playtest_salt_2024",
+                "truncate_length": 16
+            },
+            "ip_address": {
+                "method": "mask",
+                "mask_pattern": "xxx.xxx.xxx.xxx"
+            },
+            "location": {
+                "method": "generalize",
+                "precision": 2  # ?2?
+            },
+            "timestamp": {
+                "method": "generalize",
+                "precision": "minute"  # ?
+            },
+            "user_agent": {
+                "method": "categorize",
+                "categories": ["mobile", "desktop", "tablet", "other"]
+            },
+            "device_id": {
+                "method": "hash",
+                "salt": "device_salt_2024"
+            }
+        }
+    
+    def _initialize_retention_policies(self) -> Dict[str, timedelta]:
+        """デフォルト"""
+        return {
+            "behavior_logs": timedelta(days=90),
+            "feedback_data": timedelta(days=365),
+            "user_profiles": timedelta(days=1095),  # 3?
+            "consent_records": timedelta(days=2555),  # 7?
+            "analytics_data": timedelta(days=730),  # 2?
+            "error_logs": timedelta(days=30)
+        }
+    
+    def record_consent(self, user_id: str, consent_type: ConsentType, 
+                      granted: bool, ip_address: str = None) -> ConsentRecord:
+        """?"""
+        ip_hash = None
+        if ip_address:
+            ip_hash = hashlib.sha256(f"{ip_address}consent_salt".encode()).hexdigest()[:16]
+        
+        consent = ConsentRecord(
+            user_id=user_id,
+            consent_type=consent_type,
+            granted=granted,
+            timestamp=datetime.now(),
+            ip_address_hash=ip_hash
+        )
+        
+        if user_id not in self.consent_records:
+            self.consent_records[user_id] = []
+        
+        self.consent_records[user_id].append(consent)
+        
+        logger.info(f"Consent recorded: {user_id} - {consent_type.value}: {granted}")
+        return consent
+    
+    def check_consent(self, user_id: str, consent_type: ConsentType) -> bool:
+        """?"""
+        if user_id not in self.consent_records:
+            return False
+        
+        # ?
+        user_consents = self.consent_records[user_id]
+        relevant_consents = [c for c in user_consents if c.consent_type == consent_type]
+        
+        if not relevant_consents:
+            return False
+        
+        # ?
+        latest_consent = max(relevant_consents, key=lambda x: x.timestamp)
+        return latest_consent.granted
+    
+    def anonymize_data(self, data: Dict[str, Any], 
+                      sensitivity_level: DataSensitivityLevel = DataSensitivityLevel.CONFIDENTIAL) -> Dict[str, Any]:
+        """デフォルト"""
+        if sensitivity_level == DataSensitivityLevel.PUBLIC:
+            return data  # ?
+        
+        anonymized = data.copy()
+        
+        for field, value in data.items():
+            if field in self.anonymization_rules:
+                rule = self.anonymization_rules[field]
+                anonymized[field] = self._apply_anonymization_rule(value, rule)
+            elif self._is_sensitive_field(field):
+                # ?
+                del anonymized[field]
+        
+        return anonymized
+    
+    def _apply_anonymization_rule(self, value: Any, rule: Dict[str, Any]) -> Any:
+        """?"""
+        method = rule["method"]
+        
+        if method == "hash":
+            if isinstance(value, str):
+                salt = rule.get("salt", "")
+                hash_value = hashlib.sha256(f"{value}{salt}".encode()).hexdigest()
+                truncate_length = rule.get("truncate_length")
+                return hash_value[:truncate_length] if truncate_length else hash_value
+        
+        elif method == "mask":
+            pattern = rule.get("mask_pattern", "***")
+            return pattern
+        
+        elif method == "generalize":
+            if rule.get("precision") == "minute" and isinstance(value, str):
+                try:
+                    dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                    return dt.replace(second=0, microsecond=0).isoformat()
+                except:
+                    return value
+            elif isinstance(value, (int, float)):
+                precision = rule.get("precision", 2)
+                return round(value, precision)
+        
+        elif method == "categorize":
+            categories = rule.get("categories", [])
+            if isinstance(value, str):
+                # ?
+                value_lower = value.lower()
+                for category in categories:
+                    if category in value_lower:
+                        return category
+                return "other"
+        
+        return value
+    
+    def _is_sensitive_field(self, field_name: str) -> bool:
+        """?"""
+        sensitive_patterns = [
+            r".*password.*",
+            r".*secret.*",
+            r".*token.*",
+            r".*key.*",
+            r".*phone.*",
+            r".*address.*",
+            r".*ssn.*",
+            r".*credit.*",
+            r".*bank.*"
+        ]
+        
+        field_lower = field_name.lower()
+        return any(re.match(pattern, field_lower) for pattern in sensitive_patterns)
+    
+    def record_data_processing(self, user_id: str, data_type: str, 
+                             processing_purpose: str) -> DataProcessingRecord:
+        """デフォルト"""
+        retention_period = self.retention_policies.get(data_type, timedelta(days=90))
+        
+        record = DataProcessingRecord(
+            record_id=f"proc_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{user_id[:8]}",
+            user_id=user_id,
+            data_type=data_type,
+            processing_purpose=processing_purpose,
+            timestamp=datetime.now(),
+            retention_until=datetime.now() + retention_period
+        )
+        
+        self.processing_records.append(record)
+        
+        logger.info(f"Data processing recorded: {record.record_id}")
+        return record
+    
+    def cleanup_expired_data(self) -> Dict[str, int]:
+        """?"""
+        now = datetime.now()
+        cleanup_stats = {}
+        
+        # ?
+        original_count = len(self.processing_records)
+        self.processing_records = [
+            record for record in self.processing_records
+            if record.retention_until > now
+        ]
+        cleanup_stats["processing_records"] = original_count - len(self.processing_records)
+        
+        # ?7?
+        consent_cutoff = now - timedelta(days=2555)
+        consent_cleaned = 0
+        
+        for user_id in list(self.consent_records.keys()):
+            original_consents = len(self.consent_records[user_id])
+            self.consent_records[user_id] = [
+                consent for consent in self.consent_records[user_id]
+                if consent.timestamp > consent_cutoff
+            ]
+            consent_cleaned += original_consents - len(self.consent_records[user_id])
+            
+            # ?
+            if not self.consent_records[user_id]:
+                del self.consent_records[user_id]
+        
+        cleanup_stats["consent_records"] = consent_cleaned
+        
+        if sum(cleanup_stats.values()) > 0:
+            logger.info(f"Data cleanup completed: {cleanup_stats}")
+        
+        return cleanup_stats
+    
+    def generate_privacy_report(self, user_id: str) -> Dict[str, Any]:
+        """プレビューGDPR?"""
+        report = {
+            "user_id": user_id,
+            "generated_at": datetime.now().isoformat(),
+            "consent_status": {},
+            "data_processing": [],
+            "retention_info": {}
+        }
+        
+        # ?
+        for consent_type in ConsentType:
+            report["consent_status"][consent_type.value] = self.check_consent(user_id, consent_type)
+        
+        # デフォルト
+        user_processing = [
+            {
+                "record_id": record.record_id,
+                "data_type": record.data_type,
+                "purpose": record.processing_purpose,
+                "processed_at": record.timestamp.isoformat(),
+                "retention_until": record.retention_until.isoformat(),
+                "anonymized": record.anonymized
+            }
+            for record in self.processing_records
+            if record.user_id == user_id
+        ]
+        report["data_processing"] = user_processing
+        
+        # ?
+        report["retention_info"] = {
+            data_type: str(period)
+            for data_type, period in self.retention_policies.items()
+        }
+        
+        return report
+    
+    def request_data_deletion(self, user_id: str, data_types: List[str] = None) -> Dict[str, Any]:
+        """デフォルトGDPR Right to be Forgotten?"""
+        deletion_result = {
+            "user_id": user_id,
+            "requested_at": datetime.now().isoformat(),
+            "deleted_data_types": [],
+            "retained_data_types": [],
+            "reason_for_retention": {}
+        }
+        
+        if data_types is None:
+            data_types = list(self.retention_policies.keys())
+        
+        for data_type in data_types:
+            # ?
+            if data_type == "consent_records":
+                deletion_result["retained_data_types"].append(data_type)
+                deletion_result["reason_for_retention"][data_type] = "?7?"
+            else:
+                # ?
+                self._delete_user_data(user_id, data_type)
+                deletion_result["deleted_data_types"].append(data_type)
+        
+        logger.info(f"Data deletion processed for user {user_id}: {deletion_result}")
+        return deletion_result
+    
+    def _delete_user_data(self, user_id: str, data_type: str):
+        """ユーザー"""
+        if data_type == "behavior_logs" or data_type == "feedback_data":
+            # ?
+            self.processing_records = [
+                record for record in self.processing_records
+                if not (record.user_id == user_id and record.data_type == data_type)
+            ]
+        
+        # ?
+        logger.info(f"Deleted {data_type} for user {user_id}")
+    
+    def validate_data_minimization(self, data: Dict[str, Any], 
+                                 processing_purpose: str) -> Dict[str, Any]:
+        """デフォルト"""
+        # ?
+        purpose_requirements = {
+            "user_analytics": ["user_id", "timestamp", "event_type", "session_id"],
+            "feedback_analysis": ["user_id", "feedback_content", "rating", "timestamp"],
+            "ab_testing": ["user_id", "variant", "metric_value", "timestamp"],
+            "bug_tracking": ["user_id", "error_type", "timestamp", "user_agent"]
+        }
+        
+        required_fields = purpose_requirements.get(processing_purpose, [])
+        
+        if not required_fields:
+            # ?
+            logger.warning(f"Undefined processing purpose: {processing_purpose}")
+            return data
+        
+        # ?
+        minimized_data = {
+            field: value for field, value in data.items()
+            if field in required_fields or field in ["user_id", "timestamp"]  # 基本
+        }
+        
+        removed_fields = set(data.keys()) - set(minimized_data.keys())
+        if removed_fields:
+            logger.info(f"Data minimization applied: removed {removed_fields}")
+        
+        return minimized_data
+
+# ?
+privacy_engine = PrivacyProtectionEngine()
+
+def ensure_privacy_compliance(func):
+    """プレビュー"""
+    def wrapper(*args, **kwargs):
+        # ?
+        user_id = kwargs.get('user_id') or (args[0] if args else None)
+        
+        if user_id and not privacy_engine.check_consent(user_id, ConsentType.DATA_COLLECTION):
+            raise PermissionError("デフォルト")
+        
+        # ?
+        result = func(*args, **kwargs)
+        
+        # デフォルト
+        if user_id:
+            privacy_engine.record_data_processing(
+                user_id, func.__name__, "playtest_data_collection"
+            )
+        
+        return result
+    
+    return wrapper

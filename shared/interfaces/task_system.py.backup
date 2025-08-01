@@ -1,0 +1,441 @@
+"""
+[UNICODE_30BF]XP[UNICODE_8A08]
+Task system with comprehensive XP calculation logic
+Requirements: 5.1, 5.2
+"""
+
+from typing import Dict, List, Optional, Tuple
+from datetime import datetime, timedelta
+from enum import Enum
+from pydantic import BaseModel, Field
+
+from .core_types import TaskType, TaskStatus, CrystalAttribute, CrystalGrowthEvent
+
+
+class TaskDifficulty(int, Enum):
+    """[UNICODE_30BF]"""
+    VERY_EASY = 1    # [UNICODE_3068]
+    EASY = 2         # [UNICODE_7C21]
+    MEDIUM = 3       # [UNICODE_666E]
+    HARD = 4         # [UNICODE_96E3]
+    VERY_HARD = 5    # [UNICODE_3068]
+
+
+class TaskPriority(str, Enum):
+    """[UNICODE_30BF]"""
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    URGENT = "urgent"
+
+
+class ADHDSupportLevel(str, Enum):
+    """ADHD[UNICODE_652F]"""
+    NONE = "none"           # [UNICODE_652F]
+    BASIC = "basic"         # [UNICODE_57FA]
+    MODERATE = "moderate"   # [UNICODE_4E2D]
+    INTENSIVE = "intensive" # [UNICODE_96C6]
+
+
+class Task(BaseModel):
+    """
+    [UNICODE_62E1] - ADHD[UNICODE_652F]XP[UNICODE_8A08]
+    Enhanced task model with ADHD support and XP calculation
+    """
+    task_id: str
+    uid: str
+    task_type: TaskType
+    title: str = Field(..., min_length=1, max_length=100)
+    description: str = Field("", max_length=500)
+    difficulty: TaskDifficulty
+    priority: TaskPriority = TaskPriority.MEDIUM
+    status: TaskStatus = TaskStatus.PENDING
+    
+    # [UNICODE_6642]
+    estimated_duration: int = 30  # [UNICODE_5206]
+    actual_duration: Optional[int] = None
+    due_date: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    
+    # XP[UNICODE_95A2]
+    base_xp: int = 0
+    xp_earned: int = 0
+    mood_at_completion: Optional[int] = None  # 1-5 scale
+    
+    # ADHD[UNICODE_652F]
+    adhd_support_level: ADHDSupportLevel = ADHDSupportLevel.NONE
+    pomodoro_sessions_planned: int = 1
+    pomodoro_sessions_completed: int = 0
+    break_reminders_enabled: bool = True
+    focus_music_enabled: bool = False
+    
+    # [UNICODE_30B9]
+    linked_story_edge: Optional[str] = None
+    habit_tag: Optional[str] = None
+    mandala_cell_id: Optional[str] = None
+    
+    # [UNICODE_30AF]
+    primary_crystal_attribute: Optional[CrystalAttribute] = None
+    secondary_crystal_attributes: List[CrystalAttribute] = []
+    
+    # [UNICODE_30E1]
+    tags: List[str] = []
+    notes: str = ""
+    is_recurring: bool = False
+    recurrence_pattern: Optional[str] = None  # daily, weekly, monthly
+    
+    def __init__(self, **data):
+        super().__init__(**data)
+        if self.base_xp == 0:
+            self.base_xp = self._calculate_base_xp()
+    
+    def _calculate_base_xp(self) -> int:
+        """[UNICODE_57FA]XP[UNICODE_3092]"""
+        # [UNICODE_96E3]XP
+        base_by_difficulty = {
+            TaskDifficulty.VERY_EASY: 5,
+            TaskDifficulty.EASY: 10,
+            TaskDifficulty.MEDIUM: 15,
+            TaskDifficulty.HARD: 25,
+            TaskDifficulty.VERY_HARD: 40
+        }
+        
+        base_xp = base_by_difficulty.get(self.difficulty, 15)
+        
+        # [UNICODE_30BF]
+        type_multipliers = {
+            TaskType.ROUTINE: 0.8,      # [UNICODE_30EB]
+            TaskType.ONE_SHOT: 1.0,     # [UNICODE_6A19]
+            TaskType.SKILL_UP: 1.3,     # [UNICODE_30B9]
+            TaskType.SOCIAL: 1.2        # [UNICODE_793E]
+        }
+        
+        multiplier = type_multipliers.get(self.task_type, 1.0)
+        return int(base_xp * multiplier)
+    
+    def start_task(self) -> None:
+        """[UNICODE_30BF]"""
+        if self.status == TaskStatus.PENDING:
+            self.status = TaskStatus.IN_PROGRESS
+            self.started_at = datetime.utcnow()
+    
+    def complete_task(
+        self, 
+        mood_score: int, 
+        actual_duration: Optional[int] = None,
+        notes: str = "",
+        external_adhd_multiplier: Optional[float] = None
+    ) -> int:
+        """
+        [UNICODE_30BF]XP[UNICODE_3092]
+        
+        Args:
+            mood_score: [UNICODE_6C17]1-5[UNICODE_FF09]
+            actual_duration: [UNICODE_5B9F]
+            notes: [UNICODE_30E1]
+            external_adhd_multiplier: [UNICODE_5916]ADHD[UNICODE_652F]Pomodoro[UNICODE_4F7F]
+            
+        Returns: [UNICODE_7372]XP
+        """
+        if self.status != TaskStatus.IN_PROGRESS:
+            raise ValueError("Task must be in progress to complete")
+        
+        self.status = TaskStatus.COMPLETED
+        self.completed_at = datetime.utcnow()
+        self.mood_at_completion = mood_score
+        
+        if actual_duration:
+            self.actual_duration = actual_duration
+        
+        if notes:
+            self.notes = notes
+        
+        # XP[UNICODE_8A08]ADHD[UNICODE_652F]
+        self.xp_earned = self._calculate_final_xp(mood_score, external_adhd_multiplier)
+        return self.xp_earned
+    
+    def _calculate_final_xp(self, mood_score: int, external_adhd_multiplier: Optional[float] = None) -> int:
+        """
+        [UNICODE_6700]XP[UNICODE_3092]
+        
+        Args:
+            mood_score: [UNICODE_6C17]1-5[UNICODE_FF09]
+            external_adhd_multiplier: [UNICODE_5916]ADHD[UNICODE_652F]Pomodoro[UNICODE_4F7F]
+        """
+        # [UNICODE_6C17] (1-5 scale -> 0.8-1.2 multiplier)
+        mood_coefficient = 0.8 + (mood_score - 1) * 0.1
+        
+        # ADHD[UNICODE_652F]
+        adhd_assist_multiplier = self._calculate_adhd_assist_multiplier(external_adhd_multiplier)
+        
+        # [UNICODE_6642]
+        time_efficiency_bonus = self._calculate_time_efficiency_bonus()
+        
+        # [UNICODE_512A]
+        priority_bonus = self._calculate_priority_bonus()
+        
+        # [UNICODE_6700]XP[UNICODE_8A08]
+        final_xp = int(
+            self.base_xp * 
+            mood_coefficient * 
+            adhd_assist_multiplier * 
+            time_efficiency_bonus * 
+            priority_bonus
+        )
+        
+        return max(1, final_xp)  # [UNICODE_6700]1XP[UNICODE_306F]
+    
+    def _calculate_adhd_assist_multiplier(self, external_multiplier: Optional[float] = None) -> float:
+        """
+        ADHD[UNICODE_652F]
+        
+        Args:
+            external_multiplier: [UNICODE_5916]Pomodoro[UNICODE_4F7F]
+        """
+        base_multiplier = 1.0
+        
+        # [UNICODE_652F]
+        support_bonuses = {
+            ADHDSupportLevel.NONE: 1.0,
+            ADHDSupportLevel.BASIC: 1.1,
+            ADHDSupportLevel.MODERATE: 1.2,
+            ADHDSupportLevel.INTENSIVE: 1.3
+        }
+        
+        base_multiplier *= support_bonuses.get(self.adhd_support_level, 1.0)
+        
+        # Pomodoro[UNICODE_30BB]
+        if self.pomodoro_sessions_planned > 0:
+            completion_rate = self.pomodoro_sessions_completed / self.pomodoro_sessions_planned
+            pomodoro_bonus = 1.0 + (completion_rate * 0.2)  # [UNICODE_6700]20%[UNICODE_30DC]
+            base_multiplier *= pomodoro_bonus
+        
+        # [UNICODE_5916]Pomodoro[UNICODE_4F7F]
+        if external_multiplier is not None:
+            base_multiplier = max(base_multiplier, external_multiplier)
+        
+        return min(base_multiplier, 1.5)  # [UNICODE_6700]1.5[UNICODE_500D]
+    
+    def _calculate_time_efficiency_bonus(self) -> float:
+        """[UNICODE_6642]"""
+        if not self.actual_duration or not self.estimated_duration:
+            return 1.0
+        
+        efficiency_ratio = self.estimated_duration / self.actual_duration
+        
+        # [UNICODE_4E88]
+        if efficiency_ratio >= 1.0:
+            return min(1.0 + (efficiency_ratio - 1.0) * 0.1, 1.3)  # [UNICODE_6700]30%[UNICODE_30DC]
+        else:
+            # [UNICODE_4E88]
+            return max(0.9, efficiency_ratio)
+    
+    def _calculate_priority_bonus(self) -> float:
+        """[UNICODE_512A]"""
+        priority_multipliers = {
+            TaskPriority.LOW: 0.9,
+            TaskPriority.MEDIUM: 1.0,
+            TaskPriority.HIGH: 1.1,
+            TaskPriority.URGENT: 1.2
+        }
+        
+        return priority_multipliers.get(self.priority, 1.0)
+    
+    def get_crystal_growth_events(self) -> List[Tuple[CrystalAttribute, CrystalGrowthEvent]]:
+        """[UNICODE_30BF]"""
+        events = []
+        
+        # [UNICODE_30D7]
+        if self.primary_crystal_attribute:
+            events.append((self.primary_crystal_attribute, CrystalGrowthEvent.TASK_COMPLETION))
+        
+        # [UNICODE_30BB]
+        for attr in self.secondary_crystal_attributes:
+            events.append((attr, CrystalGrowthEvent.TASK_COMPLETION))
+        
+        return events
+    
+    def is_overdue(self) -> bool:
+        """[UNICODE_671F]"""
+        if not self.due_date:
+            return False
+        
+        return (
+            self.status in [TaskStatus.PENDING, TaskStatus.IN_PROGRESS] and
+            datetime.utcnow() > self.due_date
+        )
+    
+    def get_time_remaining(self) -> Optional[timedelta]:
+        """[UNICODE_6B8B]"""
+        if not self.due_date:
+            return None
+        
+        remaining = self.due_date - datetime.utcnow()
+        return remaining if remaining.total_seconds() > 0 else timedelta(0)
+
+
+class XPCalculationResult(BaseModel):
+    """XP[UNICODE_8A08]"""
+    base_xp: int
+    mood_coefficient: float
+    adhd_assist_multiplier: float
+    time_efficiency_bonus: float
+    priority_bonus: float
+    final_xp: int
+    breakdown: Dict[str, float]
+
+
+class TaskXPCalculator:
+    """[UNICODE_30BF]XP[UNICODE_8A08]"""
+    
+    @staticmethod
+    def calculate_detailed_xp(
+        task: Task,
+        mood_score: int,
+        actual_duration: Optional[int] = None,
+        external_adhd_multiplier: Optional[float] = None
+    ) -> XPCalculationResult:
+        """
+        [UNICODE_8A73]XP[UNICODE_8A08]
+        
+        Args:
+            task: [UNICODE_30BF]
+            mood_score: [UNICODE_6C17]1-5[UNICODE_FF09]
+            actual_duration: [UNICODE_5B9F]
+            external_adhd_multiplier: [UNICODE_5916]ADHD[UNICODE_652F]Pomodoro[UNICODE_4F7F]
+        """
+        # [UNICODE_6C17]
+        mood_coefficient = 0.8 + (mood_score - 1) * 0.1
+        
+        # ADHD[UNICODE_652F]
+        adhd_assist_multiplier = task._calculate_adhd_assist_multiplier(external_adhd_multiplier)
+        
+        # [UNICODE_6642]
+        if actual_duration:
+            task.actual_duration = actual_duration
+        time_efficiency_bonus = task._calculate_time_efficiency_bonus()
+        
+        # [UNICODE_512A]
+        priority_bonus = task._calculate_priority_bonus()
+        
+        # [UNICODE_6700]XP
+        final_xp = int(
+            task.base_xp * 
+            mood_coefficient * 
+            adhd_assist_multiplier * 
+            time_efficiency_bonus * 
+            priority_bonus
+        )
+        
+        final_xp = max(1, final_xp)
+        
+        return XPCalculationResult(
+            base_xp=task.base_xp,
+            mood_coefficient=mood_coefficient,
+            adhd_assist_multiplier=adhd_assist_multiplier,
+            time_efficiency_bonus=time_efficiency_bonus,
+            priority_bonus=priority_bonus,
+            final_xp=final_xp,
+            breakdown={
+                "base": task.base_xp,
+                "mood": mood_coefficient,
+                "adhd_support": adhd_assist_multiplier,
+                "time_efficiency": time_efficiency_bonus,
+                "priority": priority_bonus,
+                "pomodoro_integration": external_adhd_multiplier is not None
+            }
+        )
+    
+    @staticmethod
+    def get_xp_preview(
+        task_type: TaskType,
+        difficulty: TaskDifficulty,
+        mood_score: int,
+        adhd_support_level: ADHDSupportLevel = ADHDSupportLevel.NONE
+    ) -> int:
+        """[UNICODE_30BF]XP[UNICODE_30D7]"""
+        # [UNICODE_4EEE]XP[UNICODE_3092]
+        temp_task = Task(
+            task_id="preview",
+            uid="preview",
+            task_type=task_type,
+            title="Preview Task",
+            difficulty=difficulty,
+            adhd_support_level=adhd_support_level
+        )
+        
+        result = TaskXPCalculator.calculate_detailed_xp(temp_task, mood_score)
+        return result.final_xp
+
+
+class TaskTypeRecommender:
+    """[UNICODE_30BF]"""
+    
+    # [UNICODE_30BF]
+    TASK_TYPE_CRYSTAL_MAPPING = {
+        TaskType.ROUTINE: [
+            CrystalAttribute.SELF_DISCIPLINE,
+            CrystalAttribute.RESILIENCE
+        ],
+        TaskType.ONE_SHOT: [
+            CrystalAttribute.COURAGE,
+            CrystalAttribute.CURIOSITY
+        ],
+        TaskType.SKILL_UP: [
+            CrystalAttribute.WISDOM,
+            CrystalAttribute.CREATIVITY
+        ],
+        TaskType.SOCIAL: [
+            CrystalAttribute.EMPATHY,
+            CrystalAttribute.COMMUNICATION
+        ]
+    }
+    
+    @staticmethod
+    def recommend_crystal_attributes(task_type: TaskType) -> List[CrystalAttribute]:
+        """[UNICODE_30BF]"""
+        return TaskTypeRecommender.TASK_TYPE_CRYSTAL_MAPPING.get(task_type, [])
+    
+    @staticmethod
+    def recommend_task_type(primary_goal: str) -> TaskType:
+        """[UNICODE_76EE]"""
+        goal_keywords = {
+            TaskType.ROUTINE: ["[UNICODE_7FD2]", "[UNICODE_7D99]", "[UNICODE_6BCE]", "[UNICODE_30EB]", "[UNICODE_5B9A]"],
+            TaskType.ONE_SHOT: ["[UNICODE_4E00]", "[UNICODE_5358]", "[UNICODE_4ECA]", "[UNICODE_4ECA]", "[UNICODE_7279]"],
+            TaskType.SKILL_UP: ["[UNICODE_5B66]", "[UNICODE_52C9]", "[UNICODE_7DF4]", "[UNICODE_30B9]", "[UNICODE_4E0A]", "[UNICODE_5411]"],
+            TaskType.SOCIAL: ["[UNICODE_4EBA]", "[UNICODE_53CB]", "[UNICODE_5BB6]", "[UNICODE_30B3]", "[UNICODE_8A71]", "[UNICODE_4F1A]"]
+        }
+        
+        primary_goal_lower = primary_goal.lower()
+        
+        for task_type, keywords in goal_keywords.items():
+            if any(keyword in primary_goal_lower for keyword in keywords):
+                return task_type
+        
+        return TaskType.ONE_SHOT  # [UNICODE_30C7]
+    
+    @staticmethod
+    def recommend_difficulty(
+        user_experience_level: int,  # 1-5
+        task_complexity: str,        # "simple", "moderate", "complex"
+        user_confidence: int         # 1-5
+    ) -> TaskDifficulty:
+        """[UNICODE_30E6]"""
+        complexity_scores = {
+            "simple": 1,
+            "moderate": 3,
+            "complex": 5
+        }
+        
+        base_score = complexity_scores.get(task_complexity, 3)
+        
+        # [UNICODE_30E6]
+        adjustment = (user_experience_level + user_confidence) / 2 - 3
+        final_score = base_score + adjustment
+        
+        # 1-5[UNICODE_306E]
+        final_score = max(1, min(5, round(final_score)))
+        
+        return TaskDifficulty(int(final_score))
