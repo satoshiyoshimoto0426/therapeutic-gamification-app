@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>治療的ゲーミフィケーションアプリ</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            text-align: center;
+            max-width: 800px;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        .subtitle {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        .feature {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1.5rem;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .feature h3 {
+            margin-top: 0;
+            color: #ffd700;
+        }
+        .status {
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid #4caf50;
+            padding: 1rem;
+            border-radius: 10px;
+            margin: 2rem 0;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #4caf50;
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            margin: 0.5rem;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 治療的ゲーミフィケーションアプリ</h1>
+        <p class="subtitle">ADHD支援とRPG要素を組み合わせた革新的な治療アプリ</p>
+        
+        <div class="status">
+            <h3><span class="loading"></span> デプロイメント進行中</h3>
+            <p>アプリケーションを準備しています。しばらくお待ちください...</p>
+        </div>
+        
+        <div class="features">
+            <div class="feature">
+                <h3>🧠 ADHD支援機能</h3>
+                <p>認知負荷軽減、時間知覚支援、集中力向上をサポート</p>
+            </div>
+            <div class="feature">
+                <h3>🎯 RPG要素</h3>
+                <p>XP、レベル、装備、ガチャシステムでモチベーション向上</p>
+            </div>
+            <div class="feature">
+                <h3>🤖 AI生成ストーリー</h3>
+                <p>パーソナライズされた治療体験とエンゲージメント</p>
+            </div>
+            <div class="feature">
+                <h3>👨‍👩‍👧‍👦 保護者・治療者支援</h3>
+                <p>進捗レポート、安全性監視、治療効果の可視化</p>
+            </div>
+        </div>
+        
+        <div style="margin-top: 2rem;">
+            <a href="https://github.com/satoshiyoshimoto0426/therapeutic-gamification-app" class="btn">
+                📁 GitHubリポジトリ
+            </a>
+            <a href="https://github.com/satoshiyoshimoto0426/therapeutic-gamification-app/actions" class="btn">
+                ⚙️ デプロイ状況
+            </a>
+        </div>
+        
+        <div style="margin-top: 2rem; opacity: 0.8; font-size: 0.9rem;">
+            <p>🚀 29のマイクロサービス | 🔒 GDPR準拠 | 📱 モバイル対応</p>
+            <p>React + TypeScript | Python + FastAPI | Google Cloud</p>
+        </div>
+    </div>
+    
+    <script>
+        // 5秒ごとにページをリロードして最新状況を確認
+        setTimeout(() => {
+            location.reload();
+        }, 30000);
+        
+        // デプロイ完了を確認
+        fetch('/api/health')
+            .then(response => {
+                if (response.ok) {
+                    window.location.href = '/app';
+                }
+            })
+            .catch(() => {
+                // APIがまだ利用できない場合は何もしない
+            });
+    </script>
+</body>
+</html>
