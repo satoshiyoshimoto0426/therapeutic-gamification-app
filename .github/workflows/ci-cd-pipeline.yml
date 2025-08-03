@@ -278,11 +278,12 @@ jobs:
     
     - name: Notify deployment status
       uses: 8398a7/action-slack@v3
-      if: always()
+      if: always() && secrets.SLACK_WEBHOOK_URL != ''
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
       with:
         status: ${{ job.status }}
         channel: '#therapeutic-app-deployments'
-        webhook_url: ${{ secrets.SLACK_WEBHOOK }}
         fields: repo,message,commit,author,action,eventName,ref,workflow
 
   # 6. 本番環境デプロイ
@@ -401,11 +402,12 @@ jobs:
     
     - name: Notify production deployment
       uses: 8398a7/action-slack@v3
-      if: always()
+      if: always() && secrets.SLACK_WEBHOOK_URL != ''
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
       with:
         status: ${{ job.status }}
         channel: '#therapeutic-app-production'
-        webhook_url: ${{ secrets.SLACK_WEBHOOK }}
         fields: repo,message,commit,author,action,eventName,ref,workflow
         custom_payload: |
           {
@@ -476,11 +478,12 @@ jobs:
     
     - name: Notify rollback
       uses: 8398a7/action-slack@v3
-      if: always()
+      if: always() && secrets.SLACK_WEBHOOK_URL != ''
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
       with:
         status: custom
         channel: '#therapeutic-app-emergency'
-        webhook_url: ${{ secrets.SLACK_WEBHOOK }}
         custom_payload: |
           {
             "attachments": [{
