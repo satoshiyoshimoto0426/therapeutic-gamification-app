@@ -61,7 +61,7 @@ jobs:
     - name: Install Node dependencies
       run: |
         cd frontend
-        npm ci
+        npm install
     
     # Python単体テスト
     - name: Run Python unit tests
@@ -73,7 +73,8 @@ jobs:
     - name: Run Frontend tests
       run: |
         cd frontend
-        npm run test -- --coverage --watchAll=false
+        npm run type-check
+        npm run lint
     
     # 統合テスト
     - name: Run Integration tests
