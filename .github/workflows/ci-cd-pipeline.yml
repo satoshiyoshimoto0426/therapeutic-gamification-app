@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID || 'therapeutic-gamification-app-prod' }}
   SERVICE_NAME: therapeutic-gamification-app
   REGION: asia-northeast1
 
@@ -171,6 +171,17 @@ jobs:
       uses: google-github-actions/auth@v2
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
+    
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+    
+    - name: Enable required APIs
+      run: |
+        gcloud services enable run.googleapis.com --quiet
+        gcloud services enable cloudbuild.googleapis.com --quiet
+        gcloud services enable containerregistry.googleapis.com --quiet
+        gcloud services enable cloudresourcemanager.googleapis.com --quiet
+        gcloud services enable firestore.googleapis.com --quiet
     
     - name: Configure Docker for GCR
       run: |
