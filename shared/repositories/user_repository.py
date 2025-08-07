@@ -130,17 +130,16 @@ class UserRepository(CachedRepository[UserProfile]):
         current_value = current_gauges.get(attribute, 0)
         new_value = min(100, current_value + points)  # Cap at 100
         current_gauges[attribute] = new_value
-        
-        # Check if chapter unlocked
+
         chapter_unlocked = new_value >= 100 and current_value < 100
-        
+
         await self.update(uid, {"crystal_gauges": current_gauges})
-        
+
         return {
             "attribute": attribute,
-            "points_added": points,
+            "points_added": new_value - current_value,
             "new_value": new_value,
-            "chapter_unlocked": chapter_unlocked
+            "chapter_unlocked": chapter_unlocked,
         }
     
     async def get_leaderboard(self, limit: int = 100, metric: str = "total_xp") -> List[Dict[str, Any]]:
@@ -248,10 +247,8 @@ class UserRepository(CachedRepository[UserProfile]):
     
     def _calculate_level(self, total_xp: int) -> int:
         """Calculate level from total XP using exponential progression"""
-        import math
-        if total_xp <= 0:
-            return 1
-        return int(math.log2(total_xp / 100 + 1)) + 1
+        from ..interfaces.level_system import LevelCalculator
+        return LevelCalculator.get_level_from_xp(total_xp)
     
     def _calculate_xp_for_next_level(self, current_level: int) -> int:
         """Calculate XP needed for next level"""

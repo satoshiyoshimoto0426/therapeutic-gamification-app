@@ -110,7 +110,7 @@ class MoodRepository(BaseRepository[MoodLog]):
         # Results: 1->0.75, 2->0.9, 3->1.05, 4->1.2, 5->1.35
         # Clamped to 0.8-1.2 range for balance
         coefficient = 0.6 + (mood_score * 0.15)
-        return max(0.8, min(1.2, coefficient))
+        return round(max(0.8, min(1.2, coefficient)), 2)
     
     async def create_mood_log(self, uid: str, mood_score: int, notes: str = "", 
                             context_tags: List[str] = None) -> str:

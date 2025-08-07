@@ -5,6 +5,7 @@ Task System Interface
 Requirements: 5.1, 5.5
 """
 
+from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple, Any
 from datetime import datetime, timedelta
 from enum import Enum
@@ -37,15 +38,16 @@ class ADHDSupportLevel(str, Enum):
     INTENSIVE = "intensive" # 集中的
 
 
-class XPCalculationResult(BaseModel):
+@dataclass
+class XPCalculationResult:
     """XP計算結果"""
     base_xp: int
     mood_coefficient: float
     adhd_assist_multiplier: float
-    time_efficiency_bonus: float = 0.0
-    priority_bonus: float = 0.0
+    time_efficiency_bonus: float
+    priority_bonus: float
     final_xp: int
-    breakdown: Dict[str, Any] = {}
+    breakdown: Dict[str, float] = field(default_factory=dict)
 
 
 class Task(BaseModel):
@@ -187,32 +189,36 @@ class TaskXPCalculator:
         task: Task,
         mood_score: int,
         actual_duration: Optional[int] = None,
-        adhd_assist_multiplier: float = 1.0
     ) -> XPCalculationResult:
         """詳細XP計算"""
         base_xp = task.base_xp
         mood_coefficient = 0.8 + (mood_score - 1) * 0.1
-        
-        # 時間効率ボーナス
+
+        adhd_multipliers = {
+            ADHDSupportLevel.NONE: 1.0,
+            ADHDSupportLevel.BASIC: 1.1,
+            ADHDSupportLevel.MODERATE: 1.2,
+            ADHDSupportLevel.INTENSIVE: 1.3,
+        }
+        adhd_assist_multiplier = adhd_multipliers.get(task.adhd_support_level, 1.0)
+
         time_efficiency_bonus = 0.0
         if actual_duration and task.estimated_duration:
             if actual_duration <= task.estimated_duration:
                 efficiency = task.estimated_duration / actual_duration
                 time_efficiency_bonus = min(0.2, (efficiency - 1) * 0.1)
-        
-        # 優先度ボーナス
+
         priority_bonuses = {
             TaskPriority.LOW: 0.0,
             TaskPriority.MEDIUM: 0.05,
             TaskPriority.HIGH: 0.1,
-            TaskPriority.URGENT: 0.15
+            TaskPriority.URGENT: 0.15,
         }
         priority_bonus = priority_bonuses.get(task.priority, 0.0)
-        
-        # 最終XP計算
+
         multiplier = mood_coefficient * adhd_assist_multiplier * (1 + time_efficiency_bonus + priority_bonus)
         final_xp = int(base_xp * multiplier)
-        
+
         return XPCalculationResult(
             base_xp=base_xp,
             mood_coefficient=mood_coefficient,
@@ -223,16 +229,15 @@ class TaskXPCalculator:
             breakdown={
                 "base": base_xp,
                 "mood_adjustment": base_xp * (mood_coefficient - 1),
-                "adhd_bonus": base_xp * mood_coefficient * (adhd_assist_multiplier - 1),
-                "time_bonus": base_xp * mood_coefficient * adhd_assist_multiplier * time_efficiency_bonus,
-                "priority_bonus": base_xp * mood_coefficient * adhd_assist_multiplier * priority_bonus
-            }
+                "adhd_bonus": base_xp * (adhd_assist_multiplier - 1),
+                "time_bonus": base_xp * time_efficiency_bonus,
+                "priority_bonus": base_xp * priority_bonus,
+            },
         )
 
 
 class TaskTypeRecommender:
     """タスクタイプ推奨システム"""
-    
     @staticmethod
     def recommend_crystal_attributes(task_type: TaskType) -> List[CrystalAttribute]:
         """タスクタイプに基づくクリスタル属性推奨"""
@@ -240,10 +245,10 @@ class TaskTypeRecommender:
             TaskType.ROUTINE: [CrystalAttribute.SELF_DISCIPLINE, CrystalAttribute.RESILIENCE],
             TaskType.ONE_SHOT: [CrystalAttribute.COURAGE, CrystalAttribute.CURIOSITY],
             TaskType.SKILL_UP: [CrystalAttribute.WISDOM, CrystalAttribute.CREATIVITY],
-            TaskType.SOCIAL: [CrystalAttribute.EMPATHY, CrystalAttribute.COMMUNICATION]
+            TaskType.SOCIAL: [CrystalAttribute.EMPATHY, CrystalAttribute.COMMUNICATION],
         }
         return recommendations.get(task_type, [CrystalAttribute.SELF_DISCIPLINE])
-    
+
     @staticmethod
     def recommend_difficulty(
         user_experience_level: int,
@@ -251,10 +256,18 @@ class TaskTypeRecommender:
         user_confidence: int
     ) -> TaskDifficulty:
         """難易度推奨"""
-        # 簡単な推奨ロジック
         if task_complexity == "simple" and user_confidence >= 4:
             return TaskDifficulty.EASY
-        elif task_complexity == "complex" or user_confidence <= 2:
+        if task_complexity == "complex" or user_confidence <= 2:
             return TaskDifficulty.HARD
-        else:
-            return TaskDifficulty.MEDIUM
+        return TaskDifficulty.MEDIUM
+
+    @staticmethod
+    def recommend_task_type(goal: str) -> str:
+        if not goal:
+            return TaskType.ROUTINE.value
+        if "?" in goal:
+            return TaskType.SOCIAL.value
+        if "プレビュー" in goal:
+            return TaskType.SKILL_UP.value
+        return TaskType.ROUTINE.value

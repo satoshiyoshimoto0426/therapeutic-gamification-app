@@ -13,6 +13,31 @@ import uuid
 from .core_types import CrystalAttribute
 
 
+class ResonanceCalculator:
+    @staticmethod
+    def calculate_resonance_intensity(gauges: Dict[str, int], synergy_count: int = 0, mood_coeff: float = 1.0) -> float:
+        if not gauges:
+            return 0.0
+        avg = sum(max(0, min(100, v)) for v in gauges.values()) / (len(gauges) * 100.0)
+        intensity = avg * 0.6 + max(0, synergy_count) * 0.05 + max(0.0, mood_coeff - 1.0) * 0.5
+        return max(0.0, min(1.0, intensity))
+
+    @staticmethod
+    def calculate_bonus_xp(base_xp: int, intensity: float) -> int:
+        intensity = max(0.0, min(1.0, intensity))
+        return int(round(base_xp * (0.1 + 0.4 * intensity)))
+
+    @staticmethod
+    def calculate_crystal_bonuses(gauges: Dict[str, int]) -> Dict[str, float]:
+        if not gauges:
+            return {"xp_multiplier": 1.0, "harmony_bonus": 0.0}
+        avg = sum(max(0, min(100, v)) for v in gauges.values()) / len(gauges)
+        return {
+            "xp_multiplier": round(1.0 + (avg / 100.0) * 0.2, 2),
+            "harmony_bonus": round((avg / 100.0) * 0.3, 2),
+        }
+
+
 class ResonanceType(str, Enum):
     """共鳴タイプ"""
     HARMONY = "harmony"           # 調和共鳴
@@ -91,7 +116,7 @@ class ResonanceEventManager:
     ) -> Tuple[bool, Optional[ResonanceType]]:
         """共鳴発生条件チェック"""
         level_difference = abs(player_level - yu_level)
-        
+
         # レベル差チェック
         if level_difference < self.conditions.min_level_difference:
             return False, None
@@ -102,6 +127,8 @@ class ResonanceEventManager:
         # プレイヤーレベルチェック
         if player_level < self.conditions.required_player_level:
             return False, None
+        if player_level <= yu_level:
+            return False, None
         
         # クールダウンチェック
         if self._is_in_cooldown():
@@ -109,8 +136,23 @@ class ResonanceEventManager:
         
         # 共鳴タイプ決定
         resonance_type = self._determine_resonance_type(player_level, yu_level, level_difference)
-        
+
         return True, resonance_type
+
+    def meets_conditions(self, intensity: float, synergy_count: int, last_event_at: str | None) -> bool:
+        threshold = 0.7
+        if intensity < threshold:
+            return False
+        if synergy_count <= 0:
+            return False
+        if last_event_at:
+            try:
+                t = datetime.fromisoformat(last_event_at)
+                if datetime.now() - t < timedelta(minutes=60):
+                    return False
+            except Exception:
+                pass
+        return True
     
     def trigger_resonance_event(
         self,

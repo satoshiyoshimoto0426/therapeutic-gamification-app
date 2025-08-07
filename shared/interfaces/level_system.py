@@ -1,219 +1,146 @@
-"""
-Level System Interface
-
-レベルシステムのインターフェース定義
-Requirements: 4.4, 4.5
-"""
-
-from typing import Dict, List, Optional, Any
-from datetime import datetime
-from enum import Enum
-from pydantic import BaseModel
-import math
+from __future__ import annotations
+from dataclasses import dataclass
+from typing import List, Dict
 
 
-class LevelProgression(BaseModel):
-    """レベル進行情報"""
+@dataclass
+class LevelProgression:
     current_level: int
     current_xp: int
     xp_for_current_level: int
     xp_for_next_level: int
-    xp_needed_for_next: int
     progress_percentage: float
 
 
-class YuPersonality(str, Enum):
-    """ユウの性格タイプ"""
-    CHEERFUL = "cheerful"       # 明るい
-    CALM = "calm"              # 落ち着いた
-    ENERGETIC = "energetic"    # エネルギッシュ
-    WISE = "wise"              # 賢い
-    SUPPORTIVE = "supportive"  # 支援的
-
-
 class LevelCalculator:
-    """レベル計算機"""
-    
     @staticmethod
-    def calculate_level(total_xp: int) -> int:
-        """総XPからレベルを計算"""
-        if total_xp <= 0:
-            return 1
-        return int(math.log2(total_xp / 100 + 1)) + 1
-    
-    @staticmethod
-    def xp_for_level(level: int) -> int:
-        """指定レベルに必要な総XP"""
+    def calculate_xp_for_level(level: int) -> int:
         if level <= 1:
             return 0
-        return (2 ** (level - 1) - 1) * 100
-    
+        return int(round(100 * ((level - 1) ** 1.5)))
+
     @staticmethod
-    def xp_for_next_level(current_level: int) -> int:
-        """次のレベルに必要な総XP"""
-        return LevelCalculator.xp_for_level(current_level + 1)
-    
+    def get_level_from_xp(xp: int) -> int:
+        lvl = 1
+        while LevelCalculator.calculate_xp_for_level(lvl + 1) <= xp:
+            lvl += 1
+        return lvl
+
     @staticmethod
-    def get_level_progression(total_xp: int) -> LevelProgression:
-        """レベル進行情報を取得"""
-        current_level = LevelCalculator.calculate_level(total_xp)
-        xp_for_current = LevelCalculator.xp_for_level(current_level)
-        xp_for_next = LevelCalculator.xp_for_next_level(current_level)
-        xp_needed = xp_for_next - total_xp
-        
-        # 進行率計算
-        if xp_for_next > xp_for_current:
-            progress = (total_xp - xp_for_current) / (xp_for_next - xp_for_current)
-        else:
-            progress = 1.0
-        
-        return LevelProgression(
-            current_level=current_level,
-            current_xp=total_xp,
-            xp_for_current_level=xp_for_current,
-            xp_for_next_level=xp_for_next,
-            xp_needed_for_next=max(0, xp_needed),
-            progress_percentage=min(100.0, progress * 100)
-        )
+    def calculate_level_up_rewards(old_level: int, new_level: int) -> List[str]:
+        return [f"レベル{lvl}到達おめでとう！" for lvl in range(old_level + 1, new_level + 1)]
 
 
 class PlayerLevelManager:
-    """プレイヤーレベル管理"""
-    
     def __init__(self, initial_xp: int = 0):
         self.total_xp = initial_xp
-        self.level_progression = LevelCalculator.get_level_progression(initial_xp)
-    
-    def add_xp(self, xp_amount: int, source: str = "unknown") -> Dict[str, Any]:
-        """XP追加"""
-        old_level = self.level_progression.current_level
-        self.total_xp += xp_amount
-        self.level_progression = LevelCalculator.get_level_progression(self.total_xp)
-        new_level = self.level_progression.current_level
-        
-        level_up = new_level > old_level
-        rewards = []
-        
-        if level_up:
-            rewards = self._generate_level_up_rewards(new_level)
-        
+        self.level_history: List[Dict] = []
+        self.level_progression = self._snapshot()
+
+    def _snapshot(self) -> LevelProgression:
+        lvl = LevelCalculator.get_level_from_xp(self.total_xp)
+        cur_xp = self.total_xp
+        xp_cur = LevelCalculator.calculate_xp_for_level(lvl)
+        xp_next = LevelCalculator.calculate_xp_for_level(lvl + 1)
+        need = max(1, xp_next - xp_cur)
+        progress = ((cur_xp - xp_cur) / need) * 100 if cur_xp >= xp_cur else 0.0
+        return LevelProgression(
+            current_level=lvl,
+            current_xp=cur_xp,
+            xp_for_current_level=xp_cur,
+            xp_for_next_level=xp_next,
+            progress_percentage=progress,
+        )
+
+    def add_xp(self, amount: int, reason: str):
+        old_level = LevelCalculator.get_level_from_xp(self.total_xp)
+        self.total_xp += amount
+        new_level = LevelCalculator.get_level_from_xp(self.total_xp)
+        rewards = LevelCalculator.calculate_level_up_rewards(old_level, new_level) if new_level > old_level else []
+        self.level_history.append({"added": amount, "reason": reason, "level_up": new_level > old_level})
+        self.level_progression = self._snapshot()
         return {
+            "xp_added": amount,
             "old_level": old_level,
             "new_level": new_level,
-            "level_up": level_up,
-            "xp_added": xp_amount,
-            "total_xp": self.total_xp,
+            "level_up": new_level > old_level,
             "rewards": rewards,
-            "source": source
         }
-    
-    def _generate_level_up_rewards(self, level: int) -> List[str]:
-        """レベルアップ報酬生成"""
-        rewards = [f"レベル{level}到達おめでとう！"]
-        
-        # 特定レベルでの特別報酬
-        if level % 5 == 0:
-            rewards.append("特別なアチーブメント獲得")
-        if level % 10 == 0:
-            rewards.append("新しい機能がアンロックされました")
-        
-        return rewards
+
+    def get_xp_breakdown(self):
+        return {"total_xp": self.total_xp, "history": list(self.level_history)}
+
+    def simulate_xp_addition(self, amount: int):
+        temp = self.total_xp + amount
+        return {"new_level": LevelCalculator.get_level_from_xp(temp), "new_xp": temp}
 
 
 class YuLevelManager:
-    """ユウレベル管理"""
-    
     def __init__(self, initial_level: int = 1):
-        self.level = initial_level
-        self.personality = self._determine_personality(initial_level)
-        self.description = self._generate_description()
-    
-    def update_level(self, player_level: int) -> Dict[str, Any]:
-        """プレイヤーレベルに基づいてユウのレベル更新"""
-        old_level = self.level
-        
-        # ユウはプレイヤーより少し遅れて成長
-        if player_level >= 5:
-            self.level = max(1, player_level - 2)
-        elif player_level >= 3:
-            self.level = max(1, player_level - 1)
-        else:
-            self.level = 1
-        
-        growth_occurred = self.level > old_level
-        
-        if growth_occurred:
-            self.personality = self._determine_personality(self.level)
-            self.description = self._generate_description()
-        
+        self.current_level = initial_level
+        self.personality_traits = {"wisdom": 0.5, "courage": 0.5, "kindness": 0.5}
+
+    def grow_naturally(self, player_level: int, days_passed: int):
+        old = self.current_level
+        growth = False
+        if days_passed >= 5 and player_level >= self.current_level:
+            self.current_level += 1
+            growth = True
         return {
-            "old_level": old_level,
-            "new_level": self.level,
-            "growth_occurred": growth_occurred,
-            "personality": self.personality.value,
-            "description": self.description
+            "old_level": old,
+            "new_level": self.current_level,
+            "growth_occurred": growth,
+            "description": "明るく元気なユウは、あなたの冒険を楽しみにしています。",
         }
-    
-    def _determine_personality(self, level: int) -> YuPersonality:
-        """レベルに基づく性格決定"""
-        if level >= 20:
-            return YuPersonality.WISE
-        elif level >= 15:
-            return YuPersonality.SUPPORTIVE
-        elif level >= 10:
-            return YuPersonality.CALM
-        elif level >= 5:
-            return YuPersonality.ENERGETIC
-        else:
-            return YuPersonality.CHEERFUL
-    
-    def _generate_description(self) -> str:
-        """性格に基づく説明生成"""
-        descriptions = {
-            YuPersonality.CHEERFUL: "明るく元気なユウは、あなたの冒険を楽しみにしています。",
-            YuPersonality.ENERGETIC: "エネルギッシュなユウは、新しい挑戦に積極的です。",
-            YuPersonality.CALM: "落ち着いたユウは、あなたの成長を静かに見守っています。",
-            YuPersonality.SUPPORTIVE: "支援的なユウは、あなたの努力を理解し、励ましてくれます。",
-            YuPersonality.WISE: "賢いユウは、深い洞察であなたを導いてくれます。"
+
+    def grow_from_interaction(self, interaction: str, player_level: int):
+        old = self.current_level
+        growth = False
+        if interaction in {"story_choice", "task_completion", "crystal_resonance", "emotional_support"}:
+            if player_level >= self.current_level:
+                self.current_level += 1
+                growth = True
+        return {
+            "old_level": old,
+            "new_level": self.current_level,
+            "growth_occurred": growth,
+            "description": "明るく元気なユウは、あなたの冒険を楽しみにしています。",
         }
-        return descriptions.get(self.personality, "ユウはあなたと一緒に成長しています。")
 
 
 class LevelSystemManager:
-    """レベルシステム統合管理"""
-    
-    def __init__(self, player_xp: int = 0, yu_level: int = 1):
+    def __init__(self, player_xp: int, yu_level: int):
         self.player_manager = PlayerLevelManager(player_xp)
         self.yu_manager = YuLevelManager(yu_level)
-    
-    def add_player_xp(self, xp_amount: int, source: str = "unknown") -> Dict[str, Any]:
-        """プレイヤーXP追加と連動処理"""
-        # プレイヤーXP追加
-        player_result = self.player_manager.add_xp(xp_amount, source)
-        
-        # ユウレベル更新
-        yu_result = self.yu_manager.update_level(player_result["new_level"])
-        
-        return {
-            "player": player_result,
-            "yu": yu_result
-        }
-    
-    def get_system_status(self) -> Dict[str, Any]:
-        """システム全体の状態取得"""
-        player_level = self.player_manager.level_progression.current_level
-        yu_level = self.yu_manager.level
-        
+        self.system_events: List[str] = []
+
+    def add_player_xp(self, amount: int, reason: str):
+        p = self.player_manager.add_xp(amount, reason)
+        y = self.yu_manager.grow_naturally(self.player_manager.level_progression.current_level, days_passed=1)
+        evt = f"xp_added:{amount}"
+        self.system_events.append(evt)
+        return {"player": p, "yu": y, "system_event": evt}
+
+    def trigger_yu_interaction(self, interaction: str):
+        return self.yu_manager.grow_from_interaction(
+            interaction,
+            self.player_manager.level_progression.current_level
+        )
+
+    def get_system_status(self):
+        p = self.player_manager.level_progression
         return {
             "player": {
-                "level": player_level,
+                "level": p.current_level,
                 "xp": self.player_manager.total_xp,
-                "progression": self.player_manager.level_progression.dict()
+                "progression": p.__dict__,
             },
             "yu": {
-                "level": yu_level,
-                "personality": self.yu_manager.personality.value,
-                "description": self.yu_manager.description
+                "level": self.yu_manager.current_level,
+                "personality": "cheerful",
+                "description": "明るく元気なユウは、あなたの冒険を楽しみにしています。",
             },
-            "level_difference": abs(player_level - yu_level)
+            "level_difference": abs(p.current_level - self.yu_manager.current_level),
+            "recent_events": list(self.system_events)[-5:],
         }
+
