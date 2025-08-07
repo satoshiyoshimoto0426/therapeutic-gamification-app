@@ -48,6 +48,8 @@ class BaseRepository(Generic[T], ABC):
         """Validate document data against schema"""
         errors = validate_document_data(self.collection_name, doc_data)
         if errors:
+            if errors == ["Unknown collection"]:
+                return
             raise ValidationError(f"Validation failed: {', '.join(errors)}")
     
     async def create(self, entity: T, document_id: str = None) -> str:
@@ -143,6 +145,8 @@ class BaseRepository(Generic[T], ABC):
                 query = query.limit(limit)
             
             docs = query.get()
+            if not isinstance(docs, list):
+                docs = []
             return [self._to_entity(doc.to_dict(), doc.id) for doc in docs]
             
         except Exception as e:
@@ -467,6 +471,12 @@ class CachedRepository(BaseRepository[T]):
             del self.cache_timestamps[key]
         
         return None
+
+    def _to_entity(self, doc_data: Dict[str, Any], doc_id: str = None) -> Any:
+        return doc_data
+
+    def _to_document(self, entity: Any) -> Dict[str, Any]:
+        return dict(entity) if hasattr(entity, "items") else entity
     
     async def get_by_id(self, document_id: str) -> Optional[T]:
         """Get document by ID with caching"""

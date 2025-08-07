@@ -91,7 +91,7 @@ class ResonanceEventManager:
     ) -> Tuple[bool, Optional[ResonanceType]]:
         """共鳴発生条件チェック"""
         level_difference = abs(player_level - yu_level)
-        
+
         # レベル差チェック
         if level_difference < self.conditions.min_level_difference:
             return False, None
@@ -102,6 +102,8 @@ class ResonanceEventManager:
         # プレイヤーレベルチェック
         if player_level < self.conditions.required_player_level:
             return False, None
+        if player_level <= yu_level:
+            return False, None
         
         # クールダウンチェック
         if self._is_in_cooldown():
@@ -109,8 +111,23 @@ class ResonanceEventManager:
         
         # 共鳴タイプ決定
         resonance_type = self._determine_resonance_type(player_level, yu_level, level_difference)
-        
+
         return True, resonance_type
+
+    def meets_conditions(self, intensity: float, synergy_count: int, last_event_at: str | None) -> bool:
+        threshold = 0.7
+        if intensity < threshold:
+            return False
+        if synergy_count <= 0:
+            return False
+        if last_event_at:
+            try:
+                t = datetime.fromisoformat(last_event_at)
+                if datetime.now() - t < timedelta(minutes=60):
+                    return False
+            except Exception:
+                pass
+        return True
     
     def trigger_resonance_event(
         self,

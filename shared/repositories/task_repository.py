@@ -62,14 +62,16 @@ class TaskRepository(BaseRepository[Task]):
     
     def _to_document(self, entity: Task) -> Dict[str, Any]:
         """Convert Task entity to Firestore document"""
+        task_type_value = getattr(entity.task_type, "value", entity.task_type)
+        status_value = getattr(entity.status, "value", entity.status)
         return {
             "task_id": entity.task_id,
             "uid": entity.uid,
-            "task_type": entity.task_type.value,
+            "task_type": task_type_value,
             "title": entity.title,
             "description": entity.description,
             "difficulty": entity.difficulty,
-            "status": entity.status.value,
+            "status": status_value,
             "created_at": entity.created_at,
             "due_date": entity.due_date,
             "completed_at": entity.completed_at,
@@ -80,14 +82,14 @@ class TaskRepository(BaseRepository[Task]):
             "habit_tag": entity.habit_tag,
             "pomodoro_sessions": entity.pomodoro_sessions,
             "linked_story_edge": entity.linked_story_edge,
-            "estimated_duration": entity.estimated_duration
+            "estimated_duration": entity.estimated_duration,
         }
     
     async def get_user_tasks(self, uid: str, status: TaskStatus = None, limit: int = None) -> List[Task]:
         """Get tasks for a specific user"""
         filters = {"uid": uid}
         if status:
-            filters["status"] = status.value
+            filters["status"] = getattr(status, "value", status)
         
         return await self.find_by_multiple_fields(filters, limit)
     
@@ -151,6 +153,7 @@ class TaskRepository(BaseRepository[Task]):
         
         await self.update(task_id, updates)
         
+        task_type_value = getattr(task.task_type, "value", task.task_type)
         return {
             "task_id": task_id,
             "xp_earned": xp_earned,
@@ -158,14 +161,14 @@ class TaskRepository(BaseRepository[Task]):
             "difficulty": task.difficulty,
             "mood_coefficient": mood_coefficient,
             "adhd_assist": adhd_assist,
-            "task_type": task.task_type.value
+            "task_type": task_type_value,
         }
     
     async def get_tasks_by_mandala_cell(self, mandala_cell_id: str, status: TaskStatus = None) -> List[Task]:
         """Get tasks associated with a Mandala cell"""
         filters = {"mandala_cell_id": mandala_cell_id}
         if status:
-            filters["status"] = status.value
+            filters["status"] = getattr(status, "value", status)
         
         return await self.find_by_multiple_fields(filters)
     

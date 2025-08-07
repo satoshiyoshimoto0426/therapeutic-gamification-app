@@ -5,6 +5,7 @@ Provides query planning, index optimization, and performance monitoring
 
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime, timedelta
+import inspect
 from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 import logging
@@ -517,10 +518,11 @@ class QueryProfiler:
     async def profile_async_query(self, collection_name: str, query_func, *args, **kwargs):
         """Profile an async query execution"""
         start_time = datetime.utcnow()
-        
+
         try:
-            # Execute the async query
-            result = await query_func(*args, **kwargs)
+            result = query_func(*args, **kwargs)
+            if inspect.isawaitable(result):
+                result = await result
             
             # Calculate execution time
             end_time = datetime.utcnow()
