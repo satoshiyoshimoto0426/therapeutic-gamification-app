@@ -1,6 +1,21 @@
+from __future__ import annotations
+from enum import StrEnum
 from datetime import datetime
 from typing import Any, Dict, List
 from .mandala_models import MemoryCell, CellStatus
+
+
+class CoreValue(StrEnum):
+    PURPOSE = "Purpose"
+    GROWTH = "Growth"
+    MINDFULNESS = "Mindfulness"
+    COURAGE = "Courage"
+    COMPASSION = "Compassion"
+    DISCIPLINE = "Discipline"
+    CREATIVITY = "Creativity"
+    RESILIENCE = "Resilience"
+    BALANCE = "Balance"
+
 
 class MandalaGrid:
     def __init__(self, uid: str):
@@ -11,7 +26,8 @@ class MandalaGrid:
         self.grid: List[List[MemoryCell]] = [
             [MemoryCell(position=(r, c)) for c in range(9)] for r in range(9)
         ]
-        # center cell as CORE_VALUE
+        self.core_values: List[CoreValue] = list(CoreValue)
+
         center = self.grid[4][4]
         center.status = CellStatus.CORE_VALUE
         center.quest_title = "Core Self"
@@ -66,11 +82,12 @@ class MandalaGrid:
         g.unlocked_count = data.get("unlocked_count", 0)
         g.total_cells = data.get("total_cells", 81)
         g.last_updated = data.get("last_updated")
+        from .mandala_models import CellStatus as CS
         for r in range(9):
             for c in range(9):
                 raw = dict(data["grid"][r][c])
                 raw["position"] = tuple(raw.get("position", (r, c)))
-                raw["status"] = CellStatus(raw.get("status", "locked"))
+                raw["status"] = CS(raw.get("status", "locked"))
                 g.grid[r][c] = MemoryCell(**raw)
         return g
 
@@ -95,3 +112,4 @@ class MandalaSystemInterface:
 
     def get_daily_reminder_for_user(self, uid: str) -> str:
         return self.get_or_create_grid(uid).get_daily_core_value_reminder()
+

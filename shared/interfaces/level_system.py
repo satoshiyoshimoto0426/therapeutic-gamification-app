@@ -2,6 +2,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List, Dict
 
+
+@dataclass
+class LevelProgression:
+    current_level: int
+    current_xp: int
+    xp_for_current_level: int
+    xp_for_next_level: int
+    progress_percentage: float
+
+
 class LevelCalculator:
     @staticmethod
     def calculate_xp_for_level(level: int) -> int:
@@ -20,26 +30,27 @@ class LevelCalculator:
     def calculate_level_up_rewards(old_level: int, new_level: int) -> List[str]:
         return [f"レベル{lvl}到達おめでとう！" for lvl in range(old_level + 1, new_level + 1)]
 
+
 class PlayerLevelManager:
     def __init__(self, initial_xp: int = 0):
         self.total_xp = initial_xp
         self.level_history: List[Dict] = []
         self.level_progression = self._snapshot()
 
-    def _snapshot(self):
+    def _snapshot(self) -> LevelProgression:
         lvl = LevelCalculator.get_level_from_xp(self.total_xp)
         cur_xp = self.total_xp
         xp_cur = LevelCalculator.calculate_xp_for_level(lvl)
         xp_next = LevelCalculator.calculate_xp_for_level(lvl + 1)
         need = max(1, xp_next - xp_cur)
         progress = ((cur_xp - xp_cur) / need) * 100 if cur_xp >= xp_cur else 0.0
-        return {
-            "current_level": lvl,
-            "current_xp": cur_xp,
-            "xp_for_current_level": xp_cur,
-            "xp_for_next_level": xp_next,
-            "progress_percentage": progress,
-        }
+        return LevelProgression(
+            current_level=lvl,
+            current_xp=cur_xp,
+            xp_for_current_level=xp_cur,
+            xp_for_next_level=xp_next,
+            progress_percentage=progress,
+        )
 
     def add_xp(self, amount: int, reason: str):
         old_level = LevelCalculator.get_level_from_xp(self.total_xp)
@@ -62,6 +73,7 @@ class PlayerLevelManager:
     def simulate_xp_addition(self, amount: int):
         temp = self.total_xp + amount
         return {"new_level": LevelCalculator.get_level_from_xp(temp), "new_xp": temp}
+
 
 class YuLevelManager:
     def __init__(self, initial_level: int = 1):
@@ -95,6 +107,7 @@ class YuLevelManager:
             "description": "明るく元気なユウは、あなたの冒険を楽しみにしています。",
         }
 
+
 class LevelSystemManager:
     def __init__(self, player_xp: int, yu_level: int):
         self.player_manager = PlayerLevelManager(player_xp)
@@ -103,19 +116,31 @@ class LevelSystemManager:
 
     def add_player_xp(self, amount: int, reason: str):
         p = self.player_manager.add_xp(amount, reason)
-        y = self.yu_manager.grow_naturally(self.player_manager.level_progression["current_level"], days_passed=1)
+        y = self.yu_manager.grow_naturally(self.player_manager.level_progression.current_level, days_passed=1)
         evt = f"xp_added:{amount}"
         self.system_events.append(evt)
         return {"player": p, "yu": y, "system_event": evt}
 
     def trigger_yu_interaction(self, interaction: str):
-        return self.yu_manager.grow_from_interaction(interaction, self.player_manager.level_progression["current_level"])
+        return self.yu_manager.grow_from_interaction(
+            interaction,
+            self.player_manager.level_progression.current_level
+        )
 
     def get_system_status(self):
         p = self.player_manager.level_progression
         return {
-            "player": {"level": p["current_level"], "xp": self.player_manager.total_xp, "progression": p},
-            "yu": {"level": self.yu_manager.current_level, "personality": "cheerful", "description": "明るく元気なユウは、あなたの冒険を楽しみにしています。"},
-            "level_difference": abs(p["current_level"] - self.yu_manager.current_level),
+            "player": {
+                "level": p.current_level,
+                "xp": self.player_manager.total_xp,
+                "progression": p.__dict__,
+            },
+            "yu": {
+                "level": self.yu_manager.current_level,
+                "personality": "cheerful",
+                "description": "明るく元気なユウは、あなたの冒険を楽しみにしています。",
+            },
+            "level_difference": abs(p.current_level - self.yu_manager.current_level),
             "recent_events": list(self.system_events)[-5:],
         }
+
