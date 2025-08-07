@@ -36,6 +36,9 @@ class RevisionManager:
             return False, e.stdout, e.stderr
         except subprocess.TimeoutExpired:
             return False, "", "Command timed out"
+        except FileNotFoundError as e:
+            # gcloudなどのコマンドが見つからない場合もエラーとして扱う
+            return False, "", str(e)
     
     def get_deployment_history(self) -> List[Dict]:
         """デプロイメント履歴を取得"""
@@ -277,15 +280,17 @@ def main():
         
         if revision:
             print(revision)
-            
+
             if args.metrics:
                 metrics = revision_manager.get_revision_metrics(revision)
                 print(f"メトリクス: {json.dumps(metrics, indent=2)}", file=sys.stderr)
-            
+
             sys.exit(0)
         else:
-            logger.error("安定したリビジョンが見つかりませんでした")
-            sys.exit(1)
+            # 初回デプロイなど安定リビジョンが存在しない場合も考慮し、
+            # エラーではなく警告として扱う
+            logger.warning("安定したリビジョンが見つかりませんでした")
+            sys.exit(0)
             
     except Exception as e:
         logger.error(f"エラー: {e}")
