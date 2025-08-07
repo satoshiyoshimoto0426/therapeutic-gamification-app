@@ -24,10 +24,24 @@ class ValidationError(TherapeuticGameError):
 
 class BusinessLogicError(TherapeuticGameError):
     """Business logic error"""
-    
+
     def __init__(self, message: str, operation: Optional[str] = None):
         super().__init__(message, "BUSINESS_LOGIC_ERROR")
         self.operation = operation
+
+
+class NotFoundError(TherapeuticGameError):
+    """Generic not found error used for repository operations"""
+
+    def __init__(self, message: str = "Requested resource was not found"):
+        super().__init__(message, "NOT_FOUND")
+
+
+class DatabaseError(TherapeuticGameError):
+    """Database operation error"""
+
+    def __init__(self, message: str):
+        super().__init__(message, "DATABASE_ERROR")
 
 class AuthenticationError(TherapeuticGameError):
     """Authentication related errors"""
@@ -172,11 +186,13 @@ EXCEPTION_STATUS_MAP = {
     BusinessLogicError: 400,
     AuthenticationError: 401,
     AuthorizationError: 403,
+    NotFoundError: 404,
     UserNotFoundError: 404,
     TaskNotFoundError: 404,
     ItemNotFoundError: 404,
     DailyTaskLimitExceededError: 429,
     RateLimitExceededError: 429,
+    DatabaseError: 500,
     DatabaseConnectionError: 503,
     ExternalAPIError: 502,
     TherapeuticGameError: 500,  # Default for base exception
