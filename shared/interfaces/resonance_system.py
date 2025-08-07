@@ -1,37 +1,38 @@
 """
-Resonance System Interface
-
-共鳴イベントシステムのインターフェース定義
+[UNICODE_5171]
+Resonance event system for Player-Yu level synchronization
 Requirements: 4.4, 4.5
 """
 
-from typing import Dict, List, Optional, Tuple, Any
+import math
+import random
+from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
-from enum import Enum
 from pydantic import BaseModel, Field
-import uuid
-from .core_types import CrystalAttribute
+from enum import Enum
+
+from .core_types import CrystalAttribute, CrystalGrowthEvent
 
 
 class ResonanceType(str, Enum):
-    """共鳴タイプ"""
-    HARMONY = "harmony"           # 調和共鳴
-    GROWTH = "growth"            # 成長共鳴
-    BREAKTHROUGH = "breakthrough" # 突破共鳴
-    WISDOM = "wisdom"            # 知恵共鳴
+    """[UNICODE_5171]"""
+    LEVEL_SYNC = "level_sync"           # [UNICODE_30EC]
+    CRYSTAL_HARMONY = "crystal_harmony" # [UNICODE_30AF]
+    EMOTIONAL_BOND = "emotional_bond"   # [UNICODE_611F]
+    WISDOM_SHARING = "wisdom_sharing"   # [UNICODE_77E5]
 
 
 class ResonanceIntensity(str, Enum):
-    """共鳴強度"""
-    GENTLE = "gentle"     # 穏やか
-    MODERATE = "moderate" # 中程度
-    STRONG = "strong"     # 強い
-    INTENSE = "intense"   # 激しい
+    """[UNICODE_5171]"""
+    WEAK = "weak"         # [UNICODE_5F31]5-7[UNICODE_FF09]
+    MODERATE = "moderate" # [UNICODE_4E2D]8-12[UNICODE_FF09]
+    STRONG = "strong"     # [UNICODE_5F37]13-20[UNICODE_FF09]
+    INTENSE = "intense"   # [UNICODE_6FC0]21[UNICODE_4EE5]
 
 
 class ResonanceEvent(BaseModel):
-    """共鳴イベント"""
-    event_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    """[UNICODE_5171]"""
+    event_id: str
     resonance_type: ResonanceType
     intensity: ResonanceIntensity
     player_level: int
@@ -40,112 +41,302 @@ class ResonanceEvent(BaseModel):
     bonus_xp: int
     crystal_bonuses: Dict[CrystalAttribute, int] = {}
     special_rewards: List[str] = []
-    therapeutic_message: str = ""
+    therapeutic_message: str
     story_unlock: Optional[str] = None
     triggered_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class ResonanceCondition(BaseModel):
-    """共鳴発生条件"""
+    """[UNICODE_5171]"""
     min_level_difference: int = 5
-    max_level_difference: int = 20
-    cooldown_hours: int = 24
-    required_player_level: int = 1
+    max_level_difference: int = 50
+    cooldown_hours: int = 24  # [UNICODE_540C]
+    player_min_level: int = 3  # [UNICODE_30D7]
+
+
+class ResonanceCalculator:
+    """[UNICODE_5171]"""
+    
+    # [UNICODE_5171]
+    INTENSITY_MULTIPLIERS = {
+        ResonanceIntensity.WEAK: 1.5,
+        ResonanceIntensity.MODERATE: 2.0,
+        ResonanceIntensity.STRONG: 3.0,
+        ResonanceIntensity.INTENSE: 4.0
+    }
+    
+    # [UNICODE_30EC]XP[UNICODE_30DC]
+    BASE_BONUS_PER_LEVEL_DIFF = 50
+    
+    @staticmethod
+    def calculate_resonance_intensity(level_difference: int) -> ResonanceIntensity:
+        """[UNICODE_30EC]"""
+        if level_difference >= 21:
+            return ResonanceIntensity.INTENSE
+        elif level_difference >= 13:
+            return ResonanceIntensity.STRONG
+        elif level_difference >= 8:
+            return ResonanceIntensity.MODERATE
+        else:
+            return ResonanceIntensity.WEAK
+    
+    @staticmethod
+    def calculate_bonus_xp(
+        level_difference: int,
+        player_level: int,
+        resonance_type: ResonanceType
+    ) -> int:
+        """[UNICODE_30DC]XP[UNICODE_3092]"""
+        # [UNICODE_57FA]
+        base_bonus = level_difference * ResonanceCalculator.BASE_BONUS_PER_LEVEL_DIFF
+        
+        # [UNICODE_5F37]
+        intensity = ResonanceCalculator.calculate_resonance_intensity(level_difference)
+        intensity_multiplier = ResonanceCalculator.INTENSITY_MULTIPLIERS[intensity]
+        
+        # [UNICODE_30D7]
+        level_multiplier = 1.0 + (player_level * 0.05)
+        
+        # [UNICODE_5171]
+        type_multipliers = {
+            ResonanceType.LEVEL_SYNC: 1.0,
+            ResonanceType.CRYSTAL_HARMONY: 1.2,
+            ResonanceType.EMOTIONAL_BOND: 0.8,
+            ResonanceType.WISDOM_SHARING: 1.1
+        }
+        type_multiplier = type_multipliers.get(resonance_type, 1.0)
+        
+        # [UNICODE_6700]XP[UNICODE_8A08]
+        final_bonus = int(
+            base_bonus * 
+            intensity_multiplier * 
+            level_multiplier * 
+            type_multiplier
+        )
+        
+        return max(100, final_bonus)  # [UNICODE_6700]100XP[UNICODE_306F]
+    
+    @staticmethod
+    def calculate_crystal_bonuses(
+        resonance_type: ResonanceType,
+        intensity: ResonanceIntensity,
+        player_level: int
+    ) -> Dict[CrystalAttribute, int]:
+        """[UNICODE_30AF]"""
+        bonuses = {}
+        
+        # [UNICODE_5F37]
+        base_bonus = {
+            ResonanceIntensity.WEAK: 5,
+            ResonanceIntensity.MODERATE: 8,
+            ResonanceIntensity.STRONG: 12,
+            ResonanceIntensity.INTENSE: 18
+        }[intensity]
+        
+        # [UNICODE_5171]
+        if resonance_type == ResonanceType.LEVEL_SYNC:
+            # [UNICODE_30D0]
+            for attr in CrystalAttribute:
+                bonuses[attr] = base_bonus // 2
+        
+        elif resonance_type == ResonanceType.CRYSTAL_HARMONY:
+            # [UNICODE_8ABF]
+            bonuses[CrystalAttribute.WISDOM] = base_bonus
+            bonuses[CrystalAttribute.EMPATHY] = base_bonus
+            bonuses[CrystalAttribute.RESILIENCE] = base_bonus // 2
+        
+        elif resonance_type == ResonanceType.EMOTIONAL_BOND:
+            # [UNICODE_611F]
+            bonuses[CrystalAttribute.EMPATHY] = base_bonus
+            bonuses[CrystalAttribute.COMMUNICATION] = base_bonus
+            bonuses[CrystalAttribute.COURAGE] = base_bonus // 2
+        
+        elif resonance_type == ResonanceType.WISDOM_SHARING:
+            # [UNICODE_77E5]
+            bonuses[CrystalAttribute.WISDOM] = base_bonus
+            bonuses[CrystalAttribute.CURIOSITY] = base_bonus
+            bonuses[CrystalAttribute.CREATIVITY] = base_bonus // 2
+        
+        return bonuses
+    
+    @staticmethod
+    def generate_therapeutic_message(
+        resonance_type: ResonanceType,
+        intensity: ResonanceIntensity,
+        player_level: int,
+        yu_level: int
+    ) -> str:
+        """[UNICODE_6CBB]"""
+        intensity_descriptions = {
+            ResonanceIntensity.WEAK: "[UNICODE_7A4F]",
+            ResonanceIntensity.MODERATE: "[UNICODE_5FC3]",
+            ResonanceIntensity.STRONG: "[UNICODE_529B]",
+            ResonanceIntensity.INTENSE: "[UNICODE_6DF1]"
+        }
+        
+        intensity_desc = intensity_descriptions[intensity]
+        
+        messages = {
+            ResonanceType.LEVEL_SYNC: [
+                f"[UNICODE_3042]{intensity_desc}[UNICODE_5171]",
+                f"[UNICODE_30EC]{player_level}[UNICODE_306E]{yu_level}[UNICODE_306E]{intensity_desc}[UNICODE_7D46]",
+                f"{intensity_desc}[UNICODE_5171]"
+            ],
+            ResonanceType.CRYSTAL_HARMONY: [
+                f"[UNICODE_30AF]{intensity_desc}[UNICODE_8ABF]",
+                f"8[UNICODE_3064]{intensity_desc}[UNICODE_5149]",
+                f"{intensity_desc}[UNICODE_30AF]"
+            ],
+            ResonanceType.EMOTIONAL_BOND: [
+                f"[UNICODE_3042]{intensity_desc}[UNICODE_611F]",
+                f"{intensity_desc}[UNICODE_611F]",
+                f"[UNICODE_5FC3]{intensity_desc}[UNICODE_7D46]"
+            ],
+            ResonanceType.WISDOM_SHARING: [
+                f"[UNICODE_30E6]{intensity_desc}[UNICODE_5171]",
+                f"{intensity_desc}[UNICODE_77E5]",
+                f"[UNICODE_3042]{intensity_desc}[UNICODE_77E5]"
+            ]
+        }
+        
+        type_messages = messages.get(resonance_type, messages[ResonanceType.LEVEL_SYNC])
+        return random.choice(type_messages)
 
 
 class ResonanceEventManager:
-    """共鳴イベント管理"""
+    """[UNICODE_5171]"""
     
     def __init__(self):
-        self.resonance_history: List[ResonanceEvent] = []
         self.conditions = ResonanceCondition()
-        
-        # 共鳴タイプ別の設定
-        self.resonance_configs = {
-            ResonanceType.HARMONY: {
-                "base_xp": 50,
-                "crystal_bonus": 10,
-                "message": "ユウとの心が調和し、穏やかな共鳴が生まれました。"
-            },
-            ResonanceType.GROWTH: {
-                "base_xp": 75,
-                "crystal_bonus": 15,
-                "message": "ユウと共に成長の共鳴を感じています。"
-            },
-            ResonanceType.BREAKTHROUGH: {
-                "base_xp": 100,
-                "crystal_bonus": 20,
-                "message": "ユウとの強い絆が新たな突破口を開きました。"
-            },
-            ResonanceType.WISDOM: {
-                "base_xp": 125,
-                "crystal_bonus": 25,
-                "message": "ユウの深い知恵があなたの心に響いています。"
-            }
-        }
+        self.event_history: List[ResonanceEvent] = []
+        self.last_event_times: Dict[ResonanceType, datetime] = {}
     
     def check_resonance_conditions(
-        self, 
-        player_level: int, 
-        yu_level: int
+        self,
+        player_level: int,
+        yu_level: int,
+        current_time: Optional[datetime] = None
     ) -> Tuple[bool, Optional[ResonanceType]]:
-        """共鳴発生条件チェック"""
+        """[UNICODE_5171]"""
+        if current_time is None:
+            current_time = datetime.utcnow()
+        
+        # [UNICODE_57FA]
         level_difference = abs(player_level - yu_level)
         
-        # レベル差チェック
         if level_difference < self.conditions.min_level_difference:
             return False, None
         
         if level_difference > self.conditions.max_level_difference:
             return False, None
         
-        # プレイヤーレベルチェック
-        if player_level < self.conditions.required_player_level:
+        if player_level < self.conditions.player_min_level:
             return False, None
         
-        # クールダウンチェック
-        if self._is_in_cooldown():
+        # [UNICODE_30AF]
+        available_types = []
+        for resonance_type in ResonanceType:
+            last_event_time = self.last_event_times.get(resonance_type)
+            if last_event_time is None:
+                available_types.append(resonance_type)
+            else:
+                time_since_last = current_time - last_event_time
+                if time_since_last.total_seconds() >= self.conditions.cooldown_hours * 3600:
+                    available_types.append(resonance_type)
+        
+        if not available_types:
             return False, None
         
-        # 共鳴タイプ決定
-        resonance_type = self._determine_resonance_type(player_level, yu_level, level_difference)
+        # [UNICODE_5171]
+        selected_type = self._select_resonance_type(
+            level_difference, player_level, yu_level, available_types
+        )
         
-        return True, resonance_type
+        return True, selected_type
+    
+    def _select_resonance_type(
+        self,
+        level_difference: int,
+        player_level: int,
+        yu_level: int,
+        available_types: List[ResonanceType]
+    ) -> ResonanceType:
+        """[UNICODE_72B6]"""
+        # [UNICODE_30EC]
+        type_weights = {}
+        
+        for resonance_type in available_types:
+            if resonance_type == ResonanceType.LEVEL_SYNC:
+                # [UNICODE_30EC]
+                type_weights[resonance_type] = level_difference * 2
+            
+            elif resonance_type == ResonanceType.CRYSTAL_HARMONY:
+                # [UNICODE_4E2D]
+                optimal_diff = 10
+                weight = max(1, optimal_diff - abs(level_difference - optimal_diff))
+                type_weights[resonance_type] = weight * 1.5
+            
+            elif resonance_type == ResonanceType.EMOTIONAL_BOND:
+                # [UNICODE_30D7]
+                type_weights[resonance_type] = player_level * 0.5
+            
+            elif resonance_type == ResonanceType.WISDOM_SHARING:
+                # [UNICODE_30E6]
+                type_weights[resonance_type] = yu_level * 0.8
+        
+        # [UNICODE_91CD]
+        total_weight = sum(type_weights.values())
+        if total_weight == 0:
+            return random.choice(available_types)
+        
+        rand_value = random.uniform(0, total_weight)
+        cumulative_weight = 0
+        
+        for resonance_type, weight in type_weights.items():
+            cumulative_weight += weight
+            if rand_value <= cumulative_weight:
+                return resonance_type
+        
+        return available_types[0]  # [UNICODE_30D5]
     
     def trigger_resonance_event(
         self,
         player_level: int,
         yu_level: int,
-        resonance_type: ResonanceType
+        resonance_type: ResonanceType,
+        current_time: Optional[datetime] = None
     ) -> ResonanceEvent:
-        """共鳴イベント発生"""
+        """[UNICODE_5171]"""
+        if current_time is None:
+            current_time = datetime.utcnow()
+        
         level_difference = abs(player_level - yu_level)
-        intensity = self._calculate_intensity(level_difference)
+        intensity = ResonanceCalculator.calculate_resonance_intensity(level_difference)
         
-        # ボーナスXP計算
-        config = self.resonance_configs[resonance_type]
-        base_xp = config["base_xp"]
-        intensity_multiplier = self._get_intensity_multiplier(intensity)
-        bonus_xp = int(base_xp * intensity_multiplier)
-        
-        # クリスタルボーナス計算
-        crystal_bonuses = self._calculate_crystal_bonuses(
-            resonance_type, 
-            intensity, 
-            config["crystal_bonus"]
+        # [UNICODE_30DC]XP[UNICODE_8A08]
+        bonus_xp = ResonanceCalculator.calculate_bonus_xp(
+            level_difference, player_level, resonance_type
         )
         
-        # 特別報酬生成
-        special_rewards = self._generate_special_rewards(resonance_type, intensity, level_difference)
+        # [UNICODE_30AF]
+        crystal_bonuses = ResonanceCalculator.calculate_crystal_bonuses(
+            resonance_type, intensity, player_level
+        )
         
-        # 治療的メッセージ生成
-        therapeutic_message = self._generate_therapeutic_message(resonance_type, intensity)
+        # [UNICODE_7279]
+        special_rewards = self._generate_special_rewards(intensity, resonance_type)
         
-        # ストーリーアンロック判定
-        story_unlock = self._check_story_unlock(player_level, resonance_type)
+        # [UNICODE_6CBB]
+        therapeutic_message = ResonanceCalculator.generate_therapeutic_message(
+            resonance_type, intensity, player_level, yu_level
+        )
         
-        # 共鳴イベント作成
+        # [UNICODE_30B9]
+        story_unlock = self._check_story_unlock(intensity, resonance_type, player_level)
+        
+        # [UNICODE_30A4]
         event = ResonanceEvent(
+            event_id=f"resonance_{current_time.strftime('%Y%m%d_%H%M%S')}_{resonance_type.value}",
             resonance_type=resonance_type,
             intensity=intensity,
             player_level=player_level,
@@ -155,229 +346,134 @@ class ResonanceEventManager:
             crystal_bonuses=crystal_bonuses,
             special_rewards=special_rewards,
             therapeutic_message=therapeutic_message,
-            story_unlock=story_unlock
+            story_unlock=story_unlock,
+            triggered_at=current_time
         )
         
-        # 履歴に追加
-        self.resonance_history.append(event)
+        # [UNICODE_30A4]
+        self.event_history.append(event)
+        self.last_event_times[resonance_type] = current_time
         
         return event
     
-    def get_resonance_statistics(self) -> Dict[str, Any]:
-        """共鳴統計取得"""
-        total_events = len(self.resonance_history)
-        
-        if total_events == 0:
-            return {
-                "total_events": 0,
-                "last_event": None,
-                "type_distribution": {},
-                "total_bonus_xp": 0,
-                "average_bonus_xp": 0
-            }
-        
-        # タイプ別分布
-        type_distribution = {}
-        total_bonus_xp = 0
-        
-        for event in self.resonance_history:
-            event_type = event.resonance_type.value
-            type_distribution[event_type] = type_distribution.get(event_type, 0) + 1
-            total_bonus_xp += event.bonus_xp
-        
-        return {
-            "total_events": total_events,
-            "last_event": self.resonance_history[-1].triggered_at,
-            "type_distribution": type_distribution,
-            "total_bonus_xp": total_bonus_xp,
-            "average_bonus_xp": total_bonus_xp / total_events
-        }
-    
-    def simulate_resonance_probability(
-        self, 
-        player_level: int, 
-        yu_level: int, 
-        days_ahead: int = 7
-    ) -> Dict[str, Any]:
-        """共鳴確率シミュレーション"""
-        level_difference = abs(player_level - yu_level)
-        
-        # 基本確率計算
-        if level_difference < self.conditions.min_level_difference:
-            base_probability = 0.0
-        elif level_difference >= self.conditions.max_level_difference:
-            base_probability = 0.1
-        else:
-            # レベル差に基づく確率（5-20の範囲で線形増加）
-            normalized_diff = (level_difference - 5) / 15
-            base_probability = 0.3 + (normalized_diff * 0.4)  # 0.3-0.7の範囲
-        
-        # クールダウン考慮
-        if self._is_in_cooldown():
-            current_probability = 0.0
-        else:
-            current_probability = base_probability
-        
-        # 将来予測
-        future_probabilities = []
-        for day in range(1, days_ahead + 1):
-            # 簡単な予測モデル（実際はより複雑になる）
-            daily_prob = base_probability * (1 - 0.1 * day)  # 時間経過で少し減少
-            future_probabilities.append({
-                "day": day,
-                "probability": max(0.0, daily_prob)
-            })
-        
-        return {
-            "current_probability": current_probability,
-            "base_probability": base_probability,
-            "level_difference": level_difference,
-            "in_cooldown": self._is_in_cooldown(),
-            "future_predictions": future_probabilities
-        }
-    
-    # プライベートメソッド
-    
-    def _is_in_cooldown(self) -> bool:
-        """クールダウン中かチェック"""
-        if not self.resonance_history:
-            return False
-        
-        last_event = self.resonance_history[-1]
-        cooldown_end = last_event.triggered_at + timedelta(hours=self.conditions.cooldown_hours)
-        
-        return datetime.utcnow() < cooldown_end
-    
-    def _determine_resonance_type(
-        self, 
-        player_level: int, 
-        yu_level: int, 
-        level_difference: int
-    ) -> ResonanceType:
-        """共鳴タイプ決定"""
-        # プレイヤーがユウより高レベルの場合
-        if player_level > yu_level:
-            if level_difference >= 15:
-                return ResonanceType.WISDOM
-            elif level_difference >= 10:
-                return ResonanceType.BREAKTHROUGH
-            else:
-                return ResonanceType.GROWTH
-        
-        # ユウがプレイヤーより高レベルの場合
-        else:
-            if level_difference >= 15:
-                return ResonanceType.WISDOM
-            elif level_difference >= 10:
-                return ResonanceType.HARMONY
-            else:
-                return ResonanceType.GROWTH
-    
-    def _calculate_intensity(self, level_difference: int) -> ResonanceIntensity:
-        """共鳴強度計算"""
-        if level_difference >= 18:
-            return ResonanceIntensity.INTENSE
-        elif level_difference >= 12:
-            return ResonanceIntensity.STRONG
-        elif level_difference >= 8:
-            return ResonanceIntensity.MODERATE
-        else:
-            return ResonanceIntensity.GENTLE
-    
-    def _get_intensity_multiplier(self, intensity: ResonanceIntensity) -> float:
-        """強度倍率取得"""
-        multipliers = {
-            ResonanceIntensity.GENTLE: 1.0,
-            ResonanceIntensity.MODERATE: 1.2,
-            ResonanceIntensity.STRONG: 1.5,
-            ResonanceIntensity.INTENSE: 2.0
-        }
-        return multipliers.get(intensity, 1.0)
-    
-    def _calculate_crystal_bonuses(
-        self, 
-        resonance_type: ResonanceType, 
-        intensity: ResonanceIntensity,
-        base_bonus: int
-    ) -> Dict[CrystalAttribute, int]:
-        """クリスタルボーナス計算"""
-        intensity_multiplier = self._get_intensity_multiplier(intensity)
-        bonus_amount = int(base_bonus * intensity_multiplier)
-        
-        # 共鳴タイプに基づく属性選択
-        type_attributes = {
-            ResonanceType.HARMONY: [CrystalAttribute.EMPATHY, CrystalAttribute.RESILIENCE],
-            ResonanceType.GROWTH: [CrystalAttribute.CURIOSITY, CrystalAttribute.COURAGE],
-            ResonanceType.BREAKTHROUGH: [CrystalAttribute.CREATIVITY, CrystalAttribute.SELF_DISCIPLINE],
-            ResonanceType.WISDOM: [CrystalAttribute.WISDOM, CrystalAttribute.COMMUNICATION]
-        }
-        
-        attributes = type_attributes.get(resonance_type, [CrystalAttribute.SELF_DISCIPLINE])
-        
-        return {attr: bonus_amount for attr in attributes}
-    
     def _generate_special_rewards(
-        self, 
-        resonance_type: ResonanceType, 
+        self,
         intensity: ResonanceIntensity,
-        level_difference: int
+        resonance_type: ResonanceType
     ) -> List[str]:
-        """特別報酬生成"""
+        """[UNICODE_7279]"""
         rewards = []
         
-        # 強度に基づく報酬
-        if intensity == ResonanceIntensity.INTENSE:
-            rewards.append("レジェンダリーアイテム獲得")
+        # [UNICODE_5F37]
+        if intensity == ResonanceIntensity.WEAK:
+            rewards.append("resonance_crystal_fragment")
+        elif intensity == ResonanceIntensity.MODERATE:
+            rewards.extend(["resonance_crystal_fragment", "harmony_potion"])
         elif intensity == ResonanceIntensity.STRONG:
-            rewards.append("レアアイテム獲得")
+            rewards.extend(["resonance_crystal", "harmony_elixir", "bond_strengthener"])
+        elif intensity == ResonanceIntensity.INTENSE:
+            rewards.extend([
+                "legendary_resonance_crystal", "ultimate_harmony_elixir",
+                "eternal_bond_seal", "wisdom_of_ages"
+            ])
         
-        # レベル差に基づく報酬
-        if level_difference >= 15:
-            rewards.append("特別なストーリー分岐アンロック")
-        
-        # タイプ別報酬
+        # [UNICODE_30BF]
         type_rewards = {
-            ResonanceType.HARMONY: "調和の証獲得",
-            ResonanceType.GROWTH: "成長の印獲得",
-            ResonanceType.BREAKTHROUGH: "突破の勲章獲得",
-            ResonanceType.WISDOM: "知恵の宝珠獲得"
+            ResonanceType.LEVEL_SYNC: ["sync_amplifier", "level_harmony_badge"],
+            ResonanceType.CRYSTAL_HARMONY: ["crystal_tuner", "harmony_conductor"],
+            ResonanceType.EMOTIONAL_BOND: ["empathy_enhancer", "bond_deepener"],
+            ResonanceType.WISDOM_SHARING: ["wisdom_scroll", "knowledge_crystal"]
         }
         
         if resonance_type in type_rewards:
-            rewards.append(type_rewards[resonance_type])
+            rewards.extend(type_rewards[resonance_type])
         
         return rewards
     
-    def _generate_therapeutic_message(
-        self, 
-        resonance_type: ResonanceType, 
-        intensity: ResonanceIntensity
-    ) -> str:
-        """治療的メッセージ生成"""
-        base_message = self.resonance_configs[resonance_type]["message"]
-        
-        # 強度に基づくメッセージ拡張
-        intensity_additions = {
-            ResonanceIntensity.GENTLE: "この穏やかな瞬間を大切にしてください。",
-            ResonanceIntensity.MODERATE: "あなたの努力が実を結んでいます。",
-            ResonanceIntensity.STRONG: "素晴らしい成長を遂げていますね。",
-            ResonanceIntensity.INTENSE: "あなたの変化は本当に驚くべきものです。"
-        }
-        
-        addition = intensity_additions.get(intensity, "")
-        
-        return f"{base_message} {addition}".strip()
-    
     def _check_story_unlock(
-        self, 
-        player_level: int, 
-        resonance_type: ResonanceType
+        self,
+        intensity: ResonanceIntensity,
+        resonance_type: ResonanceType,
+        player_level: int
     ) -> Optional[str]:
-        """ストーリーアンロック判定"""
-        # 特定条件でストーリーアンロック
-        if player_level >= 10 and resonance_type == ResonanceType.BREAKTHROUGH:
-            return "special_chapter_breakthrough"
-        elif player_level >= 20 and resonance_type == ResonanceType.WISDOM:
-            return "wisdom_path_unlock"
+        """[UNICODE_30B9]"""
+        # [UNICODE_5F37]
+        if intensity in [ResonanceIntensity.STRONG, ResonanceIntensity.INTENSE]:
+            story_unlocks = {
+                ResonanceType.LEVEL_SYNC: "resonance_sync_chapter",
+                ResonanceType.CRYSTAL_HARMONY: "crystal_harmony_chapter",
+                ResonanceType.EMOTIONAL_BOND: "emotional_bond_chapter",
+                ResonanceType.WISDOM_SHARING: "wisdom_sharing_chapter"
+            }
+            
+            # [UNICODE_30D7]
+            if player_level >= 10:
+                return story_unlocks.get(resonance_type)
         
         return None
+    
+    def get_resonance_statistics(self) -> Dict:
+        """[UNICODE_5171]"""
+        if not self.event_history:
+            return {
+                "total_events": 0,
+                "events_by_type": {},
+                "events_by_intensity": {},
+                "total_bonus_xp": 0,
+                "average_bonus_xp": 0,
+                "last_event": None
+            }
+        
+        # [UNICODE_30BF]
+        events_by_type = {}
+        for event in self.event_history:
+            event_type = event.resonance_type.value
+            events_by_type[event_type] = events_by_type.get(event_type, 0) + 1
+        
+        # [UNICODE_5F37]
+        events_by_intensity = {}
+        for event in self.event_history:
+            intensity = event.intensity.value
+            events_by_intensity[intensity] = events_by_intensity.get(intensity, 0) + 1
+        
+        # XP[UNICODE_7D71]
+        total_bonus_xp = sum(event.bonus_xp for event in self.event_history)
+        average_bonus_xp = total_bonus_xp / len(self.event_history)
+        
+        return {
+            "total_events": len(self.event_history),
+            "events_by_type": events_by_type,
+            "events_by_intensity": events_by_intensity,
+            "total_bonus_xp": total_bonus_xp,
+            "average_bonus_xp": average_bonus_xp,
+            "last_event": self.event_history[-1].triggered_at if self.event_history else None
+        }
+    
+    def simulate_resonance_probability(
+        self,
+        player_level: int,
+        yu_level: int,
+        days_ahead: int = 7
+    ) -> Dict:
+        """[UNICODE_5171]"""
+        current_time = datetime.utcnow()
+        simulation_results = []
+        
+        for day in range(days_ahead):
+            sim_time = current_time + timedelta(days=day)
+            can_resonate, resonance_type = self.check_resonance_conditions(
+                player_level, yu_level, sim_time
+            )
+            
+            simulation_results.append({
+                "day": day + 1,
+                "can_resonate": can_resonate,
+                "resonance_type": resonance_type.value if resonance_type else None,
+                "level_difference": abs(player_level - yu_level)
+            })
+        
+        return {
+            "simulation_days": days_ahead,
+            "results": simulation_results,
+            "resonance_possible_days": sum(1 for r in simulation_results if r["can_resonate"])
+        }
