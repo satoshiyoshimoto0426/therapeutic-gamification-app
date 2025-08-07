@@ -26,3 +26,25 @@ class CrystalSystemResponse(BaseModel):
     milestones: List[Dict] = Field(default_factory=list)
     synergies: List[Dict] = Field(default_factory=list)
 
+
+class CrystalResonanceRequest(BaseModel):
+    uid: str
+    gauges: Dict[str, int] = Field(default_factory=dict)
+    synergy_count: int = 0
+    mood_coefficient: float = 1.0
+    base_xp: int = 0
+    requested_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class CrystalResonanceResponse(BaseModel):
+    success: bool = True
+    intensity: float = 0.0
+    bonus_xp: int = 0
+    details: Dict[str, float] = Field(default_factory=dict)
+
+
+class CrystalMilestoneResponse(BaseModel):
+    success: bool = True
+    milestone: Dict = Field(default_factory=dict)
+    rewards: List[str] = Field(default_factory=list)
+
