@@ -37,9 +37,21 @@ class AuthenticationError(TherapeuticGameError):
 
 class AuthorizationError(TherapeuticGameError):
     """Authorization related errors"""
-    
+
     def __init__(self, message: str = "こ"):
         super().__init__(message, "AUTHORIZATION_ERROR")
+
+class NotFoundError(TherapeuticGameError):
+    """Generic not found error for missing resources."""
+
+    def __init__(self, message: str = "Resource not found"):
+        super().__init__(message, "NOT_FOUND")
+
+class DatabaseError(TherapeuticGameError):
+    """Generic database operation error."""
+
+    def __init__(self, message: str = "Database operation failed"):
+        super().__init__(message, "DATABASE_ERROR")
 
 class UserNotFoundError(TherapeuticGameError):
     """User not found error"""
@@ -172,11 +184,13 @@ EXCEPTION_STATUS_MAP = {
     BusinessLogicError: 400,
     AuthenticationError: 401,
     AuthorizationError: 403,
+    NotFoundError: 404,
     UserNotFoundError: 404,
     TaskNotFoundError: 404,
     ItemNotFoundError: 404,
     DailyTaskLimitExceededError: 429,
     RateLimitExceededError: 429,
+    DatabaseError: 500,
     DatabaseConnectionError: 503,
     ExternalAPIError: 502,
     TherapeuticGameError: 500,  # Default for base exception
