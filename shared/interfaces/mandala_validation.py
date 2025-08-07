@@ -6,6 +6,7 @@ Requirements: 4.1, 4.3
 """
 
 from typing import Dict, List, Optional, Tuple, Any
+from datetime import datetime, timedelta
 from .core_types import ChapterType, CellStatus
 from .validation import ValidationResult, BaseValidator
 
@@ -30,6 +31,45 @@ class MandalaValidator(BaseValidator):
         
         result.is_valid = len(result.errors) == 0
         return result
+
+
+class MandalaBusinessRules:
+    """Basic business rules for mandala interactions."""
+
+    def __init__(self, max_daily_unlocks: int = 2, min_completion_interval_hours: int = 1):
+        self.max_daily_unlocks = max_daily_unlocks
+        self.min_completion_interval_hours = min_completion_interval_hours
+
+    def can_unlock_today(self, grid: "MandalaGrid", today_unlocks: int) -> ValidationResult:
+        """Check if the user can unlock more cells today."""
+        if today_unlocks >= self.max_daily_unlocks:
+            return ValidationResult(
+                is_valid=False,
+                error_code="DAILY_UNLOCK_LIMIT_EXCEEDED",
+                error_message="Daily unlock limit exceeded",
+            )
+        return ValidationResult(is_valid=True)
+
+    def can_complete_now(
+        self,
+        grid: "MandalaGrid",
+        row: int,
+        col: int,
+        last_completion_time: Optional[str],
+    ) -> ValidationResult:
+        """Ensure sufficient time has passed since last completion."""
+        if last_completion_time:
+            try:
+                last_time = datetime.fromisoformat(last_completion_time)
+                if datetime.now() - last_time < timedelta(hours=self.min_completion_interval_hours):
+                    return ValidationResult(
+                        is_valid=False,
+                        error_code="COMPLETION_INTERVAL_TOO_SHORT",
+                        error_message="Completion interval too short",
+                    )
+            except ValueError:
+                pass
+        return ValidationResult(is_valid=True)
     
     @classmethod
     def validate_chapter_type(cls, chapter_type: str) -> ValidationResult:
