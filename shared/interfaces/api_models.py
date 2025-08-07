@@ -7,7 +7,7 @@ API用のリクエスト・レスポンスモデル定義
 from typing import Dict, List, Optional, Any, Union
 from datetime import datetime
 from pydantic import BaseModel, Field
-from .core_types import TaskType, TaskStatus, CrystalAttribute
+from .core_types import TaskType, TaskStatus, CrystalAttribute, CrystalGrowthEvent
 
 
 class APIResponse(BaseModel):
@@ -145,3 +145,54 @@ class ErrorResponse(BaseModel):
     message: str
     details: Dict[str, Any] = {}
     timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+
+# Crystal system API models
+class CrystalGrowthRequest(BaseModel):
+    """クリスタル成長リクエスト"""
+    attribute: CrystalAttribute
+    event_type: CrystalGrowthEvent
+    growth_amount: int = Field(..., ge=0)
+    trigger_context: Dict[str, Any] = {}
+
+
+class CrystalGrowthResponse(BaseModel):
+    """クリスタル成長レスポンス"""
+    success: bool
+    attribute: CrystalAttribute
+    previous_value: int
+    new_value: int
+    growth_amount: int
+    milestone_reached: bool = False
+    milestone_rewards: List[str] = []
+    therapeutic_message: str = ""
+
+
+class CrystalSystemResponse(BaseModel):
+    """ユーザークリスタルシステム状態"""
+    crystals: Dict[str, Dict[str, Any]]
+    total_growth_events: int
+    resonance_level: int
+    active_synergies: List[Dict[str, Any]] = []
+    available_milestones: List[Dict[str, Any]] = []
+
+
+class CrystalResonanceRequest(BaseModel):
+    """クリスタル共鳴リクエスト"""
+    uid: str
+    player_level: int
+    yu_level: int
+
+
+class CrystalResonanceResponse(BaseModel):
+    """クリスタル共鳴レスポンス"""
+    success: bool
+    event: Dict[str, Any] = {}
+
+
+class CrystalMilestoneResponse(BaseModel):
+    """クリスタルマイルストーンレスポンス"""
+    success: bool
+    milestone: Dict[str, Any]
+    rewards: List[str] = []
+    therapeutic_message: str = ""

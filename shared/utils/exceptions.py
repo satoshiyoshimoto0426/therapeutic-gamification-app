@@ -29,6 +29,26 @@ class BusinessLogicError(TherapeuticGameError):
         super().__init__(message, "BUSINESS_LOGIC_ERROR")
         self.operation = operation
 
+
+class DatabaseError(TherapeuticGameError):
+    """Database operation error"""
+
+    def __init__(self, message: str = "Database operation failed"):
+        super().__init__(message, "DATABASE_ERROR")
+
+
+class NotFoundError(TherapeuticGameError):
+    """Generic not found error"""
+
+    def __init__(self, entity: str, entity_id: Optional[str] = None):
+        details = {"entity": entity}
+        if entity_id is not None:
+            details["id"] = entity_id
+            message = f"{entity} not found: {entity_id}"
+        else:
+            message = f"{entity} not found"
+        super().__init__(message, "NOT_FOUND", details=details)
+
 class AuthenticationError(TherapeuticGameError):
     """Authentication related errors"""
     
@@ -175,9 +195,11 @@ EXCEPTION_STATUS_MAP = {
     UserNotFoundError: 404,
     TaskNotFoundError: 404,
     ItemNotFoundError: 404,
+    NotFoundError: 404,
     DailyTaskLimitExceededError: 429,
     RateLimitExceededError: 429,
     DatabaseConnectionError: 503,
+    DatabaseError: 500,
     ExternalAPIError: 502,
     TherapeuticGameError: 500,  # Default for base exception
 }
