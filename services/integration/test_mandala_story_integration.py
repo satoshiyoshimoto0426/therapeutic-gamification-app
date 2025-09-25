@@ -18,8 +18,8 @@ from shared.interfaces.task_system import TaskType
 
 # ?
 from services.mandala.main import MandalaSystem
-from services.ai_story.main import AIStoryEngine
-from services.story_dag.main import StoryDAG
+from services.ai-story.main import AIStoryEngine
+from services.story-dag.main import StoryDAG
 
 
 class TestMandalaStoryIntegration:

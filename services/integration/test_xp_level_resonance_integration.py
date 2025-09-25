@@ -18,7 +18,7 @@ from shared.interfaces.crystal_system import CrystalGauge, CRYSTAL_ATTRIBUTES
 from shared.interfaces.task_system import TaskType
 
 # ?
-from services.core_game.main import CoreGameEngine
+from services.core-game.main import CoreGameEngine
 
 
 class TestXPLevelResonanceIntegration:

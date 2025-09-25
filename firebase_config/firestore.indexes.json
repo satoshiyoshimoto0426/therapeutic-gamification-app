@@ -1,0 +1,556 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "user_profiles",
+      "fields": [
+        {
+          "fieldPath": "email",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "last_active",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "user_profiles",
+      "fields": [
+        {
+          "fieldPath": "player_level",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "total_xp",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "user_profiles",
+      "fields": [
+        {
+          "fieldPath": "care_points",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "subscription_status",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "tasks",
+      "fields": [
+        {
+          "fieldPath": "uid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "due_date",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "tasks",
+      "fields": [
+        {
+          "fieldPath": "uid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "task_type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "tasks",
+      "fields": [
+        {
+          "fieldPath": "uid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "difficulty",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "tasks",
+      "fields": [
+        {
+          "fieldPath": "mandala_cell_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "completed_at",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "tasks",
+      "fields": [
+        {
+          "fieldPath": "habit_tag",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "tasks",
+      "fields": [
+        {
+          "fieldPath": "uid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "completed_at",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "xp_earned",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "story_states",
+      "fields": [
+        {
+          "fieldPath": "uid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "current_chapter",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "last_generation_time",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "story_states",
+      "fields": [
+        {
+          "fieldPath": "uid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "unlocked_chapters",
+          "arrayContains": true
+        },
+        {
+          "fieldPath": "last_generation_time",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "story_nodes",
+      "fields": [
+        {
+          "fieldPath": "chapter_type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "node_type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "therapeutic_elements",
+          "arrayContains": true
+        }
+      ]
+    },
+    {
+      "collectionGroup": "story_nodes",
+      "fields": [
+        {
+          "fieldPath": "therapeutic_tags",
+          "arrayContains": true
+        },
+        {
+          "fieldPath": "estimated_read_time",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "story_nodes",
+      "fields": [
+        {
+          "fieldPath": "chapter_type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "unlock_conditions",
+          "arrayContains": true
+        }
+      ]
+    },
+    {
+      "collectionGroup": "story_edges",
+      "fields": [
+        {
+          "fieldPath": "from_node",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "xp_reward",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "story_edges",
+      "fields": [
+        {
+          "fieldPath": "real_task_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "story_edges",
+      "fields": [
+        {
+          "fieldPath": "habit_tag",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "therapeutic_outcome",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "mood_logs",
+      "fields": [
+        {
+          "fieldPath": "uid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "log_date",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "mood_logs",
+      "fields": [
+        {
+          "fieldPath": "uid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "mood_score",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "log_date",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "mood_logs",
+      "fields": [
+        {
+          "fieldPath": "uid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "energy_level",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "stress_level",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "log_date",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "mood_logs",
+      "fields": [
+        {
+          "fieldPath": "log_date",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "mood_score",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "mandala_grids",
+      "fields": [
+        {
+          "fieldPath": "uid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "completion_percentage",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "mandala_grids",
+      "fields": [
+        {
+          "fieldPath": "completion_percentage",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "updated_at",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "mandala_grids",
+      "fields": [
+        {
+          "fieldPath": "uid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "chapter_progress",
+          "arrayContains": true
+        }
+      ]
+    },
+    {
+      "collectionGroup": "guardian_links",
+      "fields": [
+        {
+          "fieldPath": "guardian_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "approved_by_user",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "guardian_links",
+      "fields": [
+        {
+          "fieldPath": "user_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "permission_level",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "weekly_report_enabled",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "guardian_links",
+      "fields": [
+        {
+          "fieldPath": "guardian_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "care_points_allocated",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "game_states",
+      "fields": [
+        {
+          "fieldPath": "player_level",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "total_xp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "game_states",
+      "fields": [
+        {
+          "fieldPath": "uid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "last_resonance_check",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "game_states",
+      "fields": [
+        {
+          "fieldPath": "resonance_events",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "updated_at",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "therapeutic_safety_logs",
+      "fields": [
+        {
+          "fieldPath": "uid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "therapeutic_safety_logs",
+      "fields": [
+        {
+          "fieldPath": "flagged",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "safety_score",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "therapeutic_safety_logs",
+      "fields": [
+        {
+          "fieldPath": "intervention_triggered",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "cbt_intervention_type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "therapeutic_safety_logs",
+      "fields": [
+        {
+          "fieldPath": "content_type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "safety_score",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "adhd_support_settings",
+      "fields": [
+        {
+          "fieldPath": "pomodoro_enabled",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "daily_task_limit",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "adhd_support_settings",
+      "fields": [
+        {
+          "fieldPath": "uid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updated_at",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "therapeutic_safety_logs",
+      "fieldPath": "timestamp",
+      "ttl": true
+    },
+    {
+      "collectionGroup": "mood_logs",
+      "fieldPath": "created_at",
+      "ttl": true
+    }
+  ]
+}

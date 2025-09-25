@@ -8,7 +8,7 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from datetime import datetime, timedelta
-from services.seasonal_events.prestige_system import (
+from .prestige_system import (
     LongTermEngagementSystem, StoryBranchSystem, CosmeticSystem, PrestigeSystem,
     PrestigeLevel, TherapeuticMilestone, CosmeticType
 )

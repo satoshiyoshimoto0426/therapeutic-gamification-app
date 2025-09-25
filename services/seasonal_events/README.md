@@ -61,7 +61,7 @@ LongTermEngagementSystem
 ### 基本的な使用方法
 
 ```python
-from services.seasonal_events.main import EngagementSystem
+from services.seasonal-events.main import EngagementSystem
 
 # システムの初期化
 engagement = EngagementSystem()

@@ -16,8 +16,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
 try:
     from shared.interfaces.core_types import UserProfile
-    from services.therapeutic_safety.main import TherapeuticSafety
-    from services.adhd_support.main import ADHDSupport
+    from services.therapeutic-safety.main import TherapeuticSafety
+    from services.adhd-support.main import ADHDSupport
 except ImportError as e:
     print(f"[UNICODE_30A4]: {e}")
     print("[UNICODE_57FA]...")

@@ -56,6 +56,7 @@ class TaskStatus(str, Enum):
 class CellStatus(str, Enum):
     LOCKED = "locked"
     AVAILABLE = "available"
+    UNLOCKED = "unlocked"  # テスト用の別名
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
 

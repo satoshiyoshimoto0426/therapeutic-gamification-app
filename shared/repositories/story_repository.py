@@ -202,3 +202,32 @@ class StoryStateRepository(BaseRepository[StoryState]):
         except Exception as e:
             self.logger.error(f"Failed to get story progress for user {uid}: {str(e)}")
             raise
+
+
+class StoryRepository:
+    """Unified story repository combining all story-related repositories"""
+    
+    def __init__(self, db_client: firestore.Client):
+        self.nodes = StoryNodeRepository(db_client)
+        self.edges = StoryEdgeRepository(db_client)
+        self.states = StoryStateRepository(db_client)
+    
+    async def get_user_story_state(self, uid: str) -> Optional[StoryState]:
+        """Get user's current story state"""
+        return await self.states.get_by_id(uid)
+    
+    async def get_chapter_nodes(self, chapter_type: str) -> List[StoryNode]:
+        """Get all nodes for a chapter"""
+        return await self.nodes.get_nodes_by_chapter(chapter_type)
+    
+    async def get_available_choices(self, node_id: str) -> List[StoryEdge]:
+        """Get available choices from a node"""
+        return await self.edges.get_edges_from_node(node_id)
+    
+    async def advance_story(self, uid: str, chosen_edge_id: str) -> Dict[str, Any]:
+        """Advance user's story"""
+        return await self.states.advance_story(uid, chosen_edge_id)
+    
+    async def get_progress_summary(self, uid: str) -> Dict[str, Any]:
+        """Get story progress summary"""
+        return await self.states.get_story_progress_summary(uid)

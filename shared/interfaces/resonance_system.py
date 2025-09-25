@@ -19,10 +19,15 @@ class ResonanceType(str, Enum):
     GROWTH = "growth"            # 成長共鳴
     BREAKTHROUGH = "breakthrough" # 突破共鳴
     WISDOM = "wisdom"            # 知恵共鳴
+    LEVEL_SYNC = "level_sync"    # レベル同期共鳴
+    CRYSTAL_HARMONY = "crystal_harmony"  # クリスタル調和共鳴
+    EMOTIONAL_BOND = "emotional_bond"    # 感情絆共鳴
+    WISDOM_SHARING = "wisdom_sharing"    # 知恵共有共鳴
 
 
 class ResonanceIntensity(str, Enum):
     """共鳴強度"""
+    WEAK = "weak"         # 弱い
     GENTLE = "gentle"     # 穏やか
     MODERATE = "moderate" # 中程度
     STRONG = "strong"     # 強い
@@ -58,6 +63,8 @@ class ResonanceEventManager:
     
     def __init__(self):
         self.resonance_history: List[ResonanceEvent] = []
+        self.event_history: List[ResonanceEvent] = []  # テスト用の別名
+        self.last_event_time: Optional[datetime] = None
         self.conditions = ResonanceCondition()
         
         # 共鳴タイプ別の設定
@@ -81,6 +88,26 @@ class ResonanceEventManager:
                 "base_xp": 125,
                 "crystal_bonus": 25,
                 "message": "ユウの深い知恵があなたの心に響いています。"
+            },
+            ResonanceType.LEVEL_SYNC: {
+                "base_xp": 100,
+                "crystal_bonus": 20,
+                "message": "ユウとのレベルが同調し、特別な共鳴が生まれました。"
+            },
+            ResonanceType.CRYSTAL_HARMONY: {
+                "base_xp": 150,
+                "crystal_bonus": 30,
+                "message": "クリスタルの調和が美しい共鳴を生み出しました。"
+            },
+            ResonanceType.EMOTIONAL_BOND: {
+                "base_xp": 120,
+                "crystal_bonus": 25,
+                "message": "感情の絆が深い共鳴を生み出しました。"
+            },
+            ResonanceType.WISDOM_SHARING: {
+                "base_xp": 140,
+                "crystal_bonus": 28,
+                "message": "知恵の共有が特別な共鳴を生み出しました。"
             }
         }
     
@@ -160,6 +187,8 @@ class ResonanceEventManager:
         
         # 履歴に追加
         self.resonance_history.append(event)
+        self.event_history.append(event)  # テスト用の別名
+        self.last_event_time = event.triggered_at
         
         return event
     
@@ -233,7 +262,8 @@ class ResonanceEventManager:
             "base_probability": base_probability,
             "level_difference": level_difference,
             "in_cooldown": self._is_in_cooldown(),
-            "future_predictions": future_probabilities
+            "future_predictions": future_probabilities,
+            "simulation_days": days_ahead
         }
     
     # プライベートメソッド
@@ -381,3 +411,181 @@ class ResonanceEventManager:
             return "wisdom_path_unlock"
         
         return None
+
+
+class ResonanceCalculator:
+    """共鳴計算機"""
+    
+    def __init__(self):
+        self.base_resonance_threshold = 5
+        self.max_resonance_threshold = 20
+    
+    @staticmethod
+    def calculate_resonance_intensity(level_difference: int) -> ResonanceIntensity:
+        """レベル差から共鳴強度を計算"""
+        if level_difference < 8:
+            return ResonanceIntensity.WEAK
+        elif level_difference < 13:
+            return ResonanceIntensity.MODERATE
+        elif level_difference < 21:
+            return ResonanceIntensity.STRONG
+        else:
+            return ResonanceIntensity.INTENSE
+    
+    @staticmethod
+    def calculate_crystal_bonuses(
+        resonance_type: ResonanceType, 
+        intensity: ResonanceIntensity,
+        player_level: int,
+        base_bonus: int = 10
+    ) -> Dict[CrystalAttribute, int]:
+        """クリスタルボーナス計算"""
+        intensity_multiplier = {
+            ResonanceIntensity.WEAK: 1.0,
+            ResonanceIntensity.GENTLE: 1.0,
+            ResonanceIntensity.MODERATE: 1.2,
+            ResonanceIntensity.STRONG: 1.5,
+            ResonanceIntensity.INTENSE: 2.0
+        }.get(intensity, 1.0)
+        
+        bonus_amount = int(base_bonus * intensity_multiplier)
+        
+        # 共鳴タイプに基づく属性選択
+        type_attributes = {
+            ResonanceType.HARMONY: [CrystalAttribute.EMPATHY, CrystalAttribute.RESILIENCE],
+            ResonanceType.GROWTH: [CrystalAttribute.CURIOSITY, CrystalAttribute.COURAGE],
+            ResonanceType.BREAKTHROUGH: [CrystalAttribute.CREATIVITY, CrystalAttribute.SELF_DISCIPLINE],
+            ResonanceType.WISDOM: [CrystalAttribute.WISDOM, CrystalAttribute.COMMUNICATION],
+            ResonanceType.LEVEL_SYNC: [CrystalAttribute.SELF_DISCIPLINE, CrystalAttribute.EMPATHY],
+            ResonanceType.CRYSTAL_HARMONY: [CrystalAttribute.WISDOM, CrystalAttribute.EMPATHY, CrystalAttribute.RESILIENCE],
+            ResonanceType.EMOTIONAL_BOND: [CrystalAttribute.EMPATHY, CrystalAttribute.RESILIENCE],
+            ResonanceType.WISDOM_SHARING: [CrystalAttribute.WISDOM, CrystalAttribute.CURIOSITY]
+        }
+        
+        attributes = type_attributes.get(resonance_type, [CrystalAttribute.SELF_DISCIPLINE])
+        return {attr: bonus_amount for attr in attributes}
+    
+    @staticmethod
+    def generate_therapeutic_message(
+        resonance_type: ResonanceType, 
+        intensity: ResonanceIntensity,
+        player_level: int,
+        yu_level: int
+    ) -> str:
+        """治療的メッセージ生成"""
+        base_messages = {
+            ResonanceType.HARMONY: "ユウとの心が調和し、穏やかな共鳴が生まれました。",
+            ResonanceType.GROWTH: "ユウと共に成長の共鳴を感じています。",
+            ResonanceType.BREAKTHROUGH: "ユウとの強い絆が新たな突破口を開きました。",
+            ResonanceType.WISDOM: "ユウの深い知恵があなたの心に響いています。",
+            ResonanceType.LEVEL_SYNC: "ユウとのレベルが同調し、特別な共鳴が生まれました。",
+            ResonanceType.CRYSTAL_HARMONY: "クリスタルの調和が美しい共鳴を生み出しました。",
+            ResonanceType.EMOTIONAL_BOND: "感情の絆が深い共鳴を生み出しました。共有の力を感じています。",
+            ResonanceType.WISDOM_SHARING: "知恵の共有が特別な共鳴を生み出しました。"
+        }
+        
+        intensity_additions = {
+            ResonanceIntensity.WEAK: "この小さな変化を大切にしてください。",
+            ResonanceIntensity.GENTLE: "この穏やかな瞬間を大切にしてください。",
+            ResonanceIntensity.MODERATE: "あなたの努力が実を結んでいます。",
+            ResonanceIntensity.STRONG: "素晴らしい成長を遂げていますね。",
+            ResonanceIntensity.INTENSE: "あなたの変化は本当に驚くべきものです。"
+        }
+        
+        base_message = base_messages.get(resonance_type, "共鳴が発生しました。")
+        addition = intensity_additions.get(intensity, "")
+        
+        return f"{base_message} {addition}".strip()
+    
+    @staticmethod
+    def calculate_resonance_probability(
+        player_level: int, 
+        yu_level: int,
+        last_resonance_time: Optional[datetime] = None
+    ) -> float:
+        """共鳴発生確率を計算"""
+        level_difference = abs(player_level - yu_level)
+        
+        # レベル差が範囲外の場合
+        base_resonance_threshold = 5
+        max_resonance_threshold = 20
+        
+        if level_difference < base_resonance_threshold:
+            return 0.0
+        if level_difference > max_resonance_threshold:
+            return 0.1
+        
+        # 基本確率計算
+        normalized_diff = (level_difference - base_resonance_threshold) / (max_resonance_threshold - base_resonance_threshold)
+        base_probability = 0.3 + (normalized_diff * 0.4)
+        
+        # クールダウン考慮
+        if last_resonance_time:
+            hours_since_last = (datetime.utcnow() - last_resonance_time).total_seconds() / 3600
+            if hours_since_last < 24:
+                cooldown_factor = hours_since_last / 24
+                base_probability *= cooldown_factor
+        
+        return min(1.0, base_probability)
+    
+    @staticmethod
+    def calculate_bonus_xp(
+        level_difference: int,
+        player_level: int,
+        resonance_type: ResonanceType
+    ) -> int:
+        """ボーナスXPを計算"""
+        base_xp_map = {
+            ResonanceType.HARMONY: 50,
+            ResonanceType.GROWTH: 75,
+            ResonanceType.BREAKTHROUGH: 100,
+            ResonanceType.WISDOM: 125,
+            ResonanceType.LEVEL_SYNC: 100,
+            ResonanceType.CRYSTAL_HARMONY: 150,
+            ResonanceType.EMOTIONAL_BOND: 120,
+            ResonanceType.WISDOM_SHARING: 140
+        }
+        
+        # レベル差から強度を計算
+        intensity = ResonanceCalculator.calculate_resonance_intensity(level_difference)
+        
+        intensity_multiplier_map = {
+            ResonanceIntensity.WEAK: 1.0,
+            ResonanceIntensity.GENTLE: 1.0,
+            ResonanceIntensity.MODERATE: 1.2,
+            ResonanceIntensity.STRONG: 1.5,
+            ResonanceIntensity.INTENSE: 2.0
+        }
+        
+        base_xp = base_xp_map.get(resonance_type, 50)
+        intensity_multiplier = intensity_multiplier_map.get(intensity, 1.0)
+        level_multiplier = 1.0 + (player_level * 0.05)  # レベルに応じて5%ずつ増加
+        
+        return int(base_xp * intensity_multiplier * level_multiplier)
+    
+    @staticmethod
+    def determine_resonance_type(
+        player_level: int, 
+        yu_level: int,
+        recent_activities: List[str] = None
+    ) -> ResonanceType:
+        """共鳴タイプを決定"""
+        level_difference = abs(player_level - yu_level)
+        
+        # プレイヤーがユウより高レベル
+        if player_level > yu_level:
+            if level_difference >= 15:
+                return ResonanceType.WISDOM
+            elif level_difference >= 10:
+                return ResonanceType.BREAKTHROUGH
+            else:
+                return ResonanceType.GROWTH
+        
+        # ユウがプレイヤーより高レベル
+        else:
+            if level_difference >= 15:
+                return ResonanceType.WISDOM
+            elif level_difference >= 10:
+                return ResonanceType.HARMONY
+            else:
+                return ResonanceType.GROWTH

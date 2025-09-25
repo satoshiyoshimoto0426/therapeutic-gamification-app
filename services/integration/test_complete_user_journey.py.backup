@@ -20,11 +20,11 @@ from shared.interfaces.resonance_system import ResonanceSystem
 from shared.interfaces.mandala_system import MandalaGrid
 
 # [UNICODE_30B5]
-from services.line_bot.main import LineBot
-from services.core_game.main import CoreGameEngine
-from services.ai_story.main import AIStoryEngine
-from services.task_mgmt.main import TaskManagement
-from services.mood_tracking.main import MoodTracking
+from services.line-bot.main import LineBot
+from services.core-game.main import CoreGameEngine
+from services.ai-story.main import AIStoryEngine
+from services.task-mgmt.main import TaskManagement
+from services.mood-tracking.main import MoodTracking
 from services.mandala.main import MandalaSystem
 
 

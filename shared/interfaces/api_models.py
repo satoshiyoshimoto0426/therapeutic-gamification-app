@@ -145,3 +145,61 @@ class ErrorResponse(BaseModel):
     message: str
     details: Dict[str, Any] = {}
     timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+
+# Crystal System API Models
+class CrystalGrowthRequest(BaseModel):
+    """クリスタル成長リクエスト"""
+    attribute: CrystalAttribute
+    growth_points: int = Field(..., ge=1, le=100)
+    source_activity: str = ""
+
+
+class CrystalGrowthResponse(BaseModel):
+    """クリスタル成長レスポンス"""
+    attribute: CrystalAttribute
+    previous_level: int
+    new_level: int
+    growth_points_added: int
+    total_growth_points: int
+    milestone_reached: bool = False
+    synergy_activated: bool = False
+
+
+class CrystalSystemResponse(BaseModel):
+    """クリスタルシステムレスポンス"""
+    uid: str
+    crystal_levels: Dict[str, int]
+    total_growth_points: Dict[str, int]
+    active_synergies: List[str] = []
+    milestones_reached: List[str] = []
+    last_updated: datetime
+
+
+class CrystalResonanceRequest(BaseModel):
+    """クリスタル共鳴リクエスト"""
+    primary_attribute: CrystalAttribute
+    secondary_attribute: CrystalAttribute
+    resonance_strength: int = Field(..., ge=1, le=10)
+
+
+class CrystalResonanceResponse(BaseModel):
+    """クリスタル共鳴レスポンス"""
+    resonance_id: str
+    primary_attribute: CrystalAttribute
+    secondary_attribute: CrystalAttribute
+    resonance_strength: int
+    bonus_multiplier: float
+    duration_minutes: int
+    activated_at: datetime
+
+
+class CrystalMilestoneResponse(BaseModel):
+    """クリスタルマイルストーンレスポンス"""
+    milestone_id: str
+    attribute: CrystalAttribute
+    level_reached: int
+    reward_type: str
+    reward_value: int
+    unlocked_features: List[str] = []
+    achieved_at: datetime

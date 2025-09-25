@@ -15,7 +15,7 @@ from datetime import datetime, date, timedelta
 # Add project root to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from services.mood_tracking.main import app
+from .main import app
 from shared.interfaces.mood_system import MoodLevel, MoodTrigger
 
 

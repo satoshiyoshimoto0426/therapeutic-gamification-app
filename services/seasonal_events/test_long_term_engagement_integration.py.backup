@@ -10,8 +10,8 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from datetime import datetime, timedelta
-from services.seasonal_events.main import EngagementSystem
-from services.seasonal_events.prestige_system import LongTermEngagementSystem, TherapeuticMilestone
+from .main import EngagementSystem
+from .prestige_system import LongTermEngagementSystem, TherapeuticMilestone
 import json
 
 class TestLongTermEngagementIntegration:

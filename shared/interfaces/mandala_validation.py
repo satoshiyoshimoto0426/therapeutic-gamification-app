@@ -5,386 +5,273 @@ Mandalaシステムのバリデーション機能
 Requirements: 4.1, 4.3
 """
 
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Any
+from datetime import datetime
+from pydantic import BaseModel
+from .mandala_system import MandalaGrid, MemoryCell
 from .core_types import ChapterType, CellStatus
-from .validation import ValidationResult, BaseValidator
 
 
-class MandalaValidator(BaseValidator):
-    """Mandalaバリデーター"""
+class ValidationResult(BaseModel):
+    """バリデーション結果"""
+    is_valid: bool
+    errors: List[str] = []
+    warnings: List[str] = []
+    details: Dict[str, Any] = {}
+
+
+class MandalaBusinessRules:
+    """Mandalaビジネスルール"""
     
-    @classmethod
-    def validate_grid_position(cls, row: int, col: int) -> ValidationResult:
-        """グリッド位置バリデーション"""
-        result = ValidationResult(is_valid=True)
-        
-        if not isinstance(row, int) or not isinstance(col, int):
-            result.add_error("行と列は整数である必要があります")
-            return result
-        
-        if not (0 <= row <= 8):
-            result.add_error("行は0-8の範囲である必要があります", "row")
-        
-        if not (0 <= col <= 8):
-            result.add_error("列は0-8の範囲である必要があります", "col")
-        
-        result.is_valid = len(result.errors) == 0
-        return result
+    MAX_DAILY_COMPLETIONS = 3
+    MIN_CELL_COMPLETION_INTERVAL_HOURS = 1
+    REQUIRED_CENTER_COMPLETION_FOR_CHAPTER = True
     
-    @classmethod
-    def validate_chapter_type(cls, chapter_type: str) -> ValidationResult:
-        """チャプタータイプバリデーション"""
-        result = ValidationResult(is_valid=True)
+    @staticmethod
+    def validate_cell_unlock_sequence(grid: MandalaGrid, row: int, col: int) -> ValidationResult:
+        """セルアンロック順序の妥当性チェック"""
+        errors = []
+        warnings = []
         
-        try:
-            ChapterType(chapter_type)
-        except ValueError:
-            result.add_error("無効なチャプタータイプです", "chapter_type")
+        cell = grid.get_cell(row, col)
+        if not cell:
+            errors.append(f"セル({row}, {col})が存在しません")
+            return ValidationResult(is_valid=False, errors=errors)
         
-        result.is_valid = len(result.errors) == 0
-        return result
+        # 中央セルは常にアンロック可能
+        if cell.is_center_cell():
+            return ValidationResult(is_valid=True)
+        
+        # アンロック条件チェック
+        completed_cells = grid._get_completed_cell_ids()
+        
+        for condition in cell.unlock_conditions:
+            if condition not in completed_cells:
+                errors.append(f"アンロック条件が満たされていません: {condition}")
+        
+        # 距離チェック（中央から遠すぎる場合の警告）
+        distance = max(abs(row - 4), abs(col - 4))
+        if distance > 3:
+            warnings.append("中央から離れすぎたセルです。段階的な進行を推奨します。")
+        
+        is_valid = len(errors) == 0
+        return ValidationResult(is_valid=is_valid, errors=errors, warnings=warnings)
     
-    @classmethod
-    def validate_cell_unlock_request(cls, unlock_data: Dict[str, Any]) -> ValidationResult:
-        """セルアンロックリクエストバリデーション"""
-        result = ValidationResult(is_valid=True)
-        
-        # 必須フィールドチェック
-        required_fields = ["uid", "chapter_type", "row", "col"]
-        for field in required_fields:
-            if field not in unlock_data:
-                result.add_error(f"{field}は必須です", field)
-        
-        # 位置バリデーション
-        if "row" in unlock_data and "col" in unlock_data:
-            position_result = cls.validate_grid_position(
-                unlock_data["row"], unlock_data["col"]
-            )
-            if not position_result.is_valid:
-                result.errors.extend(position_result.errors)
-                result.field_errors.update(position_result.field_errors)
-        
-        # チャプタータイプバリデーション
-        if "chapter_type" in unlock_data:
-            chapter_result = cls.validate_chapter_type(unlock_data["chapter_type"])
-            if not chapter_result.is_valid:
-                result.errors.extend(chapter_result.errors)
-                result.field_errors.update(chapter_result.field_errors)
-        
-        # UIDバリデーション
-        if "uid" in unlock_data:
-            uid_result = cls.validate_string_length(
-                unlock_data["uid"], "uid", min_length=1, max_length=50
-            )
-            if not uid_result.is_valid:
-                result.errors.extend(uid_result.errors)
-                result.field_errors.update(uid_result.field_errors)
-        
-        result.is_valid = len(result.errors) == 0
-        return result
-    
-    @classmethod
-    def validate_cell_completion_request(cls, completion_data: Dict[str, Any]) -> ValidationResult:
-        """セル完了リクエストバリデーション"""
-        result = ValidationResult(is_valid=True)
-        
-        # 基本的なアンロックリクエストバリデーション
-        unlock_result = cls.validate_cell_unlock_request(completion_data)
-        if not unlock_result.is_valid:
-            result.errors.extend(unlock_result.errors)
-            result.field_errors.update(unlock_result.field_errors)
-        
-        # タスクIDバリデーション（オプション）
-        if "task_id" in completion_data and completion_data["task_id"]:
-            task_id_result = cls.validate_string_length(
-                completion_data["task_id"], "task_id", min_length=1, max_length=100
-            )
-            if not task_id_result.is_valid:
-                result.errors.extend(task_id_result.errors)
-                result.field_errors.update(task_id_result.field_errors)
-        
-        result.is_valid = len(result.errors) == 0
-        return result
-    
-    @classmethod
-    def validate_mandala_grid_data(cls, grid_data: Dict[str, Any]) -> ValidationResult:
-        """Mandalaグリッドデータバリデーション"""
-        result = ValidationResult(is_valid=True)
-        
-        # 必須フィールドチェック
-        required_fields = ["chapter_type", "cells"]
-        for field in required_fields:
-            if field not in grid_data:
-                result.add_error(f"{field}は必須です", field)
-        
-        # チャプタータイプバリデーション
-        if "chapter_type" in grid_data:
-            chapter_result = cls.validate_chapter_type(grid_data["chapter_type"])
-            if not chapter_result.is_valid:
-                result.errors.extend(chapter_result.errors)
-                result.field_errors.update(chapter_result.field_errors)
-        
-        # セルデータバリデーション
-        if "cells" in grid_data:
-            cells_result = cls._validate_cells_data(grid_data["cells"])
-            if not cells_result.is_valid:
-                result.errors.extend(cells_result.errors)
-                result.field_errors.update(cells_result.field_errors)
-        
-        result.is_valid = len(result.errors) == 0
-        return result
-    
-    @classmethod
-    def _validate_cells_data(cls, cells_data: Any) -> ValidationResult:
-        """セルデータバリデーション"""
-        result = ValidationResult(is_valid=True)
-        
-        # リスト形式チェック
-        if not isinstance(cells_data, list):
-            result.add_error("cellsはリストである必要があります", "cells")
-            return result
-        
-        # 9x9グリッドチェック
-        if len(cells_data) != 9:
-            result.add_error("cellsは9行である必要があります", "cells")
-            return result
-        
-        for row_idx, row_data in enumerate(cells_data):
-            if not isinstance(row_data, list):
-                result.add_error(f"行{row_idx}はリストである必要があります", f"cells[{row_idx}]")
-                continue
-            
-            if len(row_data) != 9:
-                result.add_error(f"行{row_idx}は9列である必要があります", f"cells[{row_idx}]")
-                continue
-            
-            for col_idx, cell_data in enumerate(row_data):
-                if cell_data is not None:
-                    cell_result = cls._validate_single_cell_data(cell_data, row_idx, col_idx)
-                    if not cell_result.is_valid:
-                        result.errors.extend(cell_result.errors)
-                        result.field_errors.update(cell_result.field_errors)
-        
-        result.is_valid = len(result.errors) == 0
-        return result
-    
-    @classmethod
-    def _validate_single_cell_data(cls, cell_data: Dict[str, Any], row: int, col: int) -> ValidationResult:
-        """単一セルデータバリデーション"""
-        result = ValidationResult(is_valid=True)
-        
-        cell_prefix = f"cells[{row}][{col}]"
-        
-        # 必須フィールドチェック
-        required_fields = ["position", "status"]
-        for field in required_fields:
-            if field not in cell_data:
-                result.add_error(f"{field}は必須です", f"{cell_prefix}.{field}")
-        
-        # 位置チェック
-        if "position" in cell_data:
-            position = cell_data["position"]
-            if not isinstance(position, (list, tuple)) or len(position) != 2:
-                result.add_error("positionは[row, col]形式である必要があります", f"{cell_prefix}.position")
-            elif position != (row, col):
-                result.add_error(f"位置が一致しません。期待値: ({row}, {col}), 実際: {position}", f"{cell_prefix}.position")
-        
-        # ステータスチェック
-        if "status" in cell_data:
-            try:
-                CellStatus(cell_data["status"])
-            except ValueError:
-                result.add_error("無効なセルステータスです", f"{cell_prefix}.status")
-        
-        # オプションフィールドバリデーション
-        if "title" in cell_data and cell_data["title"]:
-            title_result = cls.validate_string_length(
-                cell_data["title"], f"{cell_prefix}.title", max_length=100
-            )
-            if not title_result.is_valid:
-                result.errors.extend(title_result.errors)
-                result.field_errors.update(title_result.field_errors)
-        
-        if "description" in cell_data and cell_data["description"]:
-            desc_result = cls.validate_string_length(
-                cell_data["description"], f"{cell_prefix}.description", max_length=500
-            )
-            if not desc_result.is_valid:
-                result.errors.extend(desc_result.errors)
-                result.field_errors.update(desc_result.field_errors)
-        
-        if "xp_reward" in cell_data:
-            xp_result = cls.validate_numeric_range(
-                cell_data["xp_reward"], f"{cell_prefix}.xp_reward", min_value=0, max_value=1000
-            )
-            if not xp_result.is_valid:
-                result.errors.extend(xp_result.errors)
-                result.field_errors.update(xp_result.field_errors)
-        
-        result.is_valid = len(result.errors) == 0
-        return result
-    
-    @classmethod
-    def validate_progress_summary_request(cls, request_data: Dict[str, Any]) -> ValidationResult:
-        """進捗サマリーリクエストバリデーション"""
-        result = ValidationResult(is_valid=True)
-        
-        # UIDチェック
-        if "uid" not in request_data:
-            result.add_error("uidは必須です", "uid")
-        else:
-            uid_result = cls.validate_string_length(
-                request_data["uid"], "uid", min_length=1, max_length=50
-            )
-            if not uid_result.is_valid:
-                result.errors.extend(uid_result.errors)
-                result.field_errors.update(uid_result.field_errors)
-        
-        result.is_valid = len(result.errors) == 0
-        return result
-    
-    @classmethod
-    def validate_api_response_data(cls, response_data: Dict[str, Any]) -> ValidationResult:
-        """API応答データバリデーション"""
-        result = ValidationResult(is_valid=True)
-        
-        # 必須フィールドチェック
-        required_fields = ["uid", "grid", "unlocked_count", "total_cells"]
-        for field in required_fields:
-            if field not in response_data:
-                result.add_error(f"{field}は必須です", field)
-        
-        # UIDバリデーション
-        if "uid" in response_data:
-            uid_result = cls.validate_string_length(
-                response_data["uid"], "uid", min_length=1, max_length=50
-            )
-            if not uid_result.is_valid:
-                result.errors.extend(uid_result.errors)
-                result.field_errors.update(uid_result.field_errors)
-        
-        # グリッドデータバリデーション
-        if "grid" in response_data:
-            grid_result = cls._validate_cells_data(response_data["grid"])
-            if not grid_result.is_valid:
-                result.errors.extend(grid_result.errors)
-                result.field_errors.update(grid_result.field_errors)
-        
-        # 数値フィールドバリデーション
-        numeric_fields = ["unlocked_count", "total_cells", "completed_count"]
-        for field in numeric_fields:
-            if field in response_data:
-                numeric_result = cls.validate_numeric_range(
-                    response_data[field], field, min_value=0, max_value=81
-                )
-                if not numeric_result.is_valid:
-                    result.errors.extend(numeric_result.errors)
-                    result.field_errors.update(numeric_result.field_errors)
-        
-        # 完了率バリデーション
-        if "completion_percentage" in response_data:
-            percentage_result = cls.validate_numeric_range(
-                response_data["completion_percentage"], "completion_percentage", 
-                min_value=0.0, max_value=100.0
-            )
-            if not percentage_result.is_valid:
-                result.errors.extend(percentage_result.errors)
-                result.field_errors.update(percentage_result.field_errors)
-        
-        result.is_valid = len(result.errors) == 0
-        return result
-    
-    @classmethod
-    def validate_unlock_request(cls, grid: Any, x: int, y: int, quest_data: Dict[str, Any]) -> ValidationResult:
-        """アンロックリクエストバリデーション"""
-        result = ValidationResult(is_valid=True)
-        
-        # 位置バリデーション
-        position_result = cls.validate_grid_position(x, y)
-        if not position_result.is_valid:
-            result.errors.extend(position_result.errors)
-            result.field_errors.update(position_result.field_errors)
-        
-        # クエストデータバリデーション
-        if "quest_title" in quest_data:
-            title_result = cls.validate_string_length(
-                quest_data["quest_title"], "quest_title", min_length=1, max_length=100
-            )
-            if not title_result.is_valid:
-                result.errors.extend(title_result.errors)
-                result.field_errors.update(title_result.field_errors)
-        
-        if "quest_description" in quest_data:
-            desc_result = cls.validate_string_length(
-                quest_data["quest_description"], "quest_description", min_length=1, max_length=500
-            )
-            if not desc_result.is_valid:
-                result.errors.extend(desc_result.errors)
-                result.field_errors.update(desc_result.field_errors)
-        
-        if "xp_reward" in quest_data:
-            xp_result = cls.validate_numeric_range(
-                quest_data["xp_reward"], "xp_reward", min_value=1, max_value=1000
-            )
-            if not xp_result.is_valid:
-                result.errors.extend(xp_result.errors)
-                result.field_errors.update(xp_result.field_errors)
-        
-        if "difficulty" in quest_data:
-            difficulty_result = cls.validate_numeric_range(
-                quest_data["difficulty"], "difficulty", min_value=1, max_value=5
-            )
-            if not difficulty_result.is_valid:
-                result.errors.extend(difficulty_result.errors)
-                result.field_errors.update(difficulty_result.field_errors)
-        
-        result.is_valid = len(result.errors) == 0
-        return result
-    
-    @classmethod
-    def validate_completion_request(cls, grid: Any, x: int, y: int) -> ValidationResult:
-        """完了リクエストバリデーション"""
-        result = ValidationResult(is_valid=True)
-        
-        # 位置バリデーション
-        position_result = cls.validate_grid_position(x, y)
-        if not position_result.is_valid:
-            result.errors.extend(position_result.errors)
-            result.field_errors.update(position_result.field_errors)
-        
-        # グリッドの状態チェック（実装されている場合）
-        if hasattr(grid, 'get_cell'):
-            cell = grid.get_cell(x, y)
-            if cell is None:
-                result.add_error("指定されたセルが存在しません", "cell")
-            elif hasattr(cell, 'status') and cell.status.value != "available":
-                result.add_error("セルが完了可能な状態ではありません", "cell_status")
-        
-        result.is_valid = len(result.errors) == 0
-        return result
-    
-    @classmethod
-    def validate_therapeutic_focus(cls, therapeutic_focus: str) -> ValidationResult:
-        """治療フォーカスバリデーション"""
-        result = ValidationResult(is_valid=True)
-        
-        # 基本的な文字列バリデーション
-        focus_result = cls.validate_string_length(
-            therapeutic_focus, "therapeutic_focus", min_length=1, max_length=100
-        )
-        if not focus_result.is_valid:
-            result.errors.extend(focus_result.errors)
-            result.field_errors.update(focus_result.field_errors)
-        
-        # 許可された治療フォーカス一覧（例）
-        valid_focuses = [
-            "self_discipline", "empathy", "resilience", "curiosity",
-            "communication", "creativity", "courage", "wisdom",
-            "mindfulness", "emotional_regulation", "social_skills"
+    @staticmethod
+    def validate_daily_completion_limit(
+        uid: str, 
+        completion_history: List[datetime]
+    ) -> ValidationResult:
+        """日次完了制限チェック"""
+        today = datetime.utcnow().date()
+        today_completions = [
+            dt for dt in completion_history 
+            if dt.date() == today
         ]
         
-        if therapeutic_focus not in valid_focuses:
-            result.add_warning(f"未知の治療フォーカス: {therapeutic_focus}")
+        if len(today_completions) >= MandalaBusinessRules.MAX_DAILY_COMPLETIONS:
+            return ValidationResult(
+                is_valid=False,
+                errors=[f"本日の完了制限({MandalaBusinessRules.MAX_DAILY_COMPLETIONS}個)に達しています"]
+            )
         
-        result.is_valid = len(result.errors) == 0
-        return result
+        return ValidationResult(is_valid=True)
+    
+    @staticmethod
+    def validate_completion_interval(
+        last_completion: Optional[datetime]
+    ) -> ValidationResult:
+        """完了間隔チェック"""
+        if not last_completion:
+            return ValidationResult(is_valid=True)
+        
+        hours_since_last = (datetime.utcnow() - last_completion).total_seconds() / 3600
+        
+        if hours_since_last < MandalaBusinessRules.MIN_CELL_COMPLETION_INTERVAL_HOURS:
+            return ValidationResult(
+                is_valid=False,
+                errors=[f"前回の完了から{MandalaBusinessRules.MIN_CELL_COMPLETION_INTERVAL_HOURS}時間経過する必要があります"]
+            )
+        
+        return ValidationResult(is_valid=True)
+
+
+class MandalaValidator:
+    """Mandalaバリデーター"""
+    
+    def __init__(self):
+        self.business_rules = MandalaBusinessRules()
+    
+    def validate_cell_unlock(
+        self, 
+        uid: str, 
+        grid: MandalaGrid, 
+        row: int, 
+        col: int
+    ) -> ValidationResult:
+        """セルアンロックの総合バリデーション"""
+        # 基本的な範囲チェック
+        if not (0 <= row < 9 and 0 <= col < 9):
+            return ValidationResult(
+                is_valid=False,
+                errors=["無効な座標です"]
+            )
+        
+        cell = grid.get_cell(row, col)
+        if not cell:
+            return ValidationResult(
+                is_valid=False,
+                errors=["セルが存在しません"]
+            )
+        
+        # 既にアンロック済みかチェック
+        if cell.status != CellStatus.LOCKED:
+            return ValidationResult(
+                is_valid=False,
+                errors=["セルは既にアンロック済みです"]
+            )
+        
+        # ビジネスルールチェック
+        sequence_result = self.business_rules.validate_cell_unlock_sequence(grid, row, col)
+        
+        return sequence_result
+    
+    def validate_cell_completion(
+        self, 
+        uid: str, 
+        grid: MandalaGrid, 
+        row: int, 
+        col: int,
+        completion_history: List[datetime] = None
+    ) -> ValidationResult:
+        """セル完了の総合バリデーション"""
+        # 基本的な範囲チェック
+        if not (0 <= row < 9 and 0 <= col < 9):
+            return ValidationResult(
+                is_valid=False,
+                errors=["無効な座標です"]
+            )
+        
+        cell = grid.get_cell(row, col)
+        if not cell:
+            return ValidationResult(
+                is_valid=False,
+                errors=["セルが存在しません"]
+            )
+        
+        # セルがアンロック済みかチェック
+        if cell.status != CellStatus.AVAILABLE:
+            return ValidationResult(
+                is_valid=False,
+                errors=["セルはアンロックされていません"]
+            )
+        
+        # 日次制限チェック
+        if completion_history:
+            daily_limit_result = self.business_rules.validate_daily_completion_limit(
+                uid, completion_history
+            )
+            if not daily_limit_result.is_valid:
+                return daily_limit_result
+        
+        # 完了間隔チェック
+        last_completion = None
+        if completion_history:
+            last_completion = max(completion_history) if completion_history else None
+        
+        interval_result = self.business_rules.validate_completion_interval(last_completion)
+        if not interval_result.is_valid:
+            return interval_result
+        
+        return ValidationResult(is_valid=True)
+    
+    def validate_grid_integrity(self, grid: MandalaGrid) -> ValidationResult:
+        """グリッド整合性チェック"""
+        errors = []
+        warnings = []
+        
+        # グリッドサイズチェック
+        if len(grid.cells) != 9:
+            errors.append("グリッドの行数が正しくありません")
+        
+        for i, row in enumerate(grid.cells):
+            if len(row) != 9:
+                errors.append(f"行{i}の列数が正しくありません")
+        
+        # 中央セルチェック
+        center_cell = grid.get_cell(4, 4)
+        if not center_cell:
+            errors.append("中央セルが存在しません")
+        elif center_cell.status == CellStatus.LOCKED:
+            warnings.append("中央セルがロックされています")
+        
+        # セル位置の整合性チェック
+        for row in range(9):
+            for col in range(9):
+                cell = grid.get_cell(row, col)
+                if cell and cell.position != (row, col):
+                    errors.append(f"セル({row}, {col})の位置情報が不正です")
+        
+        # 統計の整合性チェック
+        actual_unlocked = len(grid.get_unlocked_cells())
+        actual_completed = len(grid.get_completed_cells())
+        
+        if grid.unlocked_count != actual_unlocked:
+            errors.append("アンロック数の統計が不正です")
+        
+        if grid.completed_count != actual_completed:
+            errors.append("完了数の統計が不正です")
+        
+        is_valid = len(errors) == 0
+        return ValidationResult(
+            is_valid=is_valid, 
+            errors=errors, 
+            warnings=warnings,
+            details={
+                "actual_unlocked": actual_unlocked,
+                "actual_completed": actual_completed,
+                "reported_unlocked": grid.unlocked_count,
+                "reported_completed": grid.completed_count
+            }
+        )
+    
+    def validate_chapter_progression(
+        self, 
+        uid: str, 
+        current_chapter: ChapterType,
+        user_grids: Dict[ChapterType, MandalaGrid]
+    ) -> ValidationResult:
+        """章進行の妥当性チェック"""
+        errors = []
+        warnings = []
+        
+        # 前の章の完了チェック
+        chapter_order = [
+            ChapterType.SELF_DISCIPLINE,
+            ChapterType.EMPATHY,
+            ChapterType.RESILIENCE,
+            ChapterType.CURIOSITY,
+            ChapterType.COMMUNICATION,
+            ChapterType.CREATIVITY,
+            ChapterType.COURAGE,
+            ChapterType.WISDOM
+        ]
+        
+        try:
+            current_index = chapter_order.index(current_chapter)
+            
+            # 前の章がすべて完了しているかチェック
+            for i in range(current_index):
+                prev_chapter = chapter_order[i]
+                if prev_chapter in user_grids:
+                    prev_grid = user_grids[prev_chapter]
+                    if prev_grid.completion_percentage < 100.0:
+                        warnings.append(f"前の章({prev_chapter.value})が未完了です")
+                else:
+                    warnings.append(f"前の章({prev_chapter.value})が開始されていません")
+        
+        except ValueError:
+            errors.append("無効な章タイプです")
+        
+        is_valid = len(errors) == 0
+        return ValidationResult(is_valid=is_valid, errors=errors, warnings=warnings)

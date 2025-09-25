@@ -6,7 +6,7 @@ Exports all repository classes for easy importing
 from .base_repository import BaseRepository, CachedRepository
 from .user_repository import UserRepository
 from .task_repository import TaskRepository
-from .story_repository import StoryRepository
+from .story_repository import StoryNodeRepository, StoryEdgeRepository, StoryStateRepository, StoryRepository
 from .mood_repository import MoodRepository
 from .mandala_repository import MandalaRepository
 from .game_state_repository import GameStateRepository
@@ -27,6 +27,9 @@ __all__ = [
     # Core repositories
     "UserRepository",
     "TaskRepository", 
+    "StoryNodeRepository",
+    "StoryEdgeRepository", 
+    "StoryStateRepository",
     "StoryRepository",
     "MoodRepository",
     "MandalaRepository",

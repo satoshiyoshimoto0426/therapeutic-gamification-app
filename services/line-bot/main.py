@@ -10,10 +10,36 @@ from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError, LineBotApiError
 from linebot.models import (
     MessageEvent, TextMessage, TextSendMessage, QuickReply, QuickReplyButton,
-    MessageAction, FlexMessage, FlexContainer, BubbleContainer, BoxComponent,
-    TextComponent, ButtonComponent, URIAction, PostbackAction, PostbackEvent,
-    CarouselContainer, SeparatorComponent, SpacerComponent, ImageComponent
+    MessageAction, PostbackAction, PostbackEvent, URIAction
 )
+
+# Flex Message関連のインポート（新しいバージョン対応）
+try:
+    from linebot.models import FlexMessage, FlexContainer
+    from linebot.models.flex_message import (
+        BubbleContainer, BoxComponent, TextComponent, ButtonComponent,
+        CarouselContainer, SeparatorComponent, SpacerComponent, ImageComponent
+    )
+except ImportError:
+    # 古いバージョンまたは異なる構造の場合のフォールバック
+    try:
+        from linebot.models.flex_message import (
+            FlexMessage, FlexContainer, BubbleContainer, BoxComponent,
+            TextComponent, ButtonComponent, CarouselContainer, 
+            SeparatorComponent, SpacerComponent, ImageComponent
+        )
+    except ImportError:
+        # 最終フォールバック - 基本機能のみ使用
+        FlexMessage = None
+        FlexContainer = None
+        BubbleContainer = None
+        BoxComponent = None
+        TextComponent = None
+        ButtonComponent = None
+        CarouselContainer = None
+        SeparatorComponent = None
+        SpacerComponent = None
+        ImageComponent = None
 from pydantic import BaseModel
 from typing import List, Dict, Optional, Any
 import os
@@ -139,8 +165,12 @@ class LineBotService:
 
 line_bot_service = LineBotService()
 
-def create_mobile_optimized_heart_crystal_tasks(tasks: List[Dict]) -> FlexMessage:
+def create_mobile_optimized_heart_crystal_tasks(tasks: List[Dict]):
     """Create mobile-optimized Heart Crystal tasks in 3x3 Mandala format"""
+    # FlexMessageが利用できない場合のフォールバック
+    if FlexMessage is None:
+        return TextSendMessage(text="❤️ ハートクリスタルタスクが配信されました！")
+    
     # Group tasks into 3x3 grid format (max 9 tasks for mobile optimization)
     grid_tasks = tasks[:9]
     

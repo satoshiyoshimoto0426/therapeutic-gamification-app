@@ -1,0 +1,203 @@
+# Auto-Deployment Integration Test Configuration
+# This file configures the automated testing pipeline for the auto-deployment system
+
+test_suites:
+  integration:
+    enabled: true
+    parallel: true
+    timeout: 300
+    description: "Basic integration tests for deployment workflows"
+    
+  performance:
+    enabled: true
+    parallel: false
+    timeout: 600
+    description: "Performance and load testing scenarios"
+    
+  end_to_end:
+    enabled: true
+    parallel: false
+    timeout: 900
+    description: "Complete end-to-end deployment scenarios"
+
+environments:
+  testing:
+    project_id: "test-project-integration"
+    region: "us-central1"
+    environment_type: "testing"
+    services:
+      test-service:
+        memory: "1Gi"
+        cpu: "1"
+        min_instances: 1
+        max_instances: 10
+  
+  performance:
+    project_id: "test-project-performance"
+    region: "us-central1"
+    environment_type: "performance"
+    services:
+      performance-test-service:
+        memory: "2Gi"
+        cpu: "2"
+        min_instances: 2
+        max_instances: 50
+  
+  security:
+    project_id: "test-project-security"
+    region: "us-central1"
+    environment_type: "security"
+    security:
+      enable_security_scanning: true
+      require_https: true
+      enable_audit_logging: true
+
+reporting:
+  formats:
+    - html
+    - json
+    - csv
+  output_dir: "test_reports"
+  include_trends: true
+  retention_days: 30
+  dashboard:
+    enabled: true
+    update_interval: 300  # 5 minutes
+
+notifications:
+  enabled: true
+  channels:
+    slack:
+      webhook_url: "${SLACK_WEBHOOK_URL}"
+      channel: "#deployment-tests"
+    email:
+      smtp_server: "${SMTP_SERVER}"
+      recipients:
+        - "devops@example.com"
+        - "qa@example.com"
+
+continuous_testing:
+  enabled: false
+  interval_minutes: 60
+  failure_threshold: 3  # Number of consecutive failures before alert
+
+test_configurations:
+  # Integration Tests
+  - name: "basic_deployment_success"
+    scenario_type: "basic_deployment"
+    environment: "testing"
+    should_succeed: true
+    test_type: "integration"
+    timeout: 60
+    
+  - name: "basic_deployment_validation_failure"
+    scenario_type: "basic_deployment"
+    environment: "testing"
+    should_succeed: false
+    failure_type: "validation"
+    test_type: "integration"
+    timeout: 30
+    
+  - name: "multi_environment_deployment"
+    scenario_type: "multi_environment"
+    environments: ["dev", "staging"]
+    test_type: "integration"
+    timeout: 120
+    
+  - name: "failure_recovery_test"
+    scenario_type: "failure_recovery"
+    environment: "testing"
+    failure_count: 2
+    test_type: "integration"
+    timeout: 90
+    
+  # Performance Tests
+  - name: "concurrent_deployments_light"
+    scenario_type: "performance_load"
+    concurrent_deployments: 5
+    max_execution_time: 60.0
+    min_success_rate: 0.9
+    min_throughput: 2.0
+    test_type: "performance"
+    
+  - name: "concurrent_deployments_medium"
+    scenario_type: "performance_load"
+    concurrent_deployments: 15
+    max_execution_time: 120.0
+    min_success_rate: 0.85
+    min_throughput: 5.0
+    test_type: "performance"
+    
+  - name: "concurrent_deployments_heavy"
+    scenario_type: "performance_load"
+    concurrent_deployments: 30
+    max_execution_time: 180.0
+    min_success_rate: 0.8
+    min_throughput: 8.0
+    test_type: "performance"
+    
+  # End-to-End Tests
+  - name: "complete_deployment_lifecycle"
+    scenario_type: "multi_environment"
+    environments: ["dev", "staging", "prod"]
+    test_type: "end_to_end"
+    timeout: 300
+    
+  - name: "deployment_with_rollback"
+    scenario_type: "failure_recovery"
+    failure_count: 1
+    enable_rollback: true
+    test_type: "end_to_end"
+    timeout: 180
+    
+  - name: "security_compliance_deployment"
+    scenario_type: "basic_deployment"
+    environment: "security"
+    enable_security_checks: true
+    test_type: "end_to_end"
+    timeout: 240
+
+# Performance benchmarks and thresholds
+performance_thresholds:
+  deployment_time:
+    basic: 30.0  # seconds
+    complex: 120.0  # seconds
+    multi_environment: 300.0  # seconds
+    
+  throughput:
+    minimum: 1.0  # deployments per second
+    target: 5.0   # deployments per second
+    
+  success_rate:
+    minimum: 0.8  # 80%
+    target: 0.95  # 95%
+    
+  resource_usage:
+    max_memory_mb: 512
+    max_cpu_percent: 80
+
+# Test data and fixtures
+test_data:
+  services:
+    - "auth"
+    - "core-game"
+    - "task-mgmt"
+    - "mandala"
+    - "mood-tracking"
+    
+  environments:
+    - "development"
+    - "staging"
+    - "production"
+    
+  regions:
+    - "us-central1"
+    - "us-east1"
+    - "europe-west1"
+
+# Cleanup and maintenance
+cleanup:
+  auto_cleanup: true
+  cleanup_on_failure: true
+  preserve_failed_environments: false
+  cleanup_timeout: 300  # seconds

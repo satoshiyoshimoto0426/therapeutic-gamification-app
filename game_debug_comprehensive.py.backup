@@ -61,7 +61,7 @@ class GameDebugger:
         
         try:
             sys.path.append(os.path.join(os.path.dirname(__file__), 'services', 'core-game'))
-            from services.core_game.main import app
+            from services.core-game.main import app
             from fastapi.testclient import TestClient
             
             client = TestClient(app)
@@ -116,7 +116,7 @@ class GameDebugger:
         
         try:
             sys.path.append(os.path.join(os.path.dirname(__file__), 'services', 'task-mgmt'))
-            from services.task_mgmt.main import app
+            from services.task-mgmt.main import app
             from fastapi.testclient import TestClient
             
             client = TestClient(app)
@@ -283,7 +283,7 @@ class GameDebugger:
         
         try:
             sys.path.append(os.path.join(os.path.dirname(__file__), 'services', 'ai-story'))
-            from services.ai_story.main import app
+            from services.ai-story.main import app
             from fastapi.testclient import TestClient
             
             client = TestClient(app)
@@ -319,7 +319,7 @@ class GameDebugger:
         
         try:
             sys.path.append(os.path.join(os.path.dirname(__file__), 'services', 'mood-tracking'))
-            from services.mood_tracking.main import app
+            from services.mood-tracking.main import app
             from fastapi.testclient import TestClient
             
             client = TestClient(app)
@@ -417,7 +417,7 @@ class GameDebugger:
         
         try:
             sys.path.append(os.path.join(os.path.dirname(__file__), 'services', 'core-game'))
-            from services.core_game.main import app
+            from services.core-game.main import app
             from fastapi.testclient import TestClient
             
             client = TestClient(app)
@@ -460,7 +460,7 @@ class GameDebugger:
             def make_request():
                 try:
                     sys.path.append(os.path.join(os.path.dirname(__file__), 'services', 'core-game'))
-                    from services.core_game.main import app
+                    from services.core-game.main import app
                     from fastapi.testclient import TestClient
                     
                     client = TestClient(app)

@@ -1,0 +1,105 @@
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(uid) {
+      return request.auth.uid == uid;
+    }
+    
+    function isGuardianOf(userId) {
+      return exists(/databases/$(database)/documents/guardian_links/$(request.auth.uid + '_' + userId)) &&
+             get(/databases/$(database)/documents/guardian_links/$(request.auth.uid + '_' + userId)).data.approved_by_user == true;
+    }
+    
+    function hasGuardianPermission(userId, requiredLevel) {
+      let link = get(/databases/$(database)/documents/guardian_links/$(request.auth.uid + '_' + userId));
+      let permissionLevels = ['view_only', 'task_edit', 'chat_send'];
+      let userLevel = permissionLevels.indexOf(link.data.permission_level);
+      let required = permissionLevels.indexOf(requiredLevel);
+      return userLevel >= required;
+    }
+    
+    // User profiles - users can manage their own data
+    match /user_profiles/{userId} {
+      allow read: if isAuthenticated() && (isOwner(userId) || isGuardianOf(userId));
+      allow write: if isAuthenticated() && isOwner(userId);
+    }
+    
+    // Tasks - users and guardians with task_edit permission
+    match /tasks/{taskId} {
+      allow read: if isAuthenticated() && 
+        (isOwner(resource.data.uid) || isGuardianOf(resource.data.uid));
+      allow write: if isAuthenticated() && 
+        (isOwner(resource.data.uid) || 
+         (isGuardianOf(resource.data.uid) && hasGuardianPermission(resource.data.uid, 'task_edit')));
+    }
+    
+    // Story states - users can manage their own story progress
+    match /story_states/{stateId} {
+      allow read, write: if isAuthenticated() && isOwner(resource.data.uid);
+    }
+    
+    // Story nodes and edges - read-only for authenticated users
+    match /story_nodes/{nodeId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Only system can write
+    }
+    
+    match /story_edges/{edgeId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Only system can write
+    }
+    
+    // Mood logs - users can manage their own mood data
+    match /mood_logs/{moodId} {
+      allow read: if isAuthenticated() && 
+        (isOwner(resource.data.uid) || isGuardianOf(resource.data.uid));
+      allow write: if isAuthenticated() && isOwner(resource.data.uid);
+    }
+    
+    // Mandala grids - users can manage their own grids
+    match /mandala_grids/{gridId} {
+      allow read: if isAuthenticated() && 
+        (isOwner(resource.data.uid) || isGuardianOf(resource.data.uid));
+      allow write: if isAuthenticated() && isOwner(resource.data.uid);
+    }
+    
+    // Guardian links - special permission handling
+    match /guardian_links/{linkId} {
+      allow read: if isAuthenticated() && 
+        (request.auth.uid == resource.data.guardian_id || 
+         request.auth.uid == resource.data.user_id);
+      allow create: if isAuthenticated() && 
+        request.auth.uid == request.resource.data.guardian_id;
+      allow update: if isAuthenticated() && 
+        request.auth.uid == resource.data.user_id;
+      allow delete: if isAuthenticated() && 
+        (request.auth.uid == resource.data.guardian_id || 
+         request.auth.uid == resource.data.user_id);
+    }
+    
+    // Game states - users can manage their own game state
+    match /game_states/{userId} {
+      allow read: if isAuthenticated() && 
+        (isOwner(userId) || isGuardianOf(userId));
+      allow write: if isAuthenticated() && isOwner(userId);
+    }
+    
+    // Therapeutic safety logs - read-only for users, system writes
+    match /therapeutic_safety_logs/{logId} {
+      allow read: if isAuthenticated() && isOwner(resource.data.uid);
+      allow write: if false; // Only system can write
+    }
+    
+    // ADHD support settings - users can manage their own settings
+    match /adhd_support_settings/{userId} {
+      allow read, write: if isAuthenticated() && isOwner(userId);
+    }
+  }
+}

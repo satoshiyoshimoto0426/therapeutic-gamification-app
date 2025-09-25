@@ -143,6 +143,25 @@ class DatabaseConnectionError(TherapeuticGameError):
     def __init__(self, message: str = "デフォルト"):
         super().__init__(message, "DATABASE_CONNECTION_ERROR")
 
+
+class DatabaseError(TherapeuticGameError):
+    """Database operation error"""
+    
+    def __init__(self, message: str = "データベースエラーが発生しました"):
+        super().__init__(message, "DATABASE_ERROR")
+
+
+class NotFoundError(TherapeuticGameError):
+    """Generic not found error"""
+    
+    def __init__(self, resource: str, identifier: str = ""):
+        message = f"{resource}が見つかりません"
+        if identifier:
+            message += f": {identifier}"
+        super().__init__(message, "NOT_FOUND")
+        self.resource = resource
+        self.identifier = identifier
+
 class ExternalAPIError(TherapeuticGameError):
     """External API error"""
     

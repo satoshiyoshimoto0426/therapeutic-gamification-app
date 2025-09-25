@@ -18,9 +18,9 @@ import os
 # Add project root to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from services.auth.main import app
-from services.auth.jwt_service import jwt_service, TokenType
-from services.auth.auth_middleware import (
+from .main import app
+from .jwt_service import jwt_service, TokenType
+from .auth_middleware import (
     get_current_token, get_current_guardian, auth_service
 )
 from shared.interfaces.rbac_system import PermissionLevel

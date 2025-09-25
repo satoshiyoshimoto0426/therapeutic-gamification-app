@@ -19,9 +19,9 @@ import os
 # [UNICODE_30D7]
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from services.rpg_economy.main import CoinEconomy, ActionType, DemonRarity
-from services.job_system.main import JobManager, JobType
-from services.inner_demon_battle.main import InnerDemonBattle, DemonType
+from services.rpg-economy.main import CoinEconomy, ActionType, DemonRarity
+from services.job-system.main import JobManager, JobType
+from services.inner-demon-battle.main import InnerDemonBattle, DemonType
 from shared.interfaces.core_types import TaskType
 
 

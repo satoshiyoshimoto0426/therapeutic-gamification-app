@@ -20,7 +20,7 @@ import os
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from services.task_story_integration.main import (
+from .main import (
     app, ServiceIntegration, StoryChoiceHook, TaskCompletionHook,
     MandalaReflectionData, TaskStorySync, integration_db
 )

@@ -74,8 +74,8 @@ GDPR第12-22条に準拠した7つの権利を完全サポート：
 ### 基本的な使用例
 
 ```python
-from services.gdpr_compliance.main import GDPRComplianceSystem
-from services.gdpr_compliance.privacy_by_design import PrivacyLevel
+from services.gdpr-compliance.main import GDPRComplianceSystem
+from services.gdpr-compliance.privacy_by_design import PrivacyLevel
 from datetime import datetime, timedelta
 
 # システムの初期化
