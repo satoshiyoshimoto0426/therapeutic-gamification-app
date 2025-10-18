@@ -1,0 +1,10 @@
+{
+  "passed": 0,
+  "failed": 0,
+  "skipped": 0,
+  "errors": [
+    "ERROR: Wrong expression passed to '-k': *: at column 1: unexpected character \"*\""
+  ],
+  "duration": 1.3174538612365723,
+  "total": 0
+}

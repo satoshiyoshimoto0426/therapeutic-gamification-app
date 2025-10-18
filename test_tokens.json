@@ -1,0 +1,14 @@
+{
+  "user": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXJfMDAxIiwidWlkIjoidGVzdF91c2VyXzAwMSIsInVzZXJuYW1lIjoiXHUzMGM2XHUzMGI5XHUzMGM4XHUzMGU2XHUzMGZjXHUzMGI2XHUzMGZjIiwiZW1haWwiOiJ0ZXN0QGV4YW1wbGUuY29tIiwicm9sZSI6InVzZXIiLCJpYXQiOjE3NjA3MzQ4NzUsImV4cCI6MTc2MDgyMTI3NX0.DxCekQZfjHsCUvgdIbtRPEygkRVsvQlGzQWA64sTsGQ",
+    "description": "一般ユーザー用トークン"
+  },
+  "guardian": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X2d1YXJkaWFuXzAwMSIsInVpZCI6InRlc3RfZ3VhcmRpYW5fMDAxIiwidXNlcm5hbWUiOiJcdTMwYzZcdTMwYjlcdTMwYzhcdTRmZGRcdThiNzdcdTgwMDUiLCJlbWFpbCI6Imd1YXJkaWFuQGV4YW1wbGUuY29tIiwicm9sZSI6Imd1YXJkaWFuIiwiaWF0IjoxNzYwNzM0ODc1LCJleHAiOjE3NjA4MjEyNzV9.oETzAArN1Ypa-d5rewvI2qPF8T2n7Bmg6AfKyTYHuRw",
+    "description": "保護者用トークン"
+  },
+  "admin": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X2FkbWluXzAwMSIsInVpZCI6InRlc3RfYWRtaW5fMDAxIiwidXNlcm5hbWUiOiJcdTMwYzZcdTMwYjlcdTMwYzhcdTdiYTFcdTc0MDZcdTgwMDUiLCJlbWFpbCI6ImFkbWluQGV4YW1wbGUuY29tIiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzYwNzM0ODc1LCJleHAiOjE3NjA4MjEyNzV9.g6E9FNK4Fp4EBvcev7IGq5rgyYmqARbBzv3VxJ3srrM",
+    "description": "管理者用トークン"
+  }
+}

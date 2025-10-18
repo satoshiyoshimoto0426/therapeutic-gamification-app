@@ -1,0 +1,28 @@
+{
+  "unit_tests": {
+    "passed": 5,
+    "failed": 2,
+    "skipped": 1,
+    "errors": [],
+    "duration": 3.45,
+    "total": 8
+  },
+  "integration_tests": {
+    "passed": 5,
+    "failed": 2,
+    "skipped": 1,
+    "errors": [],
+    "duration": 3.45,
+    "total": 8
+  },
+  "e2e_tests": {
+    "passed": 5,
+    "failed": 2,
+    "skipped": 1,
+    "errors": [],
+    "duration": 3.45,
+    "total": 8
+  },
+  "total_coverage": 0.0,
+  "timestamp": "2025-10-18T15:13:43.456692"
+}

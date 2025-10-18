@@ -1,0 +1,69 @@
+{
+  "services": [
+    {
+      "name": "auth",
+      "display_name": "認証サービス",
+      "path": "services/auth",
+      "port": 8002,
+      "command": "uvicorn main:app --host 0.0.0.0 --port 8002 --reload",
+      "health_endpoint": "/health",
+      "required": true,
+      "startup_timeout": 10,
+      "description": "JWT認証とRBAC機能を提供"
+    },
+    {
+      "name": "core-game",
+      "display_name": "コアゲームサービス",
+      "path": "services/core-game",
+      "port": 8001,
+      "command": "uvicorn main:app --host 0.0.0.0 --port 8001 --reload",
+      "health_endpoint": "/health",
+      "required": true,
+      "startup_timeout": 10,
+      "description": "XP、レベル、共鳴イベント管理"
+    },
+    {
+      "name": "task-mgmt",
+      "display_name": "タスク管理サービス",
+      "path": "services/task-mgmt",
+      "port": 8003,
+      "command": "uvicorn main:app --host 0.0.0.0 --port 8003 --reload",
+      "health_endpoint": "/health",
+      "required": true,
+      "startup_timeout": 10,
+      "description": "タスク管理とポモドーロ機能"
+    },
+    {
+      "name": "mandala",
+      "display_name": "Mandalaサービス",
+      "path": "services/mandala",
+      "port": 8004,
+      "command": "uvicorn main:app --host 0.0.0.0 --port 8004 --reload",
+      "health_endpoint": "/health",
+      "required": false,
+      "startup_timeout": 10,
+      "description": "Mandala進行管理"
+    },
+    {
+      "name": "mood-tracking",
+      "display_name": "ムード追跡サービス",
+      "path": "services/mood-tracking",
+      "port": 8005,
+      "command": "uvicorn main:app --host 0.0.0.0 --port 8005 --reload",
+      "health_endpoint": "/health",
+      "required": false,
+      "startup_timeout": 10,
+      "description": "感情状態のモニタリング"
+    }
+  ],
+  "frontend": {
+    "name": "frontend",
+    "display_name": "フロントエンド",
+    "path": "frontend",
+    "port": 3000,
+    "command": "npm run dev",
+    "required": true,
+    "startup_timeout": 30,
+    "description": "React + TypeScript フロントエンド"
+  }
+}

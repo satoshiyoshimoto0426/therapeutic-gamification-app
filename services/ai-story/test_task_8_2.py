@@ -1,445 +1,389 @@
-#!/usr/bin/env python3
 """
-Test script for Task 8.2: GPT-4oストーリー
-Tests DeepSeek R1 integration with Story DAG and real-time story generation
+Task 8.2 Integration Tests: GPT-4o Story Generation Integration
+Tests for OpenAI API integration, timeout constraints, JSON schema validation, and error handling
 """
 
-import sys
-import os
+import pytest
 import asyncio
+import json
+import time
+from unittest.mock import Mock, patch, AsyncMock
 from datetime import datetime
 
-# Add shared modules to path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'shared'))
+# Import from main service
+import sys
+import os
+sys.path.append(os.path.dirname(__file__))
 
-async def test_deepseek_r1_integration():
-    """Test DeepSeek R1 integration"""
-    print("? Testing DeepSeek R1 Integration...")
+from main import (
+    DeepSeekR1Client,
+    StoryJSONSchema,
+    StoryGenerationRequest,
+    ChapterType,
+    prompt_manager,
+    safety_filter
+)
+
+
+class TestDeepSeekR1Integration:
+    """Test DeepSeek R1 client with GPT-4o compatible interface"""
     
-    try:
-        from main import DeepSeekR1Client
+    @pytest.fixture
+    def client(self):
+        """Create test client"""
+        return DeepSeekR1Client(api_key="mock_key_for_testing")
+    
+    @pytest.mark.asyncio
+    async def test_timeout_constraint(self, client):
+        """Test 3.5 second timeout constraint"""
+        # Verify timeout is set correctly
+        assert client.timeout == 3.5, "Timeout should be 3.5 seconds per requirements"
         
-        client = DeepSeekR1Client(api_key="mock_key_for_testing")
+        # Test that timeout is enforced
+        start_time = time.time()
+        result = await client.generate_story(
+            prompt="Generate a test story",
+            system_message="You are a therapeutic story generator"
+        )
+        elapsed = time.time() - start_time
         
-        # Test story generation with therapeutic prompt
-        response = await client.generate_story(
-            prompt="ユーザー3つ4/5で",
-            system_message="あ",
-            temperature=0.7
+        # Should complete within reasonable time (mock response)
+        assert elapsed < 2.0, "Mock response should be fast"
+        assert "content" in result
+        assert "generation_time_ms" in result
+    
+    @pytest.mark.asyncio
+    async def test_json_mode_generation(self, client):
+        """Test JSON mode for structured output"""
+        result = await client.generate_story(
+            prompt="Generate a story with choices",
+            system_message="Return JSON with story_text and choices",
+            use_json_mode=True
         )
         
-        assert "content" in response
-        assert len(response["content"]) > 100
-        assert "generation_time_ms" in response
-        assert response["generation_time_ms"] > 0
+        assert "content" in result
         
-        print("  ? DeepSeek R1 client initialization: PASS")
-        print("  ? Therapeutic story generation: PASS")
-        print("  ? Response format validation: PASS")
-        print(f"  ? Generated content length: {len(response['content'])} characters")
-        
-        return True
-        
-    except Exception as e:
-        print(f"  ? DeepSeek R1 integration test failed: {e}")
-        return False
-
-async def test_story_dag_integration():
-    """Test Story DAG integration"""
-    print("? Testing Story DAG Integration...")
+        # Try to parse as JSON
+        try:
+            content = json.loads(result["content"]) if isinstance(result["content"], str) else result["content"]
+            assert "story_text" in content or isinstance(content, str)
+        except json.JSONDecodeError:
+            # Mock response might not be JSON, that's ok for testing
+            pass
     
-    try:
-        from main import StoryDAGIntegration, StoryGenerationRequest
-        from interfaces.core_types import ChapterType
-        
-        dag_integration = StoryDAGIntegration()
-        
-        # Test story node and edge creation
-        request = StoryGenerationRequest(
-            uid="test_user_123",
-            chapter_type=ChapterType.SELF_DISCIPLINE,
-            user_context={"mood_score": 4, "completion_rate": 0.8},
-            story_state={"current_chapter_id": "self_discipline_ch1"},
-            generation_type="continuation",
-            therapeutic_focus=["habit_formation", "self_control"]
-        )
-        
-        generated_content = "あ"
-        next_choices = [
-            {"choice_id": "accept", "choice_text": "挑"},
-            {"choice_id": "prepare", "choice_text": "準拠"}
-        ]
-        
-        story_nodes, story_edges = await dag_integration.create_story_nodes_and_edges(
-            generated_content=generated_content,
-            request=request,
-            next_choices=next_choices
-        )
-        
-        assert len(story_nodes) >= 1
-        assert story_nodes[0]["therapeutic_tags"] == request.therapeutic_focus
-        
-        print("  ? Story DAG integration initialization: PASS")
-        print("  ? Story node creation: PASS")
-        print(f"  ? Generated {len(story_nodes)} story nodes")
-        print(f"  ? Generated {len(story_edges)} story edges")
-        
-        # Test companion effects extraction
-        companion_effects = dag_integration._extract_companion_effects(generated_content)
-        assert "yu" in companion_effects
-        assert companion_effects["yu"] > 0
-        
-        print("  ? Companion effects extraction: PASS")
-        
-        return True
-        
-    except Exception as e:
-        print(f"  ? Story DAG integration test failed: {e}")
-        return False
-
-async def test_therapeutic_prompt_system():
-    """Test therapeutic prompt template system"""
-    print("? Testing Therapeutic Prompt System...")
+    @pytest.mark.asyncio
+    async def test_error_handling_fallback(self, client):
+        """Test error handling with fallback"""
+        # Mock an API error
+        with patch('httpx.AsyncClient') as mock_client:
+            mock_client.return_value.__aenter__.return_value.post = AsyncMock(
+                side_effect=Exception("API Error")
+            )
+            
+            result = await client.generate_story(
+                prompt="Test prompt",
+                system_message="Test system"
+            )
+            
+            # Should return fallback response
+            assert "content" in result
+            assert result["generation_time_ms"] >= 0
     
-    try:
-        from main import TherapeuticPromptManager
-        from interfaces.core_types import ChapterType
+    @pytest.mark.asyncio
+    async def test_timeout_fallback(self, client):
+        """Test timeout handling with fallback"""
+        # Create client with very short timeout
+        short_timeout_client = DeepSeekR1Client(api_key="test_key")
+        short_timeout_client.timeout = 0.001  # 1ms timeout
         
-        prompt_manager = TherapeuticPromptManager()
+        with patch('httpx.AsyncClient') as mock_client:
+            # Mock a slow response
+            async def slow_response(*args, **kwargs):
+                await asyncio.sleep(0.1)
+                return Mock(status_code=200, json=lambda: {"choices": [{"message": {"content": "test"}}]})
+            
+            mock_client.return_value.__aenter__.return_value.post = slow_response
+            
+            result = await short_timeout_client.generate_story(
+                prompt="Test prompt",
+                system_message="Test system"
+            )
+            
+            # Should handle timeout gracefully
+            assert "content" in result
+
+
+class TestJSONSchemaValidation:
+    """Test JSON schema validation for story responses"""
+    
+    def test_valid_schema(self):
+        """Test valid story JSON schema"""
+        valid_data = {
+            "story_text": "これはテスト用のストーリーです。主人公は新しい挑戦に立ち向かいます。",
+            "choices": [
+                {"choice_id": "choice1", "text": "挑戦を受け入れる"},
+                {"choice_id": "choice2", "text": "慎重に考える"}
+            ],
+            "therapeutic_elements": ["courage", "self_reflection"]
+        }
         
-        # Test self-discipline template
-        self_discipline_template = prompt_manager.get_template(ChapterType.SELF_DISCIPLINE)
-        assert self_discipline_template.chapter_type == ChapterType.SELF_DISCIPLINE
-        assert "habit_formation" in self_discipline_template.therapeutic_focus
-        assert len(self_discipline_template.safety_guidelines) > 0
+        schema = StoryJSONSchema(**valid_data)
+        assert schema.story_text == valid_data["story_text"]
+        assert len(schema.choices) == 2
+        assert len(schema.therapeutic_elements) == 2
+    
+    def test_invalid_schema_missing_choice_text(self):
+        """Test schema validation fails for missing choice text"""
+        invalid_data = {
+            "story_text": "Test story",
+            "choices": [
+                {"choice_id": "choice1"}  # Missing 'text' field
+            ],
+            "therapeutic_elements": []
+        }
         
-        print("  ? Self-discipline template: PASS")
+        with pytest.raises(ValueError):
+            StoryJSONSchema(**invalid_data)
+    
+    def test_invalid_schema_too_many_choices(self):
+        """Test schema validation fails for too many choices"""
+        invalid_data = {
+            "story_text": "Test story",
+            "choices": [
+                {"choice_id": f"choice{i}", "text": f"Choice {i}"}
+                for i in range(5)  # More than max_items=3
+            ],
+            "therapeutic_elements": []
+        }
         
-        # Test empathy template
-        empathy_template = prompt_manager.get_template(ChapterType.EMPATHY)
-        assert empathy_template.chapter_type == ChapterType.EMPATHY
-        assert "emotional_intelligence" in empathy_template.therapeutic_focus
+        with pytest.raises(ValueError):
+            StoryJSONSchema(**invalid_data)
+    
+    def test_schema_with_optional_fields(self):
+        """Test schema with optional fields"""
+        data = {
+            "story_text": "Test story with optional fields",
+            "choices": [
+                {"choice_id": "choice1", "text": "Option 1"}
+            ],
+            "therapeutic_elements": ["resilience"],
+            "mood_impact": {"hope": 0.2, "confidence": 0.1},
+            "companion_interactions": [
+                {"companion": "yu", "relationship_change": 5}
+            ]
+        }
         
-        print("  ? Empathy template: PASS")
+        schema = StoryJSONSchema(**data)
+        assert schema.mood_impact is not None
+        assert schema.companion_interactions is not None
+
+
+class TestPromptConstruction:
+    """Test therapeutic prompt construction"""
+    
+    def test_get_template_for_chapter(self):
+        """Test getting prompt template for chapter type"""
+        template = prompt_manager.get_template(ChapterType.SELF_DISCIPLINE)
         
-        # Test prompt formatting with context
+        assert template is not None
+        assert template.chapter_type == ChapterType.SELF_DISCIPLINE
+        assert len(template.therapeutic_focus) > 0
+        assert template.system_message is not None
+        assert template.prompt_template is not None
+    
+    def test_format_prompt_with_context(self):
+        """Test formatting prompt with user context"""
+        template = prompt_manager.get_template(ChapterType.SELF_DISCIPLINE)
+        
         context = {
             "mood_level": 4,
-            "task_completion_rate": 0.8,
-            "companion_relationships": {"yu": 25},
-            "current_story_state": {"current_node": "test"},
+            "task_completion_rate": 0.75,
+            "companion_relationships": {"yu": 50},
+            "current_story_state": {"chapter": "ch1", "node": "node1"},
             "social_context": {}
         }
         
-        formatted_prompt = prompt_manager.format_prompt(self_discipline_template, context)
-        assert len(formatted_prompt) > 0
-        assert "4" in formatted_prompt  # mood_level should be included
-        assert "0.8" in formatted_prompt  # completion_rate should be included
+        formatted = prompt_manager.format_prompt(template, context)
         
-        print("  ? Prompt formatting with context: PASS")
-        
-        return True
-        
-    except Exception as e:
-        print(f"  ? Therapeutic prompt system test failed: {e}")
-        return False
-
-async def test_content_safety_system():
-    """Test content safety filtering"""
-    print("? Testing Content Safety System...")
+        assert formatted is not None
+        assert isinstance(formatted, str)
+        # Should contain some context values
+        assert "4" in formatted or "75" in formatted or "0.75" in formatted
     
-    try:
-        from main import ContentSafetyFilter
+    def test_format_prompt_missing_context(self):
+        """Test prompt formatting handles missing context gracefully"""
+        template = prompt_manager.get_template(ChapterType.EMPATHY)
         
-        safety_filter = ContentSafetyFilter()
-        
-        # Test safe therapeutic content
-        safe_content = "希"
-        safe_result = await safety_filter.evaluate_content(safe_content)
-        
-        assert safe_result.is_safe == True
-        assert safe_result.safety_score >= 0.8
-        assert safe_result.therapeutic_appropriateness > 0.5
-        
-        print("  ? Safe content detection: PASS")
-        print(f"  ? Safety score: {safe_result.safety_score:.2f}")
-        print(f"  ? Therapeutic appropriateness: {safe_result.therapeutic_appropriateness:.2f}")
-        
-        # Test potentially harmful content
-        harmful_content = "?"
-        harmful_result = await safety_filter.evaluate_content(harmful_content)
-        
-        assert harmful_result.safety_score < 1.0
-        assert len(harmful_result.flagged_categories) > 0
-        
-        print("  ? Harmful content detection: PASS")
-        print(f"  ? Flagged categories: {harmful_result.flagged_categories}")
-        
-        return True
-        
-    except Exception as e:
-        print(f"  ? Content safety system test failed: {e}")
-        return False
-
-async def test_real_time_story_generation():
-    """Test real-time story generation for daily events"""
-    print("? Testing Real-time Story Generation...")
-    
-    try:
-        from main import generate_daily_story
-        from interfaces.core_types import ChapterType
-        from unittest.mock import Mock
-        
-        mock_user = {"uid": "test_user_123", "email": "test@example.com"}
-        background_tasks = Mock()
-        
-        # Test daily story generation (21:30 trigger)
-        daily_context = {
-            "uid": "test_user_123",
-            "completed_tasks": [
-                {"type": "routine", "difficulty": 2},
-                {"type": "social", "difficulty": 3}
-            ],
-            "mood_score": 4,
-            "completion_rate": 0.7,
-            "current_chapter": ChapterType.SELF_DISCIPLINE,
-            "companion_relationships": {"yu": 20},
-            "story_state": {"current_node": "progress_node"}
+        incomplete_context = {
+            "mood_level": 3
+            # Missing other required fields
         }
         
-        daily_story_response = await generate_daily_story(
-            daily_context=daily_context,
-            current_user=mock_user,
-            background_tasks=background_tasks
-        )
-        
-        assert "daily_story" in daily_story_response
-        assert "generation_trigger" in daily_story_response
-        assert daily_story_response["generation_trigger"] == "daily_21_30"
-        assert "performance_category" in daily_story_response
-        assert "next_day_suggestions" in daily_story_response
-        
-        daily_story = daily_story_response["daily_story"]
-        assert len(daily_story.generated_content) > 0
-        assert daily_story.safety_score >= 0.0
-        
-        print("  ? Daily story generation (21:30 trigger): PASS")
-        print(f"  ? Performance category: {daily_story_response['performance_category']}")
-        print(f"  ? Next day suggestions: {len(daily_story_response['next_day_suggestions'])}")
-        
-        return True
-        
-    except Exception as e:
-        print(f"  ? Real-time story generation test failed: {e}")
-        return False
+        # Should not raise exception
+        formatted = prompt_manager.format_prompt(template, incomplete_context)
+        assert formatted is not None
 
-async def test_task_story_integration():
-    """Test task completion story integration"""
-    print("? Testing Task-Story Integration...")
+
+class TestContentSafety:
+    """Test content safety validation"""
     
-    try:
-        from main import generate_task_completion_story, convert_story_choice_to_task
-        from interfaces.core_types import ChapterType
-        from unittest.mock import Mock
+    @pytest.mark.asyncio
+    async def test_safe_content(self):
+        """Test safe therapeutic content"""
+        safe_content = "今日は新しい挑戦に立ち向かう日です。小さな一歩から始めましょう。希望を持って前進します。"
         
-        mock_user = {"uid": "test_user_123", "email": "test@example.com"}
+        result = await safety_filter.evaluate_content(safe_content)
         
-        # Test task completion story
-        task_completion_data = {
+        assert result.is_safe is True
+        assert result.safety_score >= 0.8
+        assert len(result.flagged_categories) == 0
+    
+    @pytest.mark.asyncio
+    async def test_therapeutic_appropriateness(self):
+        """Test therapeutic appropriateness scoring"""
+        therapeutic_content = "成長の機会です。希望を持って挑戦しましょう。支援があります。"
+        
+        result = await safety_filter.evaluate_content(therapeutic_content)
+        
+        assert result.therapeutic_appropriateness > 0.3
+        assert result.is_safe is True
+
+
+class TestStoryGenerationEndToEnd:
+    """End-to-end integration tests for story generation"""
+    
+    @pytest.mark.asyncio
+    async def test_complete_story_generation_flow(self):
+        """Test complete story generation flow"""
+        client = DeepSeekR1Client(api_key="mock_key_for_testing")
+        
+        # Create request
+        request_data = {
             "uid": "test_user_123",
-            "task": {
-                "type": "social",
-                "difficulty": 3,
-                "title": "?"
+            "chapter_type": ChapterType.SELF_DISCIPLINE,
+            "user_context": {
+                "mood_score": 4,
+                "completion_rate": 0.7,
+                "pending_tasks": 3
             },
-            "context": {
-                "current_chapter": ChapterType.EMPATHY,
-                "mood_after": 4,
-                "companion_relationships": {"yu": 15}
-            }
+            "story_state": {
+                "current_chapter_id": "self_discipline_ch1",
+                "current_node": "node_1"
+            },
+            "generation_type": "continuation",
+            "therapeutic_focus": ["habit_formation", "self_control"]
         }
         
-        task_story_response = await generate_task_completion_story(
-            task_completion_data=task_completion_data,
-            current_user=mock_user
-        )
+        # Get template
+        template = prompt_manager.get_template(request_data["chapter_type"])
         
-        assert len(task_story_response.generated_content) > 0
-        assert "social_connection" in task_story_response.therapeutic_tags or "empathy" in task_story_response.therapeutic_tags
-        
-        print("  ? Task completion story generation: PASS")
-        
-        # Test story choice to task conversion
-        choice_data = {
-            "choice_text": "?",
-            "story_context": {"chapter": "self_discipline"},
-            "user_context": {"current_level": 5}
+        # Format prompt
+        context = {
+            "mood_level": request_data["user_context"]["mood_score"],
+            "task_completion_rate": request_data["user_context"]["completion_rate"],
+            "companion_relationships": {},
+            "current_story_state": request_data["story_state"],
+            "social_context": {}
         }
         
-        choice_to_task_response = await convert_story_choice_to_task(
-            choice_data=choice_data,
-            current_user=mock_user
+        formatted_prompt = prompt_manager.format_prompt(template, context)
+        
+        # Generate story
+        result = await client.generate_story(
+            prompt=formatted_prompt,
+            system_message=template.system_message,
+            temperature=0.7
         )
         
-        assert "suggested_task" in choice_to_task_response
-        assert "therapeutic_rationale" in choice_to_task_response
+        # Verify result
+        assert "content" in result
+        assert "generation_time_ms" in result
+        assert result["generation_time_ms"] >= 0
         
-        suggested_task = choice_to_task_response["suggested_task"]
-        assert "type" in suggested_task
-        assert "title" in suggested_task
-        assert "difficulty" in suggested_task
-        
-        print("  ? Story choice to task conversion: PASS")
-        print(f"  ? Suggested task type: {suggested_task['type']}")
-        
-        return True
-        
-    except Exception as e:
-        print(f"  ? Task-story integration test failed: {e}")
-        return False
-
-async def test_performance_requirements():
-    """Test performance requirements (P95 latency < 3.5s)"""
-    print("? Testing Performance Requirements...")
+        # Check safety
+        safety_result = await safety_filter.evaluate_content(
+            result["content"] if isinstance(result["content"], str) else json.dumps(result["content"])
+        )
+        assert safety_result.safety_score >= 0.0
     
-    try:
-        from main import generate_story, StoryGenerationRequest
-        from interfaces.core_types import ChapterType
-        from unittest.mock import Mock
-        import time
+    @pytest.mark.asyncio
+    async def test_generation_with_timeout_monitoring(self):
+        """Test story generation with timeout monitoring"""
+        client = DeepSeekR1Client(api_key="mock_key_for_testing")
         
-        mock_user = {"uid": "test_user_123", "email": "test@example.com"}
-        background_tasks = Mock()
+        start_time = time.time()
+        result = await client.generate_story(
+            prompt="Generate a therapeutic story about overcoming procrastination",
+            system_message="You are a therapeutic story generator",
+            use_json_mode=True
+        )
+        elapsed = time.time() - start_time
         
-        # Test multiple story generations to check latency
-        latencies = []
+        # Verify timeout constraint
+        assert elapsed < 5.0, "Generation should complete within reasonable time"
         
-        for i in range(5):
-            request = StoryGenerationRequest(
-                uid="test_user_123",
-                chapter_type=ChapterType.SELF_DISCIPLINE,
-                user_context={"mood_score": 3, "completion_rate": 0.5},
-                story_state={"current_node": "test"},
-                generation_type="continuation",
-                therapeutic_focus=["habit_formation"]
-            )
-            
-            start_time = time.time()
-            response = await generate_story(request, mock_user, background_tasks)
-            end_time = time.time()
-            
-            latency_ms = int((end_time - start_time) * 1000)
-            latencies.append(latency_ms)
-            
-            assert response.generation_time_ms > 0
-            assert len(response.generated_content) > 0
-        
-        # Calculate P95 latency
-        latencies.sort()
-        p95_index = int(0.95 * len(latencies))
-        p95_latency = latencies[p95_index] if p95_index < len(latencies) else latencies[-1]
-        
-        avg_latency = sum(latencies) / len(latencies)
-        
-        print(f"  ? Average latency: {avg_latency:.0f}ms")
-        print(f"  ? P95 latency: {p95_latency}ms")
-        print(f"  ? P95 requirement (< 3500ms): {'PASS' if p95_latency < 3500 else 'FAIL'}")
-        
-        # Test content length and safety
-        assert all(len(response.generated_content) > 50 for response in [response])
-        assert response.safety_score >= 0.0
-        
-        print("  ? Content quality validation: PASS")
-        
-        return p95_latency < 3500
-        
-    except Exception as e:
-        print(f"  ? Performance requirements test failed: {e}")
-        return False
-
-async def test_api_endpoints():
-    """Test API endpoints"""
-    print("? Testing API Endpoints...")
+        # Check if timeout was exceeded (for real API calls)
+        if "timeout_exceeded" in result:
+            assert isinstance(result["timeout_exceeded"], bool)
     
-    try:
-        from main import app
+    @pytest.mark.asyncio
+    async def test_error_recovery(self):
+        """Test error recovery and fallback mechanisms"""
+        client = DeepSeekR1Client(api_key="mock_key_for_testing")
         
-        # Check required endpoints exist
-        routes = [route.path for route in app.routes]
-        
-        required_endpoints = [
-            "/ai/story/v2/generate",
-            "/ai/story/v2/daily-generation",
-            "/ai/story/v2/task-completion-story",
-            "/ai/story/v2/choice-to-task",
-            "/ai/story/safety/evaluate",
-            "/ai/story/templates",
-            "/ai/story/metrics"
+        # Test with various error scenarios
+        test_cases = [
+            ("", "Empty prompt"),
+            ("Test" * 1000, "Very long prompt"),
+            ("Generate story", "Normal prompt")
         ]
         
-        for endpoint in required_endpoints:
-            if any(endpoint in route for route in routes):
-                print(f"  ? Endpoint {endpoint}: FOUND")
-            else:
-                print(f"  ? Endpoint {endpoint}: MISSING")
-                return False
-        
-        print(f"  ? Total API routes: {len(routes)}")
-        
-        return True
-        
-    except Exception as e:
-        print(f"  ? API endpoints test failed: {e}")
-        return False
+        for prompt, description in test_cases:
+            result = await client.generate_story(
+                prompt=prompt,
+                system_message="Test system message"
+            )
+            
+            # Should always return a result (with fallback if needed)
+            assert "content" in result, f"Failed for: {description}"
+            assert "generation_time_ms" in result
 
-async def main():
-    """Main test function"""
-    print("? Testing Task 8.2: GPT-4oストーリー")
-    print("=" * 80)
-    
-    all_passed = True
-    
-    tests = [
-        ("DeepSeek R1 Integration", test_deepseek_r1_integration),
-        ("Story DAG Integration", test_story_dag_integration),
-        ("Therapeutic Prompt System", test_therapeutic_prompt_system),
-        ("Content Safety System", test_content_safety_system),
-        ("Real-time Story Generation", test_real_time_story_generation),
-        ("Task-Story Integration", test_task_story_integration),
-        ("Performance Requirements", test_performance_requirements),
-        ("API Endpoints", test_api_endpoints)
-    ]
-    
-    for test_name, test_func in tests:
-        try:
-            print(f"\n--- {test_name} ---")
-            result = await test_func()
-            if not result:
-                all_passed = False
-        except Exception as e:
-            print(f"? {test_name} failed with error: {e}")
-            import traceback
-            traceback.print_exc()
-            all_passed = False
-    
-    print("\n" + "=" * 80)
-    if all_passed:
-        print("? ALL TESTS PASSED!")
-        print("? Task 8.2 has been successfully implemented:")
-        print("   ? DeepSeek R1?")
-        print("   ? Story DAGと")
-        print("   ? リスト21:30?")
-        print("   ? タスク")
-        print("   ? コア98% F1ストーリー")
-        print("   ? P95レベル < 3.5?")
-        print("   ? 治療")
-        print("   ? ?APIエラー")
-        print("\n? Ready to proceed to next task!")
-        return True
-    else:
-        print("? Some tests failed. Please check the implementation.")
-        return False
 
+class TestPerformanceMetrics:
+    """Test performance metrics and monitoring"""
+    
+    @pytest.mark.asyncio
+    async def test_generation_time_tracking(self):
+        """Test generation time is tracked correctly"""
+        client = DeepSeekR1Client(api_key="mock_key_for_testing")
+        
+        result = await client.generate_story(
+            prompt="Test prompt",
+            system_message="Test system"
+        )
+        
+        assert "generation_time_ms" in result
+        assert result["generation_time_ms"] > 0
+        assert result["generation_time_ms"] < 10000  # Should be under 10 seconds for mock
+    
+    @pytest.mark.asyncio
+    async def test_timeout_detection(self):
+        """Test timeout detection in response"""
+        client = DeepSeekR1Client(api_key="mock_key_for_testing")
+        
+        result = await client.generate_story(
+            prompt="Test prompt",
+            system_message="Test system"
+        )
+        
+        # Check if timeout_exceeded field exists
+        if "timeout_exceeded" in result:
+            assert isinstance(result["timeout_exceeded"], bool)
+            
+            # For mock responses, should not exceed timeout
+            assert result["timeout_exceeded"] is False
+
+
+# Run tests
 if __name__ == "__main__":
-    success = asyncio.run(main())
-    sys.exit(0 if success else 1)
+    pytest.main([__file__, "-v", "--asyncio-mode=auto"])

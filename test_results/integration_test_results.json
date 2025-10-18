@@ -1,0 +1,105 @@
+{
+  "timestamp": "2025-10-18 16:20:45",
+  "tests": [
+    {
+      "test_name": "full_setup_flow",
+      "passed": true,
+      "steps": [
+        {
+          "name": "環境チェック",
+          "passed": true,
+          "error": null
+        },
+        {
+          "name": "依存関係インストール",
+          "passed": true,
+          "error": null
+        },
+        {
+          "name": "環境変数生成",
+          "passed": true,
+          "error": null
+        },
+        {
+          "name": "モックDB初期化",
+          "passed": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "test_name": "service_startup_flow",
+      "passed": true,
+      "steps": [
+        {
+          "name": "サービス設定読み込み",
+          "passed": true,
+          "error": null
+        },
+        {
+          "name": "サービスマネージャー初期化",
+          "passed": true,
+          "error": null
+        },
+        {
+          "name": "ヘルスチェック機能",
+          "passed": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "test_name": "error_cases",
+      "passed": true,
+      "cases": [
+        {
+          "name": "存在しない設定ファイル",
+          "handled_correctly": true,
+          "error": null
+        },
+        {
+          "name": "不正な設定ファイル",
+          "handled_correctly": true,
+          "error": null
+        },
+        {
+          "name": "ポート競合",
+          "handled_correctly": true,
+          "error": null
+        },
+        {
+          "name": "不正な環境変数",
+          "handled_correctly": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "test_name": "multiple_environments",
+      "passed": true,
+      "environments": [
+        {
+          "name": "開発環境",
+          "passed": true,
+          "error": null
+        },
+        {
+          "name": "テスト環境",
+          "passed": true,
+          "error": null
+        },
+        {
+          "name": "本番環境シミュレーション",
+          "passed": true,
+          "error": null
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "total": 4,
+    "passed": 4,
+    "failed": 0,
+    "success_rate": 100.0
+  }
+}

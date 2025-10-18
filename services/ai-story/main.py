@@ -1,5 +1,5 @@
 # AI Story Generation Engine Service
-# DeepSeek R1 integration for therapeutic story generation with Story DAG integration
+# GPT-4o integration for therapeutic story generation with Story DAG integration
 
 from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -73,6 +73,23 @@ class ContentSafetyResult(BaseModel):
     therapeutic_appropriateness: float  # 0.0 to 1.0
     recommendations: List[str] = []
 
+class StoryJSONSchema(BaseModel):
+    """JSON schema for story generation response validation"""
+    story_text: str = Field(..., min_length=10, max_length=2000)
+    choices: List[Dict[str, Any]] = Field(..., min_items=1, max_items=3)
+    therapeutic_elements: List[str] = Field(default_factory=list)
+    mood_impact: Optional[Dict[str, float]] = None
+    companion_interactions: Optional[List[Dict[str, Any]]] = None
+    
+    @validator('choices')
+    def validate_choices(cls, v):
+        for choice in v:
+            if 'text' not in choice:
+                raise ValueError("Each choice must have 'text' field")
+            if 'choice_id' not in choice:
+                raise ValueError("Each choice must have 'choice_id' field")
+        return v
+
 class TherapeuticPromptTemplate(BaseModel):
     template_id: str
     chapter_type: ChapterType
@@ -82,31 +99,32 @@ class TherapeuticPromptTemplate(BaseModel):
     safety_guidelines: List[str]
     companion_integration: Dict[str, str] = {}
 
-# DeepSeek R1 Integration
-class DeepSeekR1Client:
-    def __init__(self, api_key: str = None, base_url: str = "https://api.deepseek.com/v1"):
-        self.api_key = api_key or os.getenv("DEEPSEEK_API_KEY", "mock_key_for_testing")
+# GPT-4o Integration for Story Generation
+class GPT4oStoryClient:
+    def __init__(self, api_key: str = None, base_url: str = "https://api.openai.com/v1"):
+        self.api_key = api_key or os.getenv("OPENAI_API_KEY", "mock_key_for_testing")
         self.base_url = base_url
-        self.model = "deepseek-r1"
-        self.timeout = 30.0
+        self.model = "gpt-4o"
+        self.timeout = 3.5  # 3.5 second timeout constraint per requirements
         
     async def generate_story(
         self, 
         prompt: str, 
         system_message: str = None,
         temperature: float = 0.7,
-        max_tokens: int = 1000
+        max_tokens: int = 1000,
+        use_json_mode: bool = True
     ) -> Dict[str, Any]:
-        """Generate story content using DeepSeek R1"""
+        """Generate story content using GPT-4o with JSON schema validation"""
         
         start_time = time.time()
         
         # For development/testing, use mock response
         if self.api_key == "mock_key_for_testing":
             await asyncio.sleep(0.5)  # Simulate API delay
-            return await self._mock_deepseek_response(prompt, system_message)
+            return await self._mock_gpt4o_response(prompt, system_message)
         
-        # Real DeepSeek R1 API call
+        # Real GPT-4o API call with timeout constraint
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
@@ -125,7 +143,12 @@ class DeepSeekR1Client:
             "stream": False
         }
         
+        # Add JSON mode if requested (for structured output)
+        if use_json_mode:
+            payload["response_format"] = {"type": "json_object"}
+        
         try:
+            # Use 3.5 second timeout as per requirements
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
                     f"{self.base_url}/chat/completions",
@@ -137,20 +160,83 @@ class DeepSeekR1Client:
                 result = response.json()
                 generation_time = int((time.time() - start_time) * 1000)
                 
+                content = result["choices"][0]["message"]["content"]
+                
+                # Validate JSON schema if JSON mode was used
+                if use_json_mode:
+                    validated_content = await self._validate_json_schema(content)
+                    if validated_content is None:
+                        raise ValueError("JSON schema validation failed")
+                    content = validated_content
+                
                 return {
-                    "content": result["choices"][0]["message"]["content"],
+                    "content": content,
                     "usage": result.get("usage", {}),
                     "generation_time_ms": generation_time,
-                    "model": self.model
+                    "model": self.model,
+                    "timeout_exceeded": generation_time > 3500
                 }
                 
+        except asyncio.TimeoutError:
+            print(f"GPT-4o API timeout after {self.timeout}s")
+            return await self._handle_timeout_fallback(prompt, system_message, start_time)
+        except httpx.TimeoutException:
+            print(f"GPT-4o HTTP timeout after {self.timeout}s")
+            return await self._handle_timeout_fallback(prompt, system_message, start_time)
         except Exception as e:
-            print(f"DeepSeek R1 API error: {e}")
+            print(f"GPT-4o API error: {e}")
             # Fallback to mock response
-            return await self._mock_deepseek_response(prompt, system_message)
+            return await self._handle_error_fallback(prompt, system_message, start_time, str(e))
     
-    async def _mock_deepseek_response(self, prompt: str, system_message: str = None) -> Dict[str, Any]:
-        """Mock DeepSeek R1 response for development/testing - ?"""
+    async def _validate_json_schema(self, content: str) -> Optional[str]:
+        """Validate JSON response against expected schema"""
+        try:
+            # Parse JSON
+            parsed = json.loads(content)
+            
+            # Validate using Pydantic model
+            validated = StoryJSONSchema(**parsed)
+            
+            # Return validated JSON string
+            return json.dumps(validated.dict())
+            
+        except json.JSONDecodeError as e:
+            print(f"JSON parsing error: {e}")
+            return None
+        except Exception as e:
+            print(f"Schema validation error: {e}")
+            return None
+    
+    async def _handle_timeout_fallback(self, prompt: str, system_message: str, start_time: float) -> Dict[str, Any]:
+        """Handle timeout with fallback response"""
+        generation_time = int((time.time() - start_time) * 1000)
+        
+        fallback_content = {
+            "story_text": "物語の生成に時間がかかっています。シンプルな選択肢から始めましょう。",
+            "choices": [
+                {"choice_id": "continue", "text": "続ける"},
+                {"choice_id": "rest", "text": "休憩する"}
+            ],
+            "therapeutic_elements": ["patience", "self_care"]
+        }
+        
+        return {
+            "content": json.dumps(fallback_content),
+            "usage": {},
+            "generation_time_ms": generation_time,
+            "model": f"{self.model}-fallback",
+            "timeout_exceeded": True,
+            "fallback_reason": "timeout"
+        }
+    
+    async def _handle_error_fallback(self, prompt: str, system_message: str, start_time: float, error: str) -> Dict[str, Any]:
+        """Handle general errors with fallback response"""
+        generation_time = int((time.time() - start_time) * 1000)
+        
+        return await self._mock_gpt4o_response(prompt, system_message)
+    
+    async def _mock_gpt4o_response(self, prompt: str, system_message: str = None) -> Dict[str, Any]:
+        """Mock GPT-4o response for development/testing"""
         
         # Generate contextual mock content based on prompt - ?
         if "opening" in prompt.lower() or "?" in prompt.lower():

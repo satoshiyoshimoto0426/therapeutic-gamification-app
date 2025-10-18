@@ -1,0 +1,78 @@
+{
+  "timestamp": "2025-10-18 16:23:03",
+  "system_info": {
+    "cpu_count": 8,
+    "memory_total_gb": 7.734836578369141,
+    "python_version": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]"
+  },
+  "startup_time": {
+    "test_name": "startup_time_measurement",
+    "measurements": [
+      {
+        "component": "環境チェック",
+        "time_ms": 15.589714050292969,
+        "time_s": 0.015589714050292969
+      },
+      {
+        "component": "モックDB初期化",
+        "time_ms": 7.057428359985352,
+        "time_s": 0.0070574283599853516
+      },
+      {
+        "component": "サービスマネージャー初期化",
+        "time_ms": 386.25240325927734,
+        "time_s": 0.38625240325927734
+      },
+      {
+        "component": "設定ファイル読み込み",
+        "time_ms": 1.0001659393310547,
+        "time_s": 0.0010001659393310547
+      }
+    ],
+    "total_time_ms": 409.8997116088867,
+    "total_time_s": 0.4098997116088867,
+    "performance_rating": "優秀"
+  },
+  "memory_usage": {
+    "test_name": "memory_usage_measurement",
+    "measurements": [
+      {
+        "component": "モックDB（小規模データ）",
+        "memory_mb": 0.00390625,
+        "memory_before_mb": 33.140625,
+        "memory_after_mb": 33.14453125
+      },
+      {
+        "component": "モックDB（中規模データ）",
+        "memory_mb": 0.02734375,
+        "memory_before_mb": 33.1484375,
+        "memory_after_mb": 33.17578125
+      },
+      {
+        "component": "サービスマネージャー",
+        "memory_mb": 0.0,
+        "memory_before_mb": 33.17578125,
+        "memory_after_mb": 33.17578125
+      }
+    ],
+    "initial_memory_mb": 33.140625,
+    "final_memory_mb": 33.17578125,
+    "total_increase_mb": 0.03515625,
+    "memory_rating": "優秀"
+  },
+  "parallel_processing": {
+    "test_name": "parallel_processing_test",
+    "tests": [],
+    "sequential_time_ms": 401.6232490539551,
+    "parallel_time_ms": 109.0402603149414,
+    "improvement_percent": 72.85011249428625,
+    "speedup_factor": 3.6832565136395043,
+    "parallel_rating": "優秀"
+  },
+  "recommendations": [
+    "キャッシング: 頻繁にアクセスされるデータをキャッシュしてください",
+    "プロファイリング: 定期的にパフォーマンスプロファイリングを実行してください",
+    "モニタリング: 本番環境でのパフォーマンスメトリクスを監視してください"
+  ],
+  "overall_rating": "優秀"
+}

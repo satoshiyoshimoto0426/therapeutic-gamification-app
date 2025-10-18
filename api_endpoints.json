@@ -1,0 +1,253 @@
+{
+  "auth": [
+    {
+      "service": "auth",
+      "method": "GET",
+      "path": "/health",
+      "description": "ヘルスチェック",
+      "status": "working",
+      "status_code": 200,
+      "error": null
+    },
+    {
+      "service": "auth",
+      "method": "POST",
+      "path": "/auth/token",
+      "description": "トークン作成",
+      "status": "needs_valid_data",
+      "status_code": 422,
+      "error": null
+    },
+    {
+      "service": "auth",
+      "method": "POST",
+      "path": "/auth/guardian/login",
+      "description": "Guardian ログイン",
+      "status": "needs_valid_data",
+      "status_code": 422,
+      "error": null
+    },
+    {
+      "service": "auth",
+      "method": "POST",
+      "path": "/auth/guardian/grant",
+      "description": "アクセス許可",
+      "status": "needs_valid_data",
+      "status_code": 422,
+      "error": null
+    }
+  ],
+  "core_game": [
+    {
+      "service": "core_game",
+      "method": "GET",
+      "path": "/health",
+      "description": "ヘルスチェック",
+      "status": "working",
+      "status_code": 200,
+      "error": null
+    },
+    {
+      "service": "core_game",
+      "method": "POST",
+      "path": "/xp/add",
+      "description": "XP追加",
+      "status": "needs_valid_data",
+      "status_code": 422,
+      "error": null
+    },
+    {
+      "service": "core_game",
+      "method": "POST",
+      "path": "/level/progress",
+      "description": "レベル進捗取得",
+      "status": "working",
+      "status_code": 200,
+      "error": null
+    },
+    {
+      "service": "core_game",
+      "method": "POST",
+      "path": "/resonance/check",
+      "description": "共鳴チェック",
+      "status": "working",
+      "status_code": 200,
+      "error": null
+    },
+    {
+      "service": "core_game",
+      "method": "POST",
+      "path": "/resonance/trigger",
+      "description": "共鳴イベント発動",
+      "status": "needs_valid_data",
+      "status_code": 400,
+      "error": null
+    },
+    {
+      "service": "core_game",
+      "method": "POST",
+      "path": "/system/status",
+      "description": "システム状態取得",
+      "status": "working",
+      "status_code": 200,
+      "error": null
+    },
+    {
+      "service": "core_game",
+      "method": "POST",
+      "path": "/xp/calculate",
+      "description": "XP計算プレビュー",
+      "status": "needs_valid_data",
+      "status_code": 422,
+      "error": null
+    }
+  ],
+  "task_mgmt": [
+    {
+      "service": "task_mgmt",
+      "method": "GET",
+      "path": "/health",
+      "description": "ヘルスチェック",
+      "status": "working",
+      "status_code": 200,
+      "error": null
+    },
+    {
+      "service": "task_mgmt",
+      "method": "POST",
+      "path": "/tasks/{uid}/create",
+      "description": "タスク作成",
+      "status": "needs_valid_data",
+      "status_code": 422,
+      "error": null
+    },
+    {
+      "service": "task_mgmt",
+      "method": "GET",
+      "path": "/tasks/{uid}",
+      "description": "タスク一覧取得",
+      "status": "working",
+      "status_code": 200,
+      "error": null
+    },
+    {
+      "service": "task_mgmt",
+      "method": "GET",
+      "path": "/tasks/{uid}/{task_id}",
+      "description": "タスク詳細取得",
+      "status": "not_found",
+      "status_code": 404,
+      "error": null
+    },
+    {
+      "service": "task_mgmt",
+      "method": "PUT",
+      "path": "/tasks/{uid}/{task_id}",
+      "description": "タスク更新",
+      "status": "not_found",
+      "status_code": 404,
+      "error": null
+    },
+    {
+      "service": "task_mgmt",
+      "method": "POST",
+      "path": "/tasks/{uid}/{task_id}/start",
+      "description": "タスク開始",
+      "status": "not_found",
+      "status_code": 404,
+      "error": null
+    },
+    {
+      "service": "task_mgmt",
+      "method": "POST",
+      "path": "/tasks/{uid}/{task_id}/complete",
+      "description": "タスク完了",
+      "status": "needs_valid_data",
+      "status_code": 422,
+      "error": null
+    },
+    {
+      "service": "task_mgmt",
+      "method": "DELETE",
+      "path": "/tasks/{uid}/{task_id}",
+      "description": "タスク削除",
+      "status": "not_found",
+      "status_code": 404,
+      "error": null
+    },
+    {
+      "service": "task_mgmt",
+      "method": "GET",
+      "path": "/tasks/{uid}/statistics",
+      "description": "統計取得",
+      "status": "working",
+      "status_code": 200,
+      "error": null
+    },
+    {
+      "service": "task_mgmt",
+      "method": "POST",
+      "path": "/tasks/xp-preview",
+      "description": "XPプレビュー",
+      "status": "needs_valid_data",
+      "status_code": 422,
+      "error": null
+    }
+  ],
+  "mandala": [
+    {
+      "service": "mandala",
+      "method": "GET",
+      "path": "/health",
+      "description": "ヘルスチェック",
+      "status": "working",
+      "status_code": 200,
+      "error": null
+    },
+    {
+      "service": "mandala",
+      "method": "GET",
+      "path": "/mandala/{uid}/grid",
+      "description": "グリッド取得",
+      "status": "server_error",
+      "status_code": 500,
+      "error": null
+    },
+    {
+      "service": "mandala",
+      "method": "POST",
+      "path": "/mandala/{uid}/unlock",
+      "description": "セルアンロック",
+      "status": "needs_valid_data",
+      "status_code": 422,
+      "error": null
+    },
+    {
+      "service": "mandala",
+      "method": "POST",
+      "path": "/mandala/{uid}/complete",
+      "description": "セル完了",
+      "status": "needs_valid_data",
+      "status_code": 422,
+      "error": null
+    },
+    {
+      "service": "mandala",
+      "method": "GET",
+      "path": "/mandala/{uid}/status",
+      "description": "ステータス取得",
+      "status": "server_error",
+      "status_code": 500,
+      "error": null
+    },
+    {
+      "service": "mandala",
+      "method": "GET",
+      "path": "/mandala/{uid}/reminder",
+      "description": "リマインダー取得",
+      "status": "working",
+      "status_code": 200,
+      "error": null
+    }
+  ]
+}

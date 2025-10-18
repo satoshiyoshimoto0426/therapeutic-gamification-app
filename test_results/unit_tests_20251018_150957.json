@@ -1,0 +1,11 @@
+{
+  "passed": 15,
+  "failed": 2,
+  "skipped": 3,
+  "errors": [
+    "テストエラー1",
+    "テストエラー2"
+  ],
+  "duration": 10.5,
+  "total": 20
+}

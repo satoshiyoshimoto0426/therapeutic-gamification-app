@@ -1,0 +1,135 @@
+{
+  "users": [
+    {
+      "_id": "test_user_001",
+      "username": "テストユーザー1",
+      "email": "test1@example.com",
+      "created_at": "2024-01-01T00:00:00Z",
+      "player_level": 5,
+      "total_xp": 150,
+      "yu_level": 3,
+      "current_xp": 50,
+      "xp_to_next_level": 100,
+      "resonance_level": 2,
+      "crystal_count": 10
+    },
+    {
+      "_id": "test_user_002",
+      "username": "テストユーザー2",
+      "email": "test2@example.com",
+      "created_at": "2024-01-02T00:00:00Z",
+      "player_level": 3,
+      "total_xp": 75,
+      "yu_level": 2,
+      "current_xp": 25,
+      "xp_to_next_level": 50,
+      "resonance_level": 1,
+      "crystal_count": 5
+    }
+  ],
+  "tasks": [
+    {
+      "_id": "task_001",
+      "uid": "test_user_001",
+      "title": "朝の運動",
+      "description": "30分間のジョギング",
+      "task_type": "one_shot",
+      "difficulty": 2,
+      "status": "pending",
+      "created_at": "2024-01-01T00:00:00Z",
+      "estimated_duration": 30,
+      "xp_reward": 20
+    },
+    {
+      "_id": "task_002",
+      "uid": "test_user_001",
+      "title": "読書",
+      "description": "本を1章読む",
+      "task_type": "one_shot",
+      "difficulty": 1,
+      "status": "completed",
+      "created_at": "2024-01-01T00:00:00Z",
+      "completed_at": "2024-01-01T12:00:00Z",
+      "estimated_duration": 20,
+      "xp_reward": 10
+    },
+    {
+      "_id": "task_003",
+      "uid": "test_user_001",
+      "title": "瞑想",
+      "description": "10分間の瞑想",
+      "task_type": "daily",
+      "difficulty": 1,
+      "status": "pending",
+      "created_at": "2024-01-01T00:00:00Z",
+      "estimated_duration": 10,
+      "xp_reward": 15
+    }
+  ],
+  "mood_entries": [
+    {
+      "_id": "mood_001",
+      "uid": "test_user_001",
+      "mood_score": 4,
+      "timestamp": "2024-01-01T12:00:00Z",
+      "notes": "良い気分",
+      "energy_level": 4,
+      "stress_level": 2
+    },
+    {
+      "_id": "mood_002",
+      "uid": "test_user_001",
+      "mood_score": 3,
+      "timestamp": "2024-01-02T12:00:00Z",
+      "notes": "普通",
+      "energy_level": 3,
+      "stress_level": 3
+    }
+  ],
+  "mandala_grids": [
+    {
+      "_id": "mandala_001",
+      "uid": "test_user_001",
+      "grid_size": 9,
+      "cells": [
+        {"position": 0, "content": "健康", "color": "#FF6B6B"},
+        {"position": 1, "content": "仕事", "color": "#4ECDC4"},
+        {"position": 2, "content": "趣味", "color": "#45B7D1"},
+        {"position": 3, "content": "家族", "color": "#FFA07A"},
+        {"position": 4, "content": "中心目標", "color": "#98D8C8"},
+        {"position": 5, "content": "友人", "color": "#F7DC6F"},
+        {"position": 6, "content": "学習", "color": "#BB8FCE"},
+        {"position": 7, "content": "休息", "color": "#85C1E2"},
+        {"position": 8, "content": "成長", "color": "#F8B739"}
+      ],
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  ],
+  "story_progress": [
+    {
+      "_id": "story_001",
+      "uid": "test_user_001",
+      "current_chapter": 1,
+      "current_scene": 3,
+      "completed_chapters": [],
+      "unlocked_paths": ["path_a", "path_b"],
+      "choices_made": [
+        {"chapter": 1, "scene": 1, "choice": "help_villager"},
+        {"chapter": 1, "scene": 2, "choice": "explore_forest"}
+      ],
+      "last_updated": "2024-01-01T12:00:00Z"
+    }
+  ],
+  "achievements": [
+    {
+      "_id": "achievement_001",
+      "uid": "test_user_001",
+      "achievement_id": "first_task",
+      "title": "最初の一歩",
+      "description": "初めてのタスクを完了",
+      "unlocked_at": "2024-01-01T12:00:00Z",
+      "xp_reward": 50
+    }
+  ]
+}
