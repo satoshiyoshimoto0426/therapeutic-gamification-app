@@ -44,7 +44,7 @@ app.add_middleware(
 class MoodLogRequest(BaseModel):
     """気分"""
     overall_mood: int = Field(..., ge=1, le=5, description="?1-5?")
-    energy_level: Optional[int] = Field(None, ge=1, le=5, description="エラー1-5?")
+    energy_level: Optional[int] = Field(None, ge=1, le=5, description="エネルギーレベル（1-5）")
     motivation_level: Optional[int] = Field(None, ge=1, le=5, description="や1-5?")
     focus_level: Optional[int] = Field(None, ge=1, le=5, description="?1-5?")
     anxiety_level: Optional[int] = Field(3, ge=1, le=5, description="?1=?, 5=?")
