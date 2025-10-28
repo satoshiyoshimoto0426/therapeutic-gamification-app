@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 # Add project root to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from .main import app
+from main import app
 from shared.interfaces.task_system import TaskType, TaskDifficulty, TaskPriority, TaskStatus, ADHDSupportLevel
 from shared.interfaces.core_types import CrystalAttribute
 
