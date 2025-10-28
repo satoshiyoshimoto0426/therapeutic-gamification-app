@@ -1,0 +1,1576 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.8, pytest-7.4.3, pluggy-1.6.0 -- /home/ubuntu/.pyenv/versions/3.12.8/bin/python
+cachedir: .pytest_cache
+rootdir: /home/ubuntu/therapeutic-gamification-app
+configfile: pyproject.toml
+testpaths: services, shared
+plugins: asyncio-0.21.1, cov-4.1.0, anyio-3.7.1
+asyncio: mode=Mode.STRICT
+collecting ... collected 1475 items / 105 errors
+
+==================================== ERRORS ====================================
+_____________ ERROR collecting services/ai-story/test_task_8_2.py ______________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/ai-story/test_task_8_2.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/ai-story/test_task_8_2.py:18: in <module>
+    from main import (
+E   ImportError: cannot import name 'DeepSeekR1Client' from 'main' (/home/ubuntu/therapeutic-gamification-app/services/adhd-support/main.py)
+___________ ERROR collecting services/alpha-playtest/simple_test.py ____________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/alpha-playtest/simple_test.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/alpha-playtest/simple_test.py:7: in <module>
+    from main import AlphaPlaytestEngine, TestUserStatus, FeedbackType, ABTestVariant
+E   ImportError: cannot import name 'AlphaPlaytestEngine' from 'main' (/home/ubuntu/therapeutic-gamification-app/services/adhd-support/main.py)
+____ ERROR collecting services/alpha-playtest/test_task_24_1_integration.py ____
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/alpha-playtest/test_task_24_1_integration.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/alpha-playtest/test_task_24_1_integration.py:14: in <module>
+    from main import AlphaPlaytestEngine, FeedbackType, ABTestVariant
+E   ImportError: cannot import name 'AlphaPlaytestEngine' from 'main' (/home/ubuntu/therapeutic-gamification-app/services/adhd-support/main.py)
+____ ERROR collecting services/alpha-playtest/test_task_24_2_integration.py ____
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/alpha-playtest/test_task_24_2_integration.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/alpha-playtest/test_task_24_2_integration.py:15: in <module>
+    from main import AlphaPlaytestEngine, FeedbackType
+E   ImportError: cannot import name 'AlphaPlaytestEngine' from 'main' (/home/ubuntu/therapeutic-gamification-app/services/adhd-support/main.py)
+_______ ERROR collecting services/alpha-playtest/test_user_management.py _______
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/alpha-playtest/test_user_management.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/alpha-playtest/test_user_management.py:7: in <module>
+    from main import AlphaPlaytestEngine, TestUserStatus, ABTestVariant, FeedbackType
+E   ImportError: cannot import name 'AlphaPlaytestEngine' from 'main' (/home/ubuntu/therapeutic-gamification-app/services/adhd-support/main.py)
+________________ ERROR collecting services/auth/simple_test.py _________________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/auth/simple_test.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/auth/simple_test.py:13: in <module>
+    from services.auth.jwt_service import jwt_service, TokenType
+services/auth/jwt_service.py:11: in <module>
+    import jwt
+E   ModuleNotFoundError: No module named 'jwt'
+_________________ ERROR collecting services/auth/test_auth.py __________________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/auth/test_auth.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/auth/test_auth.py:12: in <module>
+    from fastapi.testclient import TestClient
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/fastapi/testclient.py:1: in <module>
+    from starlette.testclient import TestClient as TestClient  # noqa
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/starlette/testclient.py:16: in <module>
+    import httpx
+E   ModuleNotFoundError: No module named 'httpx'
+_________ ERROR collecting services/auth/test_auth_flow_integration.py _________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/auth/test_auth_flow_integration.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/auth/test_auth_flow_integration.py:12: in <module>
+    from fastapi.testclient import TestClient
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/fastapi/testclient.py:1: in <module>
+    from starlette.testclient import TestClient as TestClient  # noqa
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/starlette/testclient.py:16: in <module>
+    import httpx
+E   ModuleNotFoundError: No module named 'httpx'
+___________ ERROR collecting services/auth/test_auth_integration.py ____________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/auth/test_auth_integration.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/auth/test_auth_integration.py:12: in <module>
+    from fastapi.testclient import TestClient
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/fastapi/testclient.py:1: in <module>
+    from starlette.testclient import TestClient as TestClient  # noqa
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/starlette/testclient.py:16: in <module>
+    import httpx
+E   ModuleNotFoundError: No module named 'httpx'
+______________ ERROR collecting services/auth/test_auth_simple.py ______________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/auth/test_auth_simple.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/auth/test_auth_simple.py:16: in <module>
+    from services.auth.jwt_service import jwt_service, TokenType
+services/auth/jwt_service.py:11: in <module>
+    import jwt
+E   ModuleNotFoundError: No module named 'jwt'
+___________ ERROR collecting services/auth/test_endpoints_simple.py ____________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/auth/test_endpoints_simple.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/auth/test_endpoints_simple.py:16: in <module>
+    from services.auth.jwt_service import jwt_service
+services/auth/jwt_service.py:11: in <module>
+    import jwt
+E   ModuleNotFoundError: No module named 'jwt'
+____________ ERROR collecting services/auth/test_jwt_middleware.py _____________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/auth/test_jwt_middleware.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/auth/test_jwt_middleware.py:16: in <module>
+    from services.auth.jwt_service import jwt_service, TokenType
+services/auth/jwt_service.py:11: in <module>
+    import jwt
+E   ModuleNotFoundError: No module named 'jwt'
+_________________ ERROR collecting services/auth/test_rbac.py __________________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/auth/test_rbac.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/auth/test_rbac.py:19: in <module>
+    from shared.middleware.rbac_middleware import (
+shared/middleware/rbac_middleware.py:12: in <module>
+    import jwt
+E   ModuleNotFoundError: No module named 'jwt'
+________ ERROR collecting services/auto-deployment/test_orchestrator.py ________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/auto-deployment/test_orchestrator.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/auto-deployment/test_orchestrator.py:12: in <module>
+    from .orchestrator import (
+E   ImportError: attempted relative import with no known parent package
+_ ERROR collecting services/auto-deployment/deployment/cloud_run/tests/test_cloud_run_client.py _
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/auto-deployment/deployment/cloud_run/tests/test_cloud_run_client.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/auto-deployment/deployment/cloud_run/__init__.py:11: in <module>
+    from .cloud_run_deployer import CloudRunDeployer
+services/auto-deployment/deployment/cloud_run/cloud_run_deployer.py:13: in <module>
+    from .cloud_run_client import CloudRunClient, CloudRunService, DeploymentResult
+services/auto-deployment/deployment/cloud_run/cloud_run_client.py:10: in <module>
+    from google.cloud import run_v2
+E   ImportError: cannot import name 'run_v2' from 'google.cloud' (unknown location)
+_ ERROR collecting services/auto-deployment/deployment/cloud_run/tests/test_cloud_run_deployer.py _
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/auto-deployment/deployment/cloud_run/tests/test_cloud_run_deployer.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/auto-deployment/deployment/cloud_run/__init__.py:11: in <module>
+    from .cloud_run_deployer import CloudRunDeployer
+services/auto-deployment/deployment/cloud_run/cloud_run_deployer.py:13: in <module>
+    from .cloud_run_client import CloudRunClient, CloudRunService, DeploymentResult
+services/auto-deployment/deployment/cloud_run/cloud_run_client.py:10: in <module>
+    from google.cloud import run_v2
+E   ImportError: cannot import name 'run_v2' from 'google.cloud' (unknown location)
+_ ERROR collecting services/auto-deployment/deployment/cloud_run/tests/test_revision_manager.py _
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/auto-deployment/deployment/cloud_run/tests/test_revision_manager.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/auto-deployment/deployment/cloud_run/__init__.py:11: in <module>
+    from .cloud_run_deployer import CloudRunDeployer
+services/auto-deployment/deployment/cloud_run/cloud_run_deployer.py:13: in <module>
+    from .cloud_run_client import CloudRunClient, CloudRunService, DeploymentResult
+services/auto-deployment/deployment/cloud_run/cloud_run_client.py:10: in <module>
+    from google.cloud import run_v2
+E   ImportError: cannot import name 'run_v2' from 'google.cloud' (unknown location)
+_ ERROR collecting services/auto-deployment/deployment/cloud_run/tests/test_task_4_3_completion.py _
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/auto-deployment/deployment/cloud_run/tests/test_task_4_3_completion.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/auto-deployment/deployment/cloud_run/__init__.py:11: in <module>
+    from .cloud_run_deployer import CloudRunDeployer
+services/auto-deployment/deployment/cloud_run/cloud_run_deployer.py:13: in <module>
+    from .cloud_run_client import CloudRunClient, CloudRunService, DeploymentResult
+services/auto-deployment/deployment/cloud_run/cloud_run_client.py:10: in <module>
+    from google.cloud import run_v2
+E   ImportError: cannot import name 'run_v2' from 'google.cloud' (unknown location)
+_ ERROR collecting services/auto-deployment/deployment/cloud_run/tests/test_traffic_manager.py _
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/auto-deployment/deployment/cloud_run/tests/test_traffic_manager.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/auto-deployment/deployment/cloud_run/__init__.py:11: in <module>
+    from .cloud_run_deployer import CloudRunDeployer
+services/auto-deployment/deployment/cloud_run/cloud_run_deployer.py:13: in <module>
+    from .cloud_run_client import CloudRunClient, CloudRunService, DeploymentResult
+services/auto-deployment/deployment/cloud_run/cloud_run_client.py:10: in <module>
+    from google.cloud import run_v2
+E   ImportError: cannot import name 'run_v2' from 'google.cloud' (unknown location)
+_ ERROR collecting services/auto-deployment/environment/tests/test_cloud_resource_manager_simple.py _
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/runner.py:341: in from_call
+    result: Optional[TResult] = func()
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/runner.py:372: in <lambda>
+    call = CallInfo.from_call(lambda: list(collector.collect()), "collect")
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/python.py:531: in collect
+    self._inject_setup_module_fixture()
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/python.py:545: in _inject_setup_module_fixture
+    self.obj, ("setUpModule", "setup_module")
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/python.py:310: in obj
+    self._obj = obj = self._getobj()
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/python.py:528: in _getobj
+    return self._importtestmodule()
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/python.py:617: in _importtestmodule
+    mod = import_path(self.path, mode=importmode, root=self.config.rootpath)
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/pathlib.py:567: in import_path
+    importlib.import_module(module_name)
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:935: in _load_unlocked
+    ???
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/assertion/rewrite.py:186: in exec_module
+    exec(co, module.__dict__)
+services/auto-deployment/environment/tests/test_cloud_resource_manager_simple.py:27: in <module>
+    sys.modules[module_name] = mock_module
+E   NameError: name 'sys' is not defined. Did you forget to import 'sys'
+_ ERROR collecting services/auto-deployment/monitoring/test_task_5_completion_verification.py _
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/auto-deployment/monitoring/test_task_5_completion_verification.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/auto-deployment/monitoring/test_task_5_completion_verification.py:22: in <module>
+    from health_check import (
+E   ModuleNotFoundError: No module named 'health_check'
+_ ERROR collecting services/auto-deployment/monitoring/test_task_5_final_verification.py _
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/auto-deployment/monitoring/test_task_5_final_verification.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/auto-deployment/monitoring/test_task_5_final_verification.py:16: in <module>
+    from health_check import (
+E   ModuleNotFoundError: No module named 'health_check'
+_ ERROR collecting services/auto-deployment/rollback/tests/test_rollback_executor.py _
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/auto-deployment/rollback/tests/test_rollback_executor.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+services/auto-deployment/rollback/rollback_executor.py:18: in <module>
+    from ..deployment.cloud_run.traffic_manager import TrafficManager, TrafficUpdateResult
+E   ImportError: attempted relative import beyond top-level package
+
+During handling of the above exception, another exception occurred:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/auto-deployment/rollback/tests/test_rollback_executor.py:17: in <module>
+    from rollback.rollback_executor import (
+services/auto-deployment/rollback/rollback_executor.py:30: in <module>
+    from deployment.cloud_run.traffic_manager import TrafficManager, TrafficUpdateResult
+services/auto-deployment/deployment/cloud_run/__init__.py:11: in <module>
+    from .cloud_run_deployer import CloudRunDeployer
+services/auto-deployment/deployment/cloud_run/cloud_run_deployer.py:13: in <module>
+    from .cloud_run_client import CloudRunClient, CloudRunService, DeploymentResult
+services/auto-deployment/deployment/cloud_run/cloud_run_client.py:10: in <module>
+    from google.cloud import run_v2
+E   ImportError: cannot import name 'run_v2' from 'google.cloud' (unknown location)
+_ ERROR collecting services/auto-deployment/rollback/tests/test_rollback_integration.py _
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/auto-deployment/rollback/tests/test_rollback_integration.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+services/auto-deployment/rollback/rollback_executor.py:18: in <module>
+    from ..deployment.cloud_run.traffic_manager import TrafficManager, TrafficUpdateResult
+E   ImportError: attempted relative import beyond top-level package
+
+During handling of the above exception, another exception occurred:
+services/auto-deployment/rollback/rollback_manager.py:20: in <module>
+    from .rollback_executor import (
+services/auto-deployment/rollback/rollback_executor.py:30: in <module>
+    from deployment.cloud_run.traffic_manager import TrafficManager, TrafficUpdateResult
+services/auto-deployment/deployment/cloud_run/__init__.py:11: in <module>
+    from .cloud_run_deployer import CloudRunDeployer
+services/auto-deployment/deployment/cloud_run/cloud_run_deployer.py:13: in <module>
+    from .cloud_run_client import CloudRunClient, CloudRunService, DeploymentResult
+services/auto-deployment/deployment/cloud_run/cloud_run_client.py:10: in <module>
+    from google.cloud import run_v2
+E   ImportError: cannot import name 'run_v2' from 'google.cloud' (unknown location)
+
+During handling of the above exception, another exception occurred:
+services/auto-deployment/rollback/rollback_executor.py:18: in <module>
+    from ..deployment.cloud_run.traffic_manager import TrafficManager, TrafficUpdateResult
+E   ImportError: attempted relative import beyond top-level package
+
+During handling of the above exception, another exception occurred:
+services/auto-deployment/rollback/tests/test_rollback_integration.py:15: in <module>
+    from ..rollback_manager import (
+services/auto-deployment/rollback/rollback_manager.py:40: in <module>
+    from rollback.rollback_executor import (
+services/auto-deployment/rollback/rollback_executor.py:30: in <module>
+    from deployment.cloud_run.traffic_manager import TrafficManager, TrafficUpdateResult
+services/auto-deployment/deployment/cloud_run/__init__.py:11: in <module>
+    from .cloud_run_deployer import CloudRunDeployer
+services/auto-deployment/deployment/cloud_run/cloud_run_deployer.py:13: in <module>
+    from .cloud_run_client import CloudRunClient, CloudRunService, DeploymentResult
+services/auto-deployment/deployment/cloud_run/cloud_run_client.py:10: in <module>
+    from google.cloud import run_v2
+E   ImportError: cannot import name 'run_v2' from 'google.cloud' (unknown location)
+
+During handling of the above exception, another exception occurred:
+services/auto-deployment/rollback/rollback_executor.py:18: in <module>
+    from ..deployment.cloud_run.traffic_manager import TrafficManager, TrafficUpdateResult
+E   ImportError: attempted relative import beyond top-level package
+
+During handling of the above exception, another exception occurred:
+services/auto-deployment/rollback/rollback_manager.py:20: in <module>
+    from .rollback_executor import (
+services/auto-deployment/rollback/rollback_executor.py:30: in <module>
+    from deployment.cloud_run.traffic_manager import TrafficManager, TrafficUpdateResult
+services/auto-deployment/deployment/cloud_run/__init__.py:11: in <module>
+    from .cloud_run_deployer import CloudRunDeployer
+services/auto-deployment/deployment/cloud_run/cloud_run_deployer.py:13: in <module>
+    from .cloud_run_client import CloudRunClient, CloudRunService, DeploymentResult
+services/auto-deployment/deployment/cloud_run/cloud_run_client.py:10: in <module>
+    from google.cloud import run_v2
+E   ImportError: cannot import name 'run_v2' from 'google.cloud' (unknown location)
+
+During handling of the above exception, another exception occurred:
+services/auto-deployment/rollback/rollback_executor.py:18: in <module>
+    from ..deployment.cloud_run.traffic_manager import TrafficManager, TrafficUpdateResult
+E   ImportError: attempted relative import beyond top-level package
+
+During handling of the above exception, another exception occurred:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/auto-deployment/rollback/tests/test_rollback_integration.py:38: in <module>
+    from rollback.rollback_manager import (
+services/auto-deployment/rollback/rollback_manager.py:40: in <module>
+    from rollback.rollback_executor import (
+services/auto-deployment/rollback/rollback_executor.py:30: in <module>
+    from deployment.cloud_run.traffic_manager import TrafficManager, TrafficUpdateResult
+services/auto-deployment/deployment/cloud_run/__init__.py:11: in <module>
+    from .cloud_run_deployer import CloudRunDeployer
+services/auto-deployment/deployment/cloud_run/cloud_run_deployer.py:13: in <module>
+    from .cloud_run_client import CloudRunClient, CloudRunService, DeploymentResult
+services/auto-deployment/deployment/cloud_run/cloud_run_client.py:10: in <module>
+    from google.cloud import run_v2
+E   ImportError: cannot import name 'run_v2' from 'google.cloud' (unknown location)
+_ ERROR collecting services/auto-deployment/rollback/tests/test_rollback_monitor.py _
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/auto-deployment/rollback/tests/test_rollback_monitor.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+services/auto-deployment/rollback/rollback_executor.py:18: in <module>
+    from ..deployment.cloud_run.traffic_manager import TrafficManager, TrafficUpdateResult
+E   ImportError: attempted relative import beyond top-level package
+
+During handling of the above exception, another exception occurred:
+services/auto-deployment/rollback/rollback_monitor.py:16: in <module>
+    from .rollback_executor import RollbackResult, RollbackStatus
+services/auto-deployment/rollback/rollback_executor.py:30: in <module>
+    from deployment.cloud_run.traffic_manager import TrafficManager, TrafficUpdateResult
+services/auto-deployment/deployment/cloud_run/__init__.py:11: in <module>
+    from .cloud_run_deployer import CloudRunDeployer
+services/auto-deployment/deployment/cloud_run/cloud_run_deployer.py:13: in <module>
+    from .cloud_run_client import CloudRunClient, CloudRunService, DeploymentResult
+services/auto-deployment/deployment/cloud_run/cloud_run_client.py:10: in <module>
+    from google.cloud import run_v2
+E   ImportError: cannot import name 'run_v2' from 'google.cloud' (unknown location)
+
+During handling of the above exception, another exception occurred:
+services/auto-deployment/rollback/rollback_executor.py:18: in <module>
+    from ..deployment.cloud_run.traffic_manager import TrafficManager, TrafficUpdateResult
+E   ImportError: attempted relative import beyond top-level package
+
+During handling of the above exception, another exception occurred:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/auto-deployment/rollback/tests/test_rollback_monitor.py:14: in <module>
+    from rollback.rollback_monitor import (
+services/auto-deployment/rollback/rollback_monitor.py:26: in <module>
+    from rollback.rollback_executor import RollbackResult, RollbackStatus
+services/auto-deployment/rollback/rollback_executor.py:30: in <module>
+    from deployment.cloud_run.traffic_manager import TrafficManager, TrafficUpdateResult
+services/auto-deployment/deployment/cloud_run/__init__.py:11: in <module>
+    from .cloud_run_deployer import CloudRunDeployer
+services/auto-deployment/deployment/cloud_run/cloud_run_deployer.py:13: in <module>
+    from .cloud_run_client import CloudRunClient, CloudRunService, DeploymentResult
+services/auto-deployment/deployment/cloud_run/cloud_run_client.py:10: in <module>
+    from google.cloud import run_v2
+E   ImportError: cannot import name 'run_v2' from 'google.cloud' (unknown location)
+_ ERROR collecting services/auto-deployment/rollback/tests/test_rollback_monitoring_system.py _
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/auto-deployment/rollback/tests/test_rollback_monitoring_system.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+services/auto-deployment/rollback/rollback_executor.py:18: in <module>
+    from ..deployment.cloud_run.traffic_manager import TrafficManager, TrafficUpdateResult
+E   ImportError: attempted relative import beyond top-level package
+
+During handling of the above exception, another exception occurred:
+services/auto-deployment/rollback/rollback_monitoring_system.py:16: in <module>
+    from .rollback_executor import RollbackResult, RollbackStatus
+services/auto-deployment/rollback/rollback_executor.py:30: in <module>
+    from deployment.cloud_run.traffic_manager import TrafficManager, TrafficUpdateResult
+services/auto-deployment/deployment/cloud_run/__init__.py:11: in <module>
+    from .cloud_run_deployer import CloudRunDeployer
+services/auto-deployment/deployment/cloud_run/cloud_run_deployer.py:13: in <module>
+    from .cloud_run_client import CloudRunClient, CloudRunService, DeploymentResult
+services/auto-deployment/deployment/cloud_run/cloud_run_client.py:10: in <module>
+    from google.cloud import run_v2
+E   ImportError: cannot import name 'run_v2' from 'google.cloud' (unknown location)
+
+During handling of the above exception, another exception occurred:
+services/auto-deployment/rollback/rollback_executor.py:18: in <module>
+    from ..deployment.cloud_run.traffic_manager import TrafficManager, TrafficUpdateResult
+E   ImportError: attempted relative import beyond top-level package
+
+During handling of the above exception, another exception occurred:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/auto-deployment/rollback/tests/test_rollback_monitoring_system.py:14: in <module>
+    from rollback.rollback_monitoring_system import (
+services/auto-deployment/rollback/rollback_monitoring_system.py:30: in <module>
+    from rollback.rollback_executor import RollbackResult, RollbackStatus
+services/auto-deployment/rollback/rollback_executor.py:30: in <module>
+    from deployment.cloud_run.traffic_manager import TrafficManager, TrafficUpdateResult
+services/auto-deployment/deployment/cloud_run/__init__.py:11: in <module>
+    from .cloud_run_deployer import CloudRunDeployer
+services/auto-deployment/deployment/cloud_run/cloud_run_deployer.py:13: in <module>
+    from .cloud_run_client import CloudRunClient, CloudRunService, DeploymentResult
+services/auto-deployment/deployment/cloud_run/cloud_run_client.py:10: in <module>
+    from google.cloud import run_v2
+E   ImportError: cannot import name 'run_v2' from 'google.cloud' (unknown location)
+_ ERROR collecting services/auto-deployment/rollback/tests/test_rollback_recovery.py _
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/auto-deployment/rollback/tests/test_rollback_recovery.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+services/auto-deployment/rollback/rollback_executor.py:18: in <module>
+    from ..deployment.cloud_run.traffic_manager import TrafficManager, TrafficUpdateResult
+E   ImportError: attempted relative import beyond top-level package
+
+During handling of the above exception, another exception occurred:
+services/auto-deployment/rollback/rollback_recovery.py:16: in <module>
+    from .rollback_executor import RollbackResult, RollbackStatus
+services/auto-deployment/rollback/rollback_executor.py:30: in <module>
+    from deployment.cloud_run.traffic_manager import TrafficManager, TrafficUpdateResult
+services/auto-deployment/deployment/cloud_run/__init__.py:11: in <module>
+    from .cloud_run_deployer import CloudRunDeployer
+services/auto-deployment/deployment/cloud_run/cloud_run_deployer.py:13: in <module>
+    from .cloud_run_client import CloudRunClient, CloudRunService, DeploymentResult
+services/auto-deployment/deployment/cloud_run/cloud_run_client.py:10: in <module>
+    from google.cloud import run_v2
+E   ImportError: cannot import name 'run_v2' from 'google.cloud' (unknown location)
+
+During handling of the above exception, another exception occurred:
+services/auto-deployment/rollback/rollback_executor.py:18: in <module>
+    from ..deployment.cloud_run.traffic_manager import TrafficManager, TrafficUpdateResult
+E   ImportError: attempted relative import beyond top-level package
+
+During handling of the above exception, another exception occurred:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/auto-deployment/rollback/tests/test_rollback_recovery.py:14: in <module>
+    from rollback.rollback_recovery import (
+services/auto-deployment/rollback/rollback_recovery.py:28: in <module>
+    from rollback.rollback_executor import RollbackResult, RollbackStatus
+services/auto-deployment/rollback/rollback_executor.py:30: in <module>
+    from deployment.cloud_run.traffic_manager import TrafficManager, TrafficUpdateResult
+services/auto-deployment/deployment/cloud_run/__init__.py:11: in <module>
+    from .cloud_run_deployer import CloudRunDeployer
+services/auto-deployment/deployment/cloud_run/cloud_run_deployer.py:13: in <module>
+    from .cloud_run_client import CloudRunClient, CloudRunService, DeploymentResult
+services/auto-deployment/deployment/cloud_run/cloud_run_client.py:10: in <module>
+    from google.cloud import run_v2
+E   ImportError: cannot import name 'run_v2' from 'google.cloud' (unknown location)
+_ ERROR collecting services/auto-deployment/rollback/tests/test_task_7_3_completion.py _
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/auto-deployment/rollback/tests/test_task_7_3_completion.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+services/auto-deployment/rollback/rollback_executor.py:18: in <module>
+    from ..deployment.cloud_run.traffic_manager import TrafficManager, TrafficUpdateResult
+E   ImportError: attempted relative import beyond top-level package
+
+During handling of the above exception, another exception occurred:
+services/auto-deployment/rollback/rollback_monitor.py:16: in <module>
+    from .rollback_executor import RollbackResult, RollbackStatus
+services/auto-deployment/rollback/rollback_executor.py:30: in <module>
+    from deployment.cloud_run.traffic_manager import TrafficManager, TrafficUpdateResult
+services/auto-deployment/deployment/cloud_run/__init__.py:11: in <module>
+    from .cloud_run_deployer import CloudRunDeployer
+services/auto-deployment/deployment/cloud_run/cloud_run_deployer.py:13: in <module>
+    from .cloud_run_client import CloudRunClient, CloudRunService, DeploymentResult
+services/auto-deployment/deployment/cloud_run/cloud_run_client.py:10: in <module>
+    from google.cloud import run_v2
+E   ImportError: cannot import name 'run_v2' from 'google.cloud' (unknown location)
+
+During handling of the above exception, another exception occurred:
+services/auto-deployment/rollback/rollback_executor.py:18: in <module>
+    from ..deployment.cloud_run.traffic_manager import TrafficManager, TrafficUpdateResult
+E   ImportError: attempted relative import beyond top-level package
+
+During handling of the above exception, another exception occurred:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/auto-deployment/rollback/tests/test_task_7_3_completion.py:23: in <module>
+    from rollback.rollback_monitor import (
+services/auto-deployment/rollback/rollback_monitor.py:26: in <module>
+    from rollback.rollback_executor import RollbackResult, RollbackStatus
+services/auto-deployment/rollback/rollback_executor.py:30: in <module>
+    from deployment.cloud_run.traffic_manager import TrafficManager, TrafficUpdateResult
+services/auto-deployment/deployment/cloud_run/__init__.py:11: in <module>
+    from .cloud_run_deployer import CloudRunDeployer
+services/auto-deployment/deployment/cloud_run/cloud_run_deployer.py:13: in <module>
+    from .cloud_run_client import CloudRunClient, CloudRunService, DeploymentResult
+services/auto-deployment/deployment/cloud_run/cloud_run_client.py:10: in <module>
+    from google.cloud import run_v2
+E   ImportError: cannot import name 'run_v2' from 'google.cloud' (unknown location)
+_ ERROR collecting services/auto-deployment/tests/integration/test_failure_recovery.py _
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/auto-deployment/tests/integration/test_failure_recovery.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/auto-deployment/tests/integration/test_failure_recovery.py:14: in <module>
+    from services.auto_deployment.orchestrator import DeploymentOrchestrator
+E   ModuleNotFoundError: No module named 'services.auto_deployment'
+_ ERROR collecting services/auto-deployment/tests/integration/test_full_deployment_workflow.py _
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/auto-deployment/tests/integration/test_full_deployment_workflow.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/auto-deployment/tests/integration/test_full_deployment_workflow.py:17: in <module>
+    from services.auto_deployment.orchestrator import DeploymentOrchestrator
+E   ModuleNotFoundError: No module named 'services.auto_deployment'
+_ ERROR collecting services/auto-deployment/tests/integration/test_multi_environment_deployment.py _
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/auto-deployment/tests/integration/test_multi_environment_deployment.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/auto-deployment/tests/integration/test_multi_environment_deployment.py:13: in <module>
+    from services.auto_deployment.orchestrator import DeploymentOrchestrator
+E   ModuleNotFoundError: No module named 'services.auto_deployment'
+_ ERROR collecting services/auto-deployment/tests/integration/test_performance_load.py _
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/auto-deployment/tests/integration/test_performance_load.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/auto-deployment/tests/integration/test_performance_load.py:18: in <module>
+    from services.auto_deployment.orchestrator import DeploymentOrchestrator
+E   ModuleNotFoundError: No module named 'services.auto_deployment'
+_ ERROR collecting services/auto-deployment/tests/pipeline/test_environment_manager.py _
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/auto-deployment/tests/pipeline/test_environment_manager.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/auto-deployment/tests/pipeline/test_environment_manager.py:20: in <module>
+    from services.auto_deployment.config import DeploymentConfig
+E   ModuleNotFoundError: No module named 'services.auto_deployment'
+_ ERROR collecting services/auto-deployment/tests/pipeline/test_execution_framework.py _
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/auto-deployment/tests/pipeline/test_execution_framework.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/auto-deployment/tests/pipeline/test_execution_framework.py:20: in <module>
+    from services.auto_deployment.orchestrator import DeploymentOrchestrator
+E   ModuleNotFoundError: No module named 'services.auto_deployment'
+_ ERROR collecting services/auto-deployment/validation/validators/tests/test_task_2_3_completion.py _
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/auto-deployment/validation/validators/tests/test_task_2_3_completion.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/auto-deployment/validation/validators/tests/test_task_2_3_completion.py:15: in <module>
+    from authentication import AuthenticationValidator
+services/auto-deployment/validation/validators/authentication.py:13: in <module>
+    from ..base import BaseValidator, ValidationResult, ValidationSeverity
+E   ImportError: attempted relative import with no known parent package
+______ ERROR collecting services/cbt-integration/test_cbt_integration.py _______
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/cbt-integration/test_cbt_integration.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/cbt-integration/test_cbt_integration.py:12: in <module>
+    from fastapi.testclient import TestClient
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/fastapi/testclient.py:1: in <module>
+    from starlette.testclient import TestClient as TestClient  # noqa
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/starlette/testclient.py:16: in <module>
+    import httpx
+E   ModuleNotFoundError: No module named 'httpx'
+______________ ERROR collecting services/core-game/simple_test.py ______________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/core-game/simple_test.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/core-game/simple_test.py:10: in <module>
+    from fastapi.testclient import TestClient
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/fastapi/testclient.py:1: in <module>
+    from starlette.testclient import TestClient as TestClient  # noqa
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/starlette/testclient.py:16: in <module>
+    import httpx
+E   ModuleNotFoundError: No module named 'httpx'
+______________ ERROR collecting services/core-game/test_basic.py _______________
+services/core-game/test_basic.py:24: in <module>
+    from main import GameEngine
+E   ImportError: cannot import name 'GameEngine' from 'main' (/home/ubuntu/therapeutic-gamification-app/services/adhd-support/main.py)
+
+During handling of the above exception, another exception occurred:
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/runner.py:341: in from_call
+    result: Optional[TResult] = func()
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/runner.py:372: in <lambda>
+    call = CallInfo.from_call(lambda: list(collector.collect()), "collect")
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/python.py:531: in collect
+    self._inject_setup_module_fixture()
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/python.py:545: in _inject_setup_module_fixture
+    self.obj, ("setUpModule", "setup_module")
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/python.py:310: in obj
+    self._obj = obj = self._getobj()
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/python.py:528: in _getobj
+    return self._importtestmodule()
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/python.py:617: in _importtestmodule
+    mod = import_path(self.path, mode=importmode, root=self.config.rootpath)
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/pathlib.py:567: in import_path
+    importlib.import_module(module_name)
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:935: in _load_unlocked
+    ???
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/assertion/rewrite.py:186: in exec_module
+    exec(co, module.__dict__)
+services/core-game/test_basic.py:28: in <module>
+    sys.exit(1)
+E   SystemExit: 1
+------------------------------- Captured stdout --------------------------------
+? Successfully imported core types
+? Failed to import GameEngine: cannot import name 'GameEngine' from 'main' (/home/ubuntu/therapeutic-gamification-app/services/adhd-support/main.py)
+____________ ERROR collecting services/core-game/test_core_game.py _____________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/core-game/test_core_game.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/core-game/test_core_game.py:9: in <module>
+    from fastapi.testclient import TestClient
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/fastapi/testclient.py:1: in <module>
+    from starlette.testclient import TestClient as TestClient  # noqa
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/starlette/testclient.py:16: in <module>
+    import httpx
+E   ModuleNotFoundError: No module named 'httpx'
+___________ ERROR collecting services/daily-trio/test_daily_trio.py ____________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/daily-trio/test_daily_trio.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/daily-trio/test_daily_trio.py:12: in <module>
+    from fastapi.testclient import TestClient
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/fastapi/testclient.py:1: in <module>
+    from starlette.testclient import TestClient as TestClient  # noqa
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/starlette/testclient.py:16: in <module>
+    import httpx
+E   ModuleNotFoundError: No module named 'httpx'
+____________ ERROR collecting services/edge-ai-cache/simple_test.py ____________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/edge-ai-cache/simple_test.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/edge-ai-cache/simple_test.py:6: in <module>
+    import numpy as np
+E   ModuleNotFoundError: No module named 'numpy'
+________ ERROR collecting services/edge-ai-cache/test_edge_ai_cache.py _________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/edge-ai-cache/test_edge_ai_cache.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/edge-ai-cache/test_edge_ai_cache.py:6: in <module>
+    import numpy as np
+E   ModuleNotFoundError: No module named 'numpy'
+__________ ERROR collecting services/edge-ai-cache/test_task_23_1.py ___________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/edge-ai-cache/test_task_23_1.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/edge-ai-cache/test_task_23_1.py:7: in <module>
+    import numpy as np
+E   ModuleNotFoundError: No module named 'numpy'
+__________ ERROR collecting services/edge-ai-cache/test_task_23_2.py ___________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/edge-ai-cache/test_task_23_2.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/edge-ai-cache/test_task_23_2.py:7: in <module>
+    import numpy as np
+E   ModuleNotFoundError: No module named 'numpy'
+__________ ERROR collecting services/edge-ai-cache/test_task_23_3.py ___________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/edge-ai-cache/test_task_23_3.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/edge-ai-cache/test_task_23_3.py:13: in <module>
+    from main import (
+E   ImportError: cannot import name 'EdgeAICacheEngine' from 'main' (/home/ubuntu/therapeutic-gamification-app/services/adhd-support/main.py)
+________ ERROR collecting services/feature-flags/test_feature_flags.py _________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/feature-flags/test_feature_flags.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/feature-flags/test_feature_flags.py:12: in <module>
+    from fastapi.testclient import TestClient
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/fastapi/testclient.py:1: in <module>
+    from starlette.testclient import TestClient as TestClient  # noqa
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/starlette/testclient.py:16: in <module>
+    import httpx
+E   ModuleNotFoundError: No module named 'httpx'
+_ ERROR collecting services/gdpr-compliance/test_compliance_monitoring_integration.py _
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/gdpr-compliance/test_compliance_monitoring_integration.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/gdpr-compliance/test_compliance_monitoring_integration.py:7: in <module>
+    from services.gdpr_compliance.audit_logging import (
+E   ModuleNotFoundError: No module named 'services.gdpr_compliance'
+_ ERROR collecting services/gdpr-compliance/test_data_subject_rights_integration.py _
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/gdpr-compliance/test_data_subject_rights_integration.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/gdpr-compliance/test_data_subject_rights_integration.py:7: in <module>
+    from services.gdpr_compliance.data_subject_rights import (
+E   ModuleNotFoundError: No module named 'services.gdpr_compliance'
+_____ ERROR collecting services/gdpr-compliance/test_privacy_protection.py _____
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/gdpr-compliance/test_privacy_protection.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/gdpr-compliance/test_privacy_protection.py:7: in <module>
+    from services.gdpr_compliance.privacy_protection_system import (
+E   ModuleNotFoundError: No module named 'services.gdpr_compliance'
+_______ ERROR collecting services/growth-note/test_growth_note_system.py _______
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/growth-note/test_growth_note_system.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/growth-note/test_growth_note_system.py:7: in <module>
+    from main import (
+E   ImportError: cannot import name 'GrowthNoteSystem' from 'main' (/home/ubuntu/therapeutic-gamification-app/services/adhd-support/main.py)
+__________ ERROR collecting services/growth-note/test_integration.py ___________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/growth-note/test_integration.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/growth-note/test_integration.py:10: in <module>
+    from main import GrowthNoteSystem
+E   ImportError: cannot import name 'GrowthNoteSystem' from 'main' (/home/ubuntu/therapeutic-gamification-app/services/adhd-support/main.py)
+______ ERROR collecting services/growth-note/test_line_bot_integration.py ______
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/growth-note/test_line_bot_integration.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/growth-note/test_line_bot_integration.py:8: in <module>
+    from line_bot_integration import ReflectionLINEInterface, ReflectionSession
+services/growth-note/line_bot_integration.py:12: in <module>
+    from main import GrowthNoteSystem, ReflectionAnalysis
+E   ImportError: cannot import name 'GrowthNoteSystem' from 'main' (/home/ubuntu/therapeutic-gamification-app/services/adhd-support/main.py)
+__ ERROR collecting services/growth-note/test_reflection_continuity_system.py __
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/growth-note/test_reflection_continuity_system.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/growth-note/test_reflection_continuity_system.py:7: in <module>
+    from reflection_continuity_system import (
+services/growth-note/reflection_continuity_system.py:12: in <module>
+    from main import GrowthNoteSystem, ReflectionAnalysis
+E   ImportError: cannot import name 'GrowthNoteSystem' from 'main' (/home/ubuntu/therapeutic-gamification-app/services/adhd-support/main.py)
+___________ ERROR collecting services/guardian-portal/simple_test.py ___________
+import file mismatch:
+imported module 'simple_test' has this __file__ attribute:
+  /home/ubuntu/therapeutic-gamification-app/services/gdpr-compliance/simple_test.py
+which is not the same as the test file we want to collect:
+  /home/ubuntu/therapeutic-gamification-app/services/guardian-portal/simple_test.py
+HINT: remove __pycache__ / .pyc files and/or use a unique basename for your test file modules
+__ ERROR collecting services/guardian-portal/test_care_points_integration.py ___
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/guardian-portal/test_care_points_integration.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/guardian-portal/test_care_points_integration.py:7: in <module>
+    from fastapi.testclient import TestClient
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/fastapi/testclient.py:1: in <module>
+    from starlette.testclient import TestClient as TestClient  # noqa
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/starlette/testclient.py:16: in <module>
+    import httpx
+E   ModuleNotFoundError: No module named 'httpx'
+_______ ERROR collecting services/guardian-portal/test_guardian_auth.py ________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/guardian-portal/test_guardian_auth.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/guardian-portal/test_guardian_auth.py:7: in <module>
+    from fastapi.testclient import TestClient
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/fastapi/testclient.py:1: in <module>
+    from starlette.testclient import TestClient as TestClient  # noqa
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/starlette/testclient.py:16: in <module>
+    import httpx
+E   ModuleNotFoundError: No module named 'httpx'
+_ ERROR collecting services/inner-demon-battle/test_battle_rewards_integration.py _
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/inner-demon-battle/test_battle_rewards_integration.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/inner-demon-battle/test_battle_rewards_integration.py:13: in <module>
+    from main import InnerDemonBattle, DemonType, BattleResult
+E   ImportError: cannot import name 'InnerDemonBattle' from 'main' (/home/ubuntu/therapeutic-gamification-app/services/adhd-support/main.py)
+______ ERROR collecting services/inner-demon-battle/test_demon_battle.py _______
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/inner-demon-battle/test_demon_battle.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/inner-demon-battle/test_demon_battle.py:14: in <module>
+    from main import (
+E   ImportError: cannot import name 'InnerDemonBattle' from 'main' (/home/ubuntu/therapeutic-gamification-app/services/adhd-support/main.py)
+______ ERROR collecting services/integration/brushup_integration_test.py _______
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/runner.py:341: in from_call
+    result: Optional[TResult] = func()
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/runner.py:372: in <lambda>
+    call = CallInfo.from_call(lambda: list(collector.collect()), "collect")
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/python.py:531: in collect
+    self._inject_setup_module_fixture()
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/python.py:545: in _inject_setup_module_fixture
+    self.obj, ("setUpModule", "setup_module")
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/python.py:310: in obj
+    self._obj = obj = self._getobj()
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/python.py:528: in _getobj
+    return self._importtestmodule()
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/python.py:617: in _importtestmodule
+    mod = import_path(self.path, mode=importmode, root=self.config.rootpath)
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/pathlib.py:567: in import_path
+    importlib.import_module(module_name)
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:935: in _load_unlocked
+    ???
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/assertion/rewrite.py:186: in exec_module
+    exec(co, module.__dict__)
+services/integration/brushup_integration_test.py:25: in <module>
+    spec.loader.exec_module(daily_trio_main)
+<frozen importlib._bootstrap_external>:995: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1132: in get_code
+    ???
+<frozen importlib._bootstrap_external>:1190: in get_data
+    ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/ubuntu/therapeutic-gamification-app/../daily-trio/main.py'
+_____ ERROR collecting services/integration/test_complete_user_journey.py ______
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/python.py:617: in _importtestmodule
+    mod = import_path(self.path, mode=importmode, root=self.config.rootpath)
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/pathlib.py:567: in import_path
+    importlib.import_module(module_name)
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:935: in _load_unlocked
+    ???
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/assertion/rewrite.py:177: in exec_module
+    source_stat, co = _rewrite_test(fn, self.config)
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/assertion/rewrite.py:359: in _rewrite_test
+    tree = ast.parse(source, filename=strfn)
+../.pyenv/versions/3.12.8/lib/python3.12/ast.py:52: in parse
+    return compile(source, filename, mode, flags,
+E     File "/home/ubuntu/therapeutic-gamification-app/services/integration/test_complete_user_journey.py", line 23
+E       from services.line-bot.main import LineBot
+E                         ^
+E   SyntaxError: invalid syntax
+___ ERROR collecting services/integration/test_mandala_story_integration.py ____
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/python.py:617: in _importtestmodule
+    mod = import_path(self.path, mode=importmode, root=self.config.rootpath)
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/pathlib.py:567: in import_path
+    importlib.import_module(module_name)
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:935: in _load_unlocked
+    ???
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/assertion/rewrite.py:177: in exec_module
+    source_stat, co = _rewrite_test(fn, self.config)
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/assertion/rewrite.py:359: in _rewrite_test
+    tree = ast.parse(source, filename=strfn)
+../.pyenv/versions/3.12.8/lib/python3.12/ast.py:52: in parse
+    return compile(source, filename, mode, flags,
+E     File "/home/ubuntu/therapeutic-gamification-app/services/integration/test_mandala_story_integration.py", line 21
+E       from services.ai-story.main import AIStoryEngine
+E                       ^
+E   SyntaxError: invalid syntax
+____ ERROR collecting services/integration/test_rpg_elements_integration.py ____
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/integration/test_rpg_elements_integration.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/integration/test_rpg_elements_integration.py:23: in <module>
+    from rpg_economy.main import CoinEconomy, ActionType, DemonRarity
+E   ModuleNotFoundError: No module named 'rpg_economy'
+_ ERROR collecting services/integration/test_therapeutic_safety_adhd_integration.py _
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/python.py:617: in _importtestmodule
+    mod = import_path(self.path, mode=importmode, root=self.config.rootpath)
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/pathlib.py:567: in import_path
+    importlib.import_module(module_name)
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:935: in _load_unlocked
+    ???
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/assertion/rewrite.py:177: in exec_module
+    source_stat, co = _rewrite_test(fn, self.config)
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/assertion/rewrite.py:359: in _rewrite_test
+    tree = ast.parse(source, filename=strfn)
+../.pyenv/versions/3.12.8/lib/python3.12/ast.py:52: in parse
+    return compile(source, filename, mode, flags,
+E     File "/home/ubuntu/therapeutic-gamification-app/services/integration/test_therapeutic_safety_adhd_integration.py", line 19
+E       from services.therapeutic-safety.main import TherapeuticSafety
+E                                ^
+E   SyntaxError: invalid syntax
+_ ERROR collecting services/integration/test_xp_level_resonance_integration.py _
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/python.py:617: in _importtestmodule
+    mod = import_path(self.path, mode=importmode, root=self.config.rootpath)
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/pathlib.py:567: in import_path
+    importlib.import_module(module_name)
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:935: in _load_unlocked
+    ???
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/assertion/rewrite.py:177: in exec_module
+    source_stat, co = _rewrite_test(fn, self.config)
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/_pytest/assertion/rewrite.py:359: in _rewrite_test
+    tree = ast.parse(source, filename=strfn)
+../.pyenv/versions/3.12.8/lib/python3.12/ast.py:52: in parse
+    return compile(source, filename, mode, flags,
+E     File "/home/ubuntu/therapeutic-gamification-app/services/integration/test_xp_level_resonance_integration.py", line 21
+E       from services.core-game.main import CoreGameEngine
+E                         ^
+E   SyntaxError: invalid syntax
+_______ ERROR collecting services/job-system/test_advanced_job_system.py _______
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/job-system/test_advanced_job_system.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/job-system/test_advanced_job_system.py:7: in <module>
+    from advanced_job_system import (
+services/job-system/advanced_job_system.py:14: in <module>
+    from main import JobType, JobManager, JobSystem, UserJobData
+E   ImportError: cannot import name 'JobType' from 'main' (/home/ubuntu/therapeutic-gamification-app/services/adhd-support/main.py)
+___________ ERROR collecting services/job-system/test_job_system.py ____________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/job-system/test_job_system.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/job-system/test_job_system.py:7: in <module>
+    from main import (
+E   ImportError: cannot import name 'JobSystem' from 'main' (/home/ubuntu/therapeutic-gamification-app/services/adhd-support/main.py)
+_________ ERROR collecting services/kpi-dashboard/integration_test.py __________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/kpi-dashboard/integration_test.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/kpi-dashboard/integration_test.py:9: in <module>
+    from main import KPIDashboardEngine, UserState, UserEngagementData
+E   ImportError: cannot import name 'KPIDashboardEngine' from 'main' (/home/ubuntu/therapeutic-gamification-app/services/adhd-support/main.py)
+____________ ERROR collecting services/kpi-dashboard/simple_test.py ____________
+import file mismatch:
+imported module 'simple_test' has this __file__ attribute:
+  /home/ubuntu/therapeutic-gamification-app/services/gdpr-compliance/simple_test.py
+which is not the same as the test file we want to collect:
+  /home/ubuntu/therapeutic-gamification-app/services/kpi-dashboard/simple_test.py
+HINT: remove __pycache__ / .pyc files and/or use a unique basename for your test file modules
+________ ERROR collecting services/kpi-dashboard/test_kpi_dashboard.py _________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/kpi-dashboard/test_kpi_dashboard.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/kpi-dashboard/test_kpi_dashboard.py:7: in <module>
+    from fastapi.testclient import TestClient
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/fastapi/testclient.py:1: in <module>
+    from starlette.testclient import TestClient as TestClient  # noqa
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/starlette/testclient.py:16: in <module>
+    import httpx
+E   ModuleNotFoundError: No module named 'httpx'
+_____________ ERROR collecting services/line-bot/test_line_bot.py ______________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/line-bot/test_line_bot.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/line-bot/test_line_bot.py:9: in <module>
+    from fastapi.testclient import TestClient
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/fastapi/testclient.py:1: in <module>
+    from starlette.testclient import TestClient as TestClient  # noqa
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/starlette/testclient.py:16: in <module>
+    import httpx
+E   ModuleNotFoundError: No module named 'httpx'
+_______________ ERROR collecting services/mandala/simple_test.py _______________
+import file mismatch:
+imported module 'simple_test' has this __file__ attribute:
+  /home/ubuntu/therapeutic-gamification-app/services/gdpr-compliance/simple_test.py
+which is not the same as the test file we want to collect:
+  /home/ubuntu/therapeutic-gamification-app/services/mandala/simple_test.py
+HINT: remove __pycache__ / .pyc files and/or use a unique basename for your test file modules
+____________ ERROR collecting services/mandala/test_mandala_api.py _____________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/mandala/test_mandala_api.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/mandala/test_mandala_api.py:12: in <module>
+    from fastapi.testclient import TestClient
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/fastapi/testclient.py:1: in <module>
+    from starlette.testclient import TestClient as TestClient  # noqa
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/starlette/testclient.py:16: in <module>
+    import httpx
+E   ModuleNotFoundError: No module named 'httpx'
+____________ ERROR collecting services/mandala/test_mobile_basic.py ____________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/mandala/test_mobile_basic.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/mandala/test_mobile_basic.py:13: in <module>
+    from shared.interfaces.mobile_types import (
+E   ImportError: cannot import name 'ADHDMobileSettings' from 'shared.interfaces.mobile_types' (/home/ubuntu/therapeutic-gamification-app/shared/interfaces/mobile_types.py)
+__________ ERROR collecting services/mandala/test_mobile_complete.py ___________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/mandala/test_mobile_complete.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/mandala/test_mobile_complete.py:15: in <module>
+    from shared.interfaces.mobile_types import (
+E   ImportError: cannot import name 'ADHDMobileSettings' from 'shared.interfaces.mobile_types' (/home/ubuntu/therapeutic-gamification-app/shared/interfaces/mobile_types.py)
+_____ ERROR collecting services/mandala/test_mobile_mandala_integration.py _____
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/mandala/test_mobile_mandala_integration.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/mandala/test_mobile_mandala_integration.py:21: in <module>
+    from shared.interfaces.mobile_types import (
+E   ImportError: cannot import name 'ADHDMobileSettings' from 'shared.interfaces.mobile_types' (/home/ubuntu/therapeutic-gamification-app/shared/interfaces/mobile_types.py)
+___________ ERROR collecting services/mandala/test_mobile_simple.py ____________
+import file mismatch:
+imported module 'test_mobile_simple' has this __file__ attribute:
+  /home/ubuntu/therapeutic-gamification-app/services/line-bot/test_mobile_simple.py
+which is not the same as the test file we want to collect:
+  /home/ubuntu/therapeutic-gamification-app/services/mandala/test_mobile_simple.py
+HINT: remove __pycache__ / .pyc files and/or use a unique basename for your test file modules
+____________ ERROR collecting services/micro-rewards/simple_test.py ____________
+import file mismatch:
+imported module 'simple_test' has this __file__ attribute:
+  /home/ubuntu/therapeutic-gamification-app/services/gdpr-compliance/simple_test.py
+which is not the same as the test file we want to collect:
+  /home/ubuntu/therapeutic-gamification-app/services/micro-rewards/simple_test.py
+HINT: remove __pycache__ / .pyc files and/or use a unique basename for your test file modules
+________ ERROR collecting services/micro-rewards/test_micro_rewards.py _________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/micro-rewards/test_micro_rewards.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/micro-rewards/test_micro_rewards.py:12: in <module>
+    from fastapi.testclient import TestClient
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/fastapi/testclient.py:1: in <module>
+    from starlette.testclient import TestClient as TestClient  # noqa
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/starlette/testclient.py:16: in <module>
+    import httpx
+E   ModuleNotFoundError: No module named 'httpx'
+____________ ERROR collecting services/mood-tracking/simple_test.py ____________
+import file mismatch:
+imported module 'simple_test' has this __file__ attribute:
+  /home/ubuntu/therapeutic-gamification-app/services/gdpr-compliance/simple_test.py
+which is not the same as the test file we want to collect:
+  /home/ubuntu/therapeutic-gamification-app/services/mood-tracking/simple_test.py
+HINT: remove __pycache__ / .pyc files and/or use a unique basename for your test file modules
+________ ERROR collecting services/mood-tracking/test_mood_tracking.py _________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/mood-tracking/test_mood_tracking.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/mood-tracking/test_mood_tracking.py:12: in <module>
+    from fastapi.testclient import TestClient
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/fastapi/testclient.py:1: in <module>
+    from starlette.testclient import TestClient as TestClient  # noqa
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/starlette/testclient.py:16: in <module>
+    import httpx
+E   ModuleNotFoundError: No module named 'httpx'
+________ ERROR collecting services/mood-tracking/test_xp_integration.py ________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/mood-tracking/test_xp_integration.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/mood-tracking/test_xp_integration.py:17: in <module>
+    from fastapi.testclient import TestClient
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/fastapi/testclient.py:1: in <module>
+    from starlette.testclient import TestClient as TestClient  # noqa
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/starlette/testclient.py:16: in <module>
+    import httpx
+E   ModuleNotFoundError: No module named 'httpx'
+_______ ERROR collecting services/performance-monitoring/simple_test.py ________
+import file mismatch:
+imported module 'simple_test' has this __file__ attribute:
+  /home/ubuntu/therapeutic-gamification-app/services/gdpr-compliance/simple_test.py
+which is not the same as the test file we want to collect:
+  /home/ubuntu/therapeutic-gamification-app/services/performance-monitoring/simple_test.py
+HINT: remove __pycache__ / .pyc files and/or use a unique basename for your test file modules
+_ ERROR collecting services/performance-monitoring/test_performance_monitoring.py _
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/performance-monitoring/test_performance_monitoring.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/performance-monitoring/test_performance_monitoring.py:12: in <module>
+    from main import (
+E   ImportError: cannot import name 'PerformanceMonitor' from 'main' (/home/ubuntu/therapeutic-gamification-app/services/adhd-support/main.py)
+__________ ERROR collecting services/rpg-economy/test_coin_economy.py __________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/rpg-economy/test_coin_economy.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/rpg-economy/test_coin_economy.py:16: in <module>
+    from main import (
+E   ImportError: cannot import name 'CoinEconomy' from 'main' (/home/ubuntu/therapeutic-gamification-app/services/adhd-support/main.py)
+___ ERROR collecting services/seasonal_events/test_community_integration.py ____
+import file mismatch:
+imported module 'test_community_integration' has this __file__ attribute:
+  /home/ubuntu/therapeutic-gamification-app/services/seasonal-events/test_community_integration.py
+which is not the same as the test file we want to collect:
+  /home/ubuntu/therapeutic-gamification-app/services/seasonal_events/test_community_integration.py
+HINT: remove __pycache__ / .pyc files and/or use a unique basename for your test file modules
+_ ERROR collecting services/seasonal_events/test_long_term_engagement_integration.py _
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/seasonal_events/test_long_term_engagement_integration.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/seasonal_events/test_long_term_engagement_integration.py:13: in <module>
+    from .main import EngagementSystem
+E   ImportError: attempted relative import with no known parent package
+______ ERROR collecting services/seasonal_events/test_prestige_system.py _______
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/seasonal_events/test_prestige_system.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/seasonal_events/test_prestige_system.py:11: in <module>
+    from .prestige_system import (
+E   ImportError: attempted relative import with no known parent package
+______ ERROR collecting services/seasonal_events/test_seasonal_events.py _______
+import file mismatch:
+imported module 'test_seasonal_events' has this __file__ attribute:
+  /home/ubuntu/therapeutic-gamification-app/services/seasonal-events/test_seasonal_events.py
+which is not the same as the test file we want to collect:
+  /home/ubuntu/therapeutic-gamification-app/services/seasonal_events/test_seasonal_events.py
+HINT: remove __pycache__ / .pyc files and/or use a unique basename for your test file modules
+____________ ERROR collecting services/self-efficacy/simple_test.py ____________
+import file mismatch:
+imported module 'simple_test' has this __file__ attribute:
+  /home/ubuntu/therapeutic-gamification-app/services/gdpr-compliance/simple_test.py
+which is not the same as the test file we want to collect:
+  /home/ubuntu/therapeutic-gamification-app/services/self-efficacy/simple_test.py
+HINT: remove __pycache__ / .pyc files and/or use a unique basename for your test file modules
+______ ERROR collecting services/self-efficacy/test_21_day_simulation.py _______
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/self-efficacy/test_21_day_simulation.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/self-efficacy/test_21_day_simulation.py:9: in <module>
+    from main import efficacy_engine, EfficacyUpdateRequest, EfficacyGauge, EfficacyLevel
+E   ImportError: cannot import name 'efficacy_engine' from 'main' (/home/ubuntu/therapeutic-gamification-app/services/adhd-support/main.py)
+________ ERROR collecting services/self-efficacy/test_self_efficacy.py _________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/self-efficacy/test_self_efficacy.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/self-efficacy/test_self_efficacy.py:12: in <module>
+    from fastapi.testclient import TestClient
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/fastapi/testclient.py:1: in <module>
+    from starlette.testclient import TestClient as TestClient  # noqa
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/starlette/testclient.py:16: in <module>
+    import httpx
+E   ModuleNotFoundError: No module named 'httpx'
+______________ ERROR collecting services/story-dag/simple_test.py ______________
+import file mismatch:
+imported module 'simple_test' has this __file__ attribute:
+  /home/ubuntu/therapeutic-gamification-app/services/gdpr-compliance/simple_test.py
+which is not the same as the test file we want to collect:
+  /home/ubuntu/therapeutic-gamification-app/services/story-dag/simple_test.py
+HINT: remove __pycache__ / .pyc files and/or use a unique basename for your test file modules
+______________ ERROR collecting services/task-mgmt/quick_test.py _______________
+import file mismatch:
+imported module 'quick_test' has this __file__ attribute:
+  /home/ubuntu/therapeutic-gamification-app/services/performance-monitoring/quick_test.py
+which is not the same as the test file we want to collect:
+  /home/ubuntu/therapeutic-gamification-app/services/task-mgmt/quick_test.py
+HINT: remove __pycache__ / .pyc files and/or use a unique basename for your test file modules
+________ ERROR collecting services/task-mgmt/run_comprehensive_test.py _________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/task-mgmt/run_comprehensive_test.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/task-mgmt/run_comprehensive_test.py:10: in <module>
+    from fastapi.testclient import TestClient
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/fastapi/testclient.py:1: in <module>
+    from starlette.testclient import TestClient as TestClient  # noqa
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/starlette/testclient.py:16: in <module>
+    import httpx
+E   ModuleNotFoundError: No module named 'httpx'
+_________ ERROR collecting services/task-mgmt/test_endpoints_debug.py __________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/task-mgmt/test_endpoints_debug.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/task-mgmt/test_endpoints_debug.py:10: in <module>
+    from fastapi.testclient import TestClient
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/fastapi/testclient.py:1: in <module>
+    from starlette.testclient import TestClient as TestClient  # noqa
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/starlette/testclient.py:16: in <module>
+    import httpx
+E   ModuleNotFoundError: No module named 'httpx'
+___________ ERROR collecting services/task-mgmt/test_integration.py ____________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/task-mgmt/test_integration.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/task-mgmt/test_integration.py:8: in <module>
+    from fastapi.testclient import TestClient
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/fastapi/testclient.py:1: in <module>
+    from starlette.testclient import TestClient as TestClient  # noqa
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/starlette/testclient.py:16: in <module>
+    import httpx
+E   ModuleNotFoundError: No module named 'httpx'
+___________ ERROR collecting services/task-mgmt/test_pomodoro_api.py ___________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/task-mgmt/test_pomodoro_api.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/task-mgmt/test_pomodoro_api.py:16: in <module>
+    from fastapi.testclient import TestClient
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/fastapi/testclient.py:1: in <module>
+    from starlette.testclient import TestClient as TestClient  # noqa
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/starlette/testclient.py:16: in <module>
+    import httpx
+E   ModuleNotFoundError: No module named 'httpx'
+_______ ERROR collecting services/task-mgmt/test_task_api_integration.py _______
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/task-mgmt/test_task_api_integration.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/task-mgmt/test_task_api_integration.py:15: in <module>
+    from fastapi.testclient import TestClient
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/fastapi/testclient.py:1: in <module>
+    from starlette.testclient import TestClient as TestClient  # noqa
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/starlette/testclient.py:16: in <module>
+    import httpx
+E   ModuleNotFoundError: No module named 'httpx'
+_________ ERROR collecting services/task-mgmt/test_task_management.py __________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/task-mgmt/test_task_management.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/task-mgmt/test_task_management.py:12: in <module>
+    from fastapi.testclient import TestClient
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/fastapi/testclient.py:1: in <module>
+    from starlette.testclient import TestClient as TestClient  # noqa
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/starlette/testclient.py:16: in <module>
+    import httpx
+E   ModuleNotFoundError: No module named 'httpx'
+_______ ERROR collecting services/task-story-integration/simple_test.py ________
+import file mismatch:
+imported module 'simple_test' has this __file__ attribute:
+  /home/ubuntu/therapeutic-gamification-app/services/gdpr-compliance/simple_test.py
+which is not the same as the test file we want to collect:
+  /home/ubuntu/therapeutic-gamification-app/services/task-story-integration/simple_test.py
+HINT: remove __pycache__ / .pyc files and/or use a unique basename for your test file modules
+_ ERROR collecting services/task-story-integration/test_task_story_integration.py _
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/task-story-integration/test_task_story_integration.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/task-story-integration/test_task_story_integration.py:23: in <module>
+    from .main import (
+E   ImportError: attempted relative import with no known parent package
+__________ ERROR collecting services/therapeutic-safety/debug_test.py __________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/therapeutic-safety/debug_test.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/therapeutic-safety/debug_test.py:13: in <module>
+    from main import CBTInterventionEngine
+E   ImportError: cannot import name 'CBTInterventionEngine' from 'main' (/home/ubuntu/therapeutic-gamification-app/services/adhd-support/main.py)
+________ ERROR collecting services/therapeutic-safety/test_task_9_1.py _________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/therapeutic-safety/test_task_9_1.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/therapeutic-safety/test_task_9_1.py:16: in <module>
+    from .main import (
+E   ImportError: attempted relative import with no known parent package
+________ ERROR collecting services/therapeutic-safety/test_task_9_2.py _________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/services/therapeutic-safety/test_task_9_2.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+services/therapeutic-safety/test_task_9_2.py:16: in <module>
+    from main import (
+E   ImportError: cannot import name 'CBTInterventionEngine' from 'main' (/home/ubuntu/therapeutic-gamification-app/services/adhd-support/main.py)
+____________ ERROR collecting shared/interfaces/test_validation.py _____________
+ImportError while importing test module '/home/ubuntu/therapeutic-gamification-app/shared/interfaces/test_validation.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../.pyenv/versions/3.12.8/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+shared/interfaces/test_validation.py:9: in <module>
+    from .model_factory import ModelFactory
+E   ImportError: cannot import name 'ModelFactory' from 'shared.interfaces.model_factory' (/home/ubuntu/therapeutic-gamification-app/shared/interfaces/model_factory.py)
+=============================== warnings summary ===============================
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/pydantic/main.py:164
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/pydantic/main.py:164
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/pydantic/main.py:164
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/pydantic/main.py:164
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/pydantic/main.py:164
+../.pyenv/versions/3.12.8/lib/python3.12/site-packages/pydantic/main.py:164
+  /home/ubuntu/.pyenv/versions/3.12.8/lib/python3.12/site-packages/pydantic/main.py:164: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    __pydantic_self__.__pydantic_validator__.validate_python(data, self_instance=__pydantic_self__)
+
+<frozen importlib._bootstrap>:488
+  <frozen importlib._bootstrap>:488: DeprecationWarning: Type google._upb._message.MessageMapContainer uses PyType_Spec with a metaclass that has custom tp_new. This is deprecated and will no longer be allowed in Python 3.14.
+
+<frozen importlib._bootstrap>:488
+  <frozen importlib._bootstrap>:488: DeprecationWarning: Type google._upb._message.ScalarMapContainer uses PyType_Spec with a metaclass that has custom tp_new. This is deprecated and will no longer be allowed in Python 3.14.
+
+services/auto-deployment/tests/pipeline/test_reporting.py:20
+  /home/ubuntu/therapeutic-gamification-app/services/auto-deployment/tests/pipeline/test_reporting.py:20: PytestCollectionWarning: cannot collect test class 'TestResult' because it has a __init__ constructor (from: services/auto-deployment/tests/pipeline/test_reporting.py)
+    @dataclass
+
+services/auto-deployment/tests/pipeline/test_reporting.py:34
+  /home/ubuntu/therapeutic-gamification-app/services/auto-deployment/tests/pipeline/test_reporting.py:34: PytestCollectionWarning: cannot collect test class 'TestSuiteResult' because it has a __init__ constructor (from: services/auto-deployment/tests/pipeline/test_reporting.py)
+    @dataclass
+
+services/auto-deployment/tests/pipeline/test_reporting.py:47
+  /home/ubuntu/therapeutic-gamification-app/services/auto-deployment/tests/pipeline/test_reporting.py:47: PytestCollectionWarning: cannot collect test class 'TestMetricsCollector' because it has a __init__ constructor (from: services/auto-deployment/tests/pipeline/test_reporting.py)
+    class TestMetricsCollector:
+
+services/auto-deployment/tests/pipeline/test_reporting.py:214
+  /home/ubuntu/therapeutic-gamification-app/services/auto-deployment/tests/pipeline/test_reporting.py:214: PytestCollectionWarning: cannot collect test class 'TestReportGenerator' because it has a __init__ constructor (from: services/auto-deployment/tests/pipeline/test_reporting.py)
+    class TestReportGenerator:
+
+services/auto-deployment/tests/pipeline/test_reporting.py:416
+  /home/ubuntu/therapeutic-gamification-app/services/auto-deployment/tests/pipeline/test_reporting.py:416: PytestCollectionWarning: cannot collect test class 'TestReportingPipeline' because it has a __init__ constructor (from: services/auto-deployment/tests/pipeline/test_reporting.py)
+    class TestReportingPipeline:
+
+shared/tests/test_repository_integration.py:49
+  /home/ubuntu/therapeutic-gamification-app/shared/tests/test_repository_integration.py:49: PytestCollectionWarning: cannot collect test class 'TestEntity' because it has a __init__ constructor (from: shared/tests/test_repository_integration.py)
+    class TestEntity:
+
+shared/tests/test_repository_integration.py:57
+  /home/ubuntu/therapeutic-gamification-app/shared/tests/test_repository_integration.py:57: PytestCollectionWarning: cannot collect test class 'TestRepository' because it has a __init__ constructor (from: shared/tests/test_repository_integration.py)
+    class TestRepository(BaseRepository[TestEntity]):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+ERROR services/ai-story/test_task_8_2.py
+ERROR services/alpha-playtest/simple_test.py
+ERROR services/alpha-playtest/test_task_24_1_integration.py
+ERROR services/alpha-playtest/test_task_24_2_integration.py
+ERROR services/alpha-playtest/test_user_management.py
+ERROR services/auth/simple_test.py
+ERROR services/auth/test_auth.py
+ERROR services/auth/test_auth_flow_integration.py
+ERROR services/auth/test_auth_integration.py
+ERROR services/auth/test_auth_simple.py
+ERROR services/auth/test_endpoints_simple.py
+ERROR services/auth/test_jwt_middleware.py
+ERROR services/auth/test_rbac.py
+ERROR services/auto-deployment/test_orchestrator.py
+ERROR services/auto-deployment/deployment/cloud_run/tests/test_cloud_run_client.py
+ERROR services/auto-deployment/deployment/cloud_run/tests/test_cloud_run_deployer.py
+ERROR services/auto-deployment/deployment/cloud_run/tests/test_revision_manager.py
+ERROR services/auto-deployment/deployment/cloud_run/tests/test_task_4_3_completion.py
+ERROR services/auto-deployment/deployment/cloud_run/tests/test_traffic_manager.py
+ERROR services/auto-deployment/environment/tests/test_cloud_resource_manager_simple.py
+ERROR services/auto-deployment/monitoring/test_task_5_completion_verification.py
+ERROR services/auto-deployment/monitoring/test_task_5_final_verification.py
+ERROR services/auto-deployment/rollback/tests/test_rollback_executor.py
+ERROR services/auto-deployment/rollback/tests/test_rollback_integration.py
+ERROR services/auto-deployment/rollback/tests/test_rollback_monitor.py
+ERROR services/auto-deployment/rollback/tests/test_rollback_monitoring_system.py
+ERROR services/auto-deployment/rollback/tests/test_rollback_recovery.py
+ERROR services/auto-deployment/rollback/tests/test_task_7_3_completion.py
+ERROR services/auto-deployment/tests/integration/test_failure_recovery.py
+ERROR services/auto-deployment/tests/integration/test_full_deployment_workflow.py
+ERROR services/auto-deployment/tests/integration/test_multi_environment_deployment.py
+ERROR services/auto-deployment/tests/integration/test_performance_load.py
+ERROR services/auto-deployment/tests/pipeline/test_environment_manager.py
+ERROR services/auto-deployment/tests/pipeline/test_execution_framework.py
+ERROR services/auto-deployment/validation/validators/tests/test_task_2_3_completion.py
+ERROR services/cbt-integration/test_cbt_integration.py
+ERROR services/core-game/simple_test.py
+ERROR services/core-game/test_basic.py - SystemExit: 1
+ERROR services/core-game/test_core_game.py
+ERROR services/daily-trio/test_daily_trio.py
+ERROR services/edge-ai-cache/simple_test.py
+ERROR services/edge-ai-cache/test_edge_ai_cache.py
+ERROR services/edge-ai-cache/test_task_23_1.py
+ERROR services/edge-ai-cache/test_task_23_2.py
+ERROR services/edge-ai-cache/test_task_23_3.py
+ERROR services/feature-flags/test_feature_flags.py
+ERROR services/gdpr-compliance/test_compliance_monitoring_integration.py
+ERROR services/gdpr-compliance/test_data_subject_rights_integration.py
+ERROR services/gdpr-compliance/test_privacy_protection.py
+ERROR services/growth-note/test_growth_note_system.py
+ERROR services/growth-note/test_integration.py
+ERROR services/growth-note/test_line_bot_integration.py
+ERROR services/growth-note/test_reflection_continuity_system.py
+ERROR services/guardian-portal/simple_test.py
+ERROR services/guardian-portal/test_care_points_integration.py
+ERROR services/guardian-portal/test_guardian_auth.py
+ERROR services/inner-demon-battle/test_battle_rewards_integration.py
+ERROR services/inner-demon-battle/test_demon_battle.py
+ERROR services/integration/brushup_integration_test.py - FileNotFoundError: [...
+ERROR services/integration/test_complete_user_journey.py
+ERROR services/integration/test_mandala_story_integration.py
+ERROR services/integration/test_rpg_elements_integration.py
+ERROR services/integration/test_therapeutic_safety_adhd_integration.py
+ERROR services/integration/test_xp_level_resonance_integration.py
+ERROR services/job-system/test_advanced_job_system.py
+ERROR services/job-system/test_job_system.py
+ERROR services/kpi-dashboard/integration_test.py
+ERROR services/kpi-dashboard/simple_test.py
+ERROR services/kpi-dashboard/test_kpi_dashboard.py
+ERROR services/line-bot/test_line_bot.py
+ERROR services/mandala/simple_test.py
+ERROR services/mandala/test_mandala_api.py
+ERROR services/mandala/test_mobile_basic.py
+ERROR services/mandala/test_mobile_complete.py
+ERROR services/mandala/test_mobile_mandala_integration.py
+ERROR services/mandala/test_mobile_simple.py
+ERROR services/micro-rewards/simple_test.py
+ERROR services/micro-rewards/test_micro_rewards.py
+ERROR services/mood-tracking/simple_test.py
+ERROR services/mood-tracking/test_mood_tracking.py
+ERROR services/mood-tracking/test_xp_integration.py
+ERROR services/performance-monitoring/simple_test.py
+ERROR services/performance-monitoring/test_performance_monitoring.py
+ERROR services/rpg-economy/test_coin_economy.py
+ERROR services/seasonal_events/test_community_integration.py
+ERROR services/seasonal_events/test_long_term_engagement_integration.py
+ERROR services/seasonal_events/test_prestige_system.py
+ERROR services/seasonal_events/test_seasonal_events.py
+ERROR services/self-efficacy/simple_test.py
+ERROR services/self-efficacy/test_21_day_simulation.py
+ERROR services/self-efficacy/test_self_efficacy.py
+ERROR services/story-dag/simple_test.py
+ERROR services/task-mgmt/quick_test.py
+ERROR services/task-mgmt/run_comprehensive_test.py
+ERROR services/task-mgmt/test_endpoints_debug.py
+ERROR services/task-mgmt/test_integration.py
+ERROR services/task-mgmt/test_pomodoro_api.py
+ERROR services/task-mgmt/test_task_api_integration.py
+ERROR services/task-mgmt/test_task_management.py
+ERROR services/task-story-integration/simple_test.py
+ERROR services/task-story-integration/test_task_story_integration.py
+ERROR services/therapeutic-safety/debug_test.py
+ERROR services/therapeutic-safety/test_task_9_1.py
+ERROR services/therapeutic-safety/test_task_9_2.py
+ERROR shared/interfaces/test_validation.py
+!!!!!!!!!!!!!!!!!! Interrupted: 105 errors during collection !!!!!!!!!!!!!!!!!!!
+====================== 15 warnings, 105 errors in 10.42s =======================

@@ -74,6 +74,9 @@ class PerformanceMetric:
         return sum(recent_values) / len(recent_values) if recent_values else None
 
 
+PerformanceMetrics = PerformanceMetric
+
+
 @dataclass
 class ErrorMetric:
     """Error tracking metric."""

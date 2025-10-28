@@ -72,10 +72,16 @@ WEBHOOK_URL = os.getenv("WEBHOOK_URL", "")
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
-# Initialize Firestore
-if not firebase_admin._apps:
-    firebase_admin.initialize_app()
-db = firestore.client()
+db = None
+
+def get_db():
+    """Get Firestore client, initializing if needed"""
+    global db
+    if db is None:
+        if not firebase_admin._apps:
+            firebase_admin.initialize_app()
+        db = firestore.client()
+    return db
 
 # Service URLs
 TASK_MGMT_URL = os.getenv("TASK_MGMT_URL", "http://localhost:8003")
@@ -142,7 +148,7 @@ class LineBotService:
         """Fallback to Firebase Cloud Messaging when LINE is unavailable"""
         try:
             # Get user's FCM token from Firestore
-            user_doc = db.collection("users").document(user_id).get()
+            user_doc = get_db().collection("users").document(user_id).get()
             if not user_doc.exists:
                 return False
             
@@ -402,7 +408,7 @@ async def scheduled_morning_heart_crystal_tasks():
     """Send morning Heart Crystal tasks at 7:00 AM - Mobile Optimized"""
     try:
         # Get all active users from Firestore
-        users_ref = db.collection("users").where("status", "==", "active")
+        users_ref = get_db().collection("users").where("status", "==", "active")
         users = users_ref.stream()
         
         for user_doc in users:
@@ -431,7 +437,7 @@ async def send_mobile_optimized_morning_tasks(line_user_id: str, user_id: str):
             )
         else:
             # Create enhanced mobile-optimized 3x3 Mandala format
-            from .mobile_ui_functions import create_enhanced_heart_crystal_tasks
+            from mobile_ui_functions import create_enhanced_heart_crystal_tasks
             message = create_enhanced_heart_crystal_tasks(tasks)
         
         line_bot_api.push_message(line_user_id, message)
@@ -456,7 +462,7 @@ async def scheduled_evening_stories():
     """Send mobile-optimized evening stories at 21:30 to all active users"""
     try:
         # Get all active users from Firestore
-        users_ref = db.collection("users").where("status", "==", "active")
+        users_ref = get_db().collection("users").where("status", "==", "active")
         users = users_ref.stream()
         
         for user_doc in users:
@@ -483,8 +489,8 @@ async def send_evening_story(line_user_id: str, user_id: str = None):
         
         if story_data:
             # Import enhanced mobile UI functions
-            from .mobile_ui_functions import create_enhanced_story_delivery
-            from .mobile_story_delivery import (
+            from mobile_ui_functions import create_enhanced_story_delivery
+            from mobile_story_delivery import (
                 create_evening_motivation_message,
                 create_mandala_story_grid
             )
@@ -506,7 +512,7 @@ async def send_evening_story(line_user_id: str, user_id: str = None):
                 
         else:
             # Fallback message with mobile-optimized format
-            from .mobile_story_delivery import create_evening_motivation_message
+            from mobile_story_delivery import create_evening_motivation_message
             fallback_message = create_evening_motivation_message()
             line_bot_api.push_message(line_user_id, fallback_message)
             
@@ -522,7 +528,7 @@ async def send_evening_story(line_user_id: str, user_id: str = None):
 async def get_active_users() -> List[Dict]:
     """Get list of active users for notifications"""
     try:
-        users_ref = db.collection("users").where("status", "==", "active")
+        users_ref = get_db().collection("users").where("status", "==", "active")
         users = users_ref.stream()
         
         active_users = []
@@ -560,7 +566,7 @@ async def handle_story_choice_selection(line_user_id: str, user_id: str, choice_
             task_info = await get_task_details(user_id, choice_data["real_task_id"])
         
         # Import mobile story delivery functions
-        from .mobile_story_delivery import create_story_choice_confirmation
+        from mobile_story_delivery import create_story_choice_confirmation
         
         # Create confirmation message
         confirmation_message = create_story_choice_confirmation(choice_data, task_info)
@@ -770,7 +776,7 @@ async def send_current_mandala_status(line_user_id: str, user_id: str):
             mandala_data = response.json()
             
             # Create enhanced mobile-optimized Mandala status message
-            from .mobile_ui_functions import create_mandala_status_display
+            from mobile_ui_functions import create_mandala_status_display
             status_message = create_mandala_status_display(mandala_data)
             line_bot_api.push_message(line_user_id, status_message)
         else:
@@ -1249,14 +1255,14 @@ def get_user_id_from_line_id(line_user_id: str) -> str:
     """Get internal user_id from LINE user_id"""
     try:
         # Query Firestore for user with this line_user_id
-        users_ref = db.collection("users").where("line_user_id", "==", line_user_id)
+        users_ref = get_db().collection("users").where("line_user_id", "==", line_user_id)
         users = list(users_ref.stream())
         
         if users:
             return users[0].id
         else:
             # Create new user if not exists
-            new_user_ref = db.collection("users").document()
+            new_user_ref = get_db().collection("users").document()
             new_user_ref.set({
                 "line_user_id": line_user_id,
                 "status": "active",

@@ -10,7 +10,7 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from datetime import datetime, timedelta
-from .main import EngagementSystem
+from main import EngagementSystem
 from .prestige_system import LongTermEngagementSystem, TherapeuticMilestone
 import json
 

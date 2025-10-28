@@ -18,7 +18,7 @@ import os
 # Add project root to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from .main import app
+from main import app
 from .jwt_service import jwt_service, TokenType
 from .auth_middleware import (
     get_current_token, get_current_guardian, auth_service

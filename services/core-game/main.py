@@ -561,6 +561,46 @@ async def general_exception_handler(request, exc):
     )
 
 
+
+class GameEngine:
+    """Compatibility wrapper for test_basic.py"""
+    
+    CHAPTER_ORDER = [
+        "SELF_DISCIPLINE", "COURAGE", "COMPASSION", "WISDOM",
+        "JUSTICE", "TEMPERANCE", "TRANSCENDENCE", "WISDOM"
+    ]
+    RESONANCE_LEVEL_DIFF_THRESHOLD = 5
+    RESONANCE_BONUS_XP = 500
+    
+    def __init__(self, db=None):
+        self.db = db
+        self.level_calculator = LevelCalculator()
+        self.task_xp_calculator = TaskXPCalculator()
+    
+    def calculate_xp_for_level(self, level: int) -> int:
+        """Calculate total XP required for a given level"""
+        return self.level_calculator.calculate_xp_for_level(level)
+    
+    def calculate_level_from_xp(self, xp: int) -> int:
+        """Calculate level from total XP"""
+        return self.level_calculator.calculate_level_from_xp(xp)
+    
+    def calculate_task_xp(self, task, mood_coefficient: float = 1.0, adhd_coefficient: float = 1.0):
+        """Calculate XP for a task"""
+        from shared.interfaces.core_types import XPCalculation
+        
+        base_xp = task.difficulty * 10
+        final_xp = int(base_xp * mood_coefficient * adhd_coefficient)
+        
+        return XPCalculation(
+            base_xp=base_xp,
+            mood_coefficient=mood_coefficient,
+            adhd_support_multiplier=adhd_coefficient,
+            final_xp=final_xp,
+            level_up=False
+        )
+
+
 # === 起動 ===
 
 if __name__ == "__main__":

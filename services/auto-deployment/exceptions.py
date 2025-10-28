@@ -259,6 +259,22 @@ class EnvironmentError(DeploymentError):
         )
 
 
+class NetworkError(InfrastructureError):
+    """Network-related error"""
+    
+    def __init__(self, message: str, **kwargs):
+        super().__init__(
+            message,
+            recovery_steps=[
+                "Check network connectivity",
+                "Verify DNS resolution",
+                "Check firewall rules",
+                "Retry the operation"
+            ],
+            **kwargs
+        )
+
+
 class ErrorResponse:
     """エラーレスポンス"""
     

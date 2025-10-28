@@ -293,3 +293,24 @@ def require_chat_send_access(
         raise AuthorizationError("チャット送信権限がありません")
     
     return guardian_info
+
+
+def create_access_token(
+    guardian_id: str,
+    user_id: str,
+    permission_level: PermissionLevel
+) -> str:
+    """Create access token (module-level wrapper)"""
+    return guardian_auth_service._create_access_token(guardian_id, user_id, permission_level)
+
+
+def verify_access_token(token: str) -> Dict[str, Any]:
+    """Verify access token (module-level wrapper)"""
+    guardian_token = guardian_auth_service.verify_token(token)
+    return {
+        "guardian_id": guardian_token.guardian_id,
+        "user_id": guardian_token.user_id,
+        "permission_level": guardian_token.permission_level,
+        "jti": guardian_token.jti,
+        "type": "access"
+    }

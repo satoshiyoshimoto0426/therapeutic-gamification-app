@@ -5,7 +5,7 @@ Enhanced mobile-optimized UI components using Flex optimization
 
 from linebot.models import FlexSendMessage as FlexMessage
 from typing import List, Dict
-from .mobile_flex_optimization import mobile_flex
+from mobile_flex_optimization import mobile_flex
 
 def create_enhanced_heart_crystal_tasks(tasks: List[Dict]) -> FlexMessage:
     """Create enhanced mobile-optimized Heart Crystal tasks"""

@@ -13,7 +13,7 @@ from unittest.mock import Mock, patch, AsyncMock
 # Add the services directory to the path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from .main import (
+from main import (
     ContentModerationEngine,
     SafetyAnalysisRequest,
     SafetyThreatLevel,

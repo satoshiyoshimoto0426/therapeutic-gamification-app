@@ -10,10 +10,17 @@ import asyncio
 import time
 from unittest.mock import Mock, patch, AsyncMock
 from typing import Dict, Any, List
+import sys
+import os
 
-from services.auto_deployment.orchestrator import DeploymentOrchestrator
-from services.auto_deployment.config import DeploymentConfig
-from services.auto_deployment.exceptions import DeploymentError, ValidationError, NetworkError
+current_dir = os.path.dirname(os.path.abspath(__file__))
+auto_deployment_dir = os.path.dirname(os.path.dirname(current_dir))
+if auto_deployment_dir not in sys.path:
+    sys.path.insert(0, auto_deployment_dir)
+
+from orchestrator import DeploymentOrchestrator
+from config import DeploymentConfig
+from exceptions import DeploymentError, ValidationError, NetworkError
 
 
 class TestFailureRecoveryScenarios:
@@ -37,7 +44,7 @@ class TestFailureRecoveryScenarios:
     async def test_network_failure_recovery(self, deployment_config):
         """Test recovery from network failures during deployment."""
         with patch.multiple(
-            'services.auto_deployment.orchestrator',
+            'orchestrator',
             ValidationFramework=Mock(),
             CloudResourceManager=Mock(),
             BlueGreenStrategy=Mock(),
@@ -83,7 +90,7 @@ class TestFailureRecoveryScenarios:
     async def test_partial_deployment_cleanup(self, deployment_config):
         """Test cleanup of partial deployment on failure."""
         with patch.multiple(
-            'services.auto_deployment.orchestrator',
+            'orchestrator',
             ValidationFramework=Mock(),
             CloudResourceManager=Mock(),
             BlueGreenStrategy=Mock(),
@@ -120,7 +127,7 @@ class TestFailureRecoveryScenarios:
     async def test_rollback_failure_escalation(self, deployment_config):
         """Test escalation when rollback fails."""
         with patch.multiple(
-            'services.auto_deployment.orchestrator',
+            'orchestrator',
             ValidationFramework=Mock(),
             CloudResourceManager=Mock(),
             BlueGreenStrategy=Mock(),
@@ -154,7 +161,7 @@ class TestFailureRecoveryScenarios:
     async def test_health_check_failure_recovery(self, deployment_config):
         """Test recovery from health check failures."""
         with patch.multiple(
-            'services.auto_deployment.orchestrator',
+            'orchestrator',
             ValidationFramework=Mock(),
             CloudResourceManager=Mock(),
             BlueGreenStrategy=Mock(),
@@ -198,7 +205,7 @@ class TestFailureRecoveryScenarios:
     async def test_concurrent_deployment_conflict_resolution(self, deployment_config):
         """Test handling of concurrent deployment conflicts."""
         with patch.multiple(
-            'services.auto_deployment.orchestrator',
+            'orchestrator',
             ValidationFramework=Mock(),
             CloudResourceManager=Mock(),
             BlueGreenStrategy=Mock(),
@@ -266,7 +273,7 @@ class TestFailureRecoveryScenarios:
     async def test_resource_exhaustion_recovery(self, deployment_config):
         """Test recovery from resource exhaustion scenarios."""
         with patch.multiple(
-            'services.auto_deployment.orchestrator',
+            'orchestrator',
             ValidationFramework=Mock(),
             CloudResourceManager=Mock(),
             BlueGreenStrategy=Mock(),
@@ -322,7 +329,7 @@ class TestFailureRecoveryScenarios:
             config.service_name = service
             
             with patch.multiple(
-                'services.auto_deployment.orchestrator',
+                'orchestrator',
                 ValidationFramework=Mock(),
                 CloudResourceManager=Mock(),
                 BlueGreenStrategy=Mock(),
@@ -379,7 +386,7 @@ class TestRecoveryMechanisms:
         )
         
         with patch.multiple(
-            'services.auto_deployment.orchestrator',
+            'orchestrator',
             ValidationFramework=Mock(),
             CloudResourceManager=Mock(),
             BlueGreenStrategy=Mock(),
@@ -435,7 +442,7 @@ class TestRecoveryMechanisms:
         )
         
         with patch.multiple(
-            'services.auto_deployment.orchestrator',
+            'orchestrator',
             ValidationFramework=Mock(),
             CloudResourceManager=Mock(),
             BlueGreenStrategy=Mock(),

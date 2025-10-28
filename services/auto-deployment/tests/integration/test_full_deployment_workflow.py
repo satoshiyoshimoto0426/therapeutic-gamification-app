@@ -6,6 +6,15 @@ including validation, deployment, monitoring, and rollback scenarios.
 """
 
 import pytest
+import sys
+import os
+
+# Add auto-deployment directory to path for imports
+current_dir = os.path.dirname(os.path.abspath(__file__))
+auto_deployment_dir = os.path.dirname(os.path.dirname(current_dir))
+if auto_deployment_dir not in sys.path:
+    sys.path.insert(0, auto_deployment_dir)
+
 import asyncio
 import time
 from unittest.mock import Mock, patch, AsyncMock
@@ -14,15 +23,15 @@ import json
 import tempfile
 import os
 
-from services.auto_deployment.orchestrator import DeploymentOrchestrator
-from services.auto_deployment.config import DeploymentConfig
-from services.auto_deployment.validation.framework import ValidationFramework
-from services.auto_deployment.environment.cloud_resource_manager import CloudResourceManager
-from services.auto_deployment.deployment.strategies.blue_green import BlueGreenStrategy
-from services.auto_deployment.monitoring.health_check import HealthCheckSystem
-from services.auto_deployment.notification.notification_manager import NotificationManager
-from services.auto_deployment.rollback.rollback_manager import RollbackManager
-from services.auto_deployment.exceptions import DeploymentError, ValidationError
+from orchestrator import DeploymentOrchestrator
+from config import DeploymentConfig
+from validation.framework import ValidationFramework
+from environment.cloud_resource_manager import CloudResourceManager
+from deployment.strategies.blue_green import BlueGreenStrategy
+from monitoring.health_check import HealthCheckSystem
+from notification.notification_manager import NotificationManager
+from rollback.rollback_manager import RollbackManager
+from exceptions import DeploymentError, ValidationError
 
 
 class TestFullDeploymentWorkflow:
@@ -46,7 +55,7 @@ class TestFullDeploymentWorkflow:
     def orchestrator(self, deployment_config):
         """Create deployment orchestrator with mocked dependencies."""
         with patch.multiple(
-            'services.auto_deployment.orchestrator',
+            'orchestrator',
             ValidationFramework=Mock(),
             CloudResourceManager=Mock(),
             BlueGreenStrategy=Mock(),
@@ -157,7 +166,7 @@ class TestFullDeploymentWorkflow:
             config.service_name = service
             
             with patch.multiple(
-                'services.auto_deployment.orchestrator',
+                'orchestrator',
                 ValidationFramework=Mock(),
                 CloudResourceManager=Mock(),
                 BlueGreenStrategy=Mock(),
@@ -202,7 +211,7 @@ class TestMultiEnvironmentDeployment:
         )
         
         with patch.multiple(
-            'services.auto_deployment.orchestrator',
+            'orchestrator',
             ValidationFramework=Mock(),
             CloudResourceManager=Mock(),
             BlueGreenStrategy=Mock(),
@@ -241,7 +250,7 @@ class TestMultiEnvironmentDeployment:
         )
         
         with patch.multiple(
-            'services.auto_deployment.orchestrator',
+            'orchestrator',
             ValidationFramework=Mock(),
             CloudResourceManager=Mock(),
             BlueGreenStrategy=Mock(),
@@ -286,7 +295,7 @@ class TestFailureScenarioAndRecovery:
         )
         
         with patch.multiple(
-            'services.auto_deployment.orchestrator',
+            'orchestrator',
             ValidationFramework=Mock(),
             CloudResourceManager=Mock(),
             BlueGreenStrategy=Mock(),
@@ -330,7 +339,7 @@ class TestFailureScenarioAndRecovery:
         )
         
         with patch.multiple(
-            'services.auto_deployment.orchestrator',
+            'orchestrator',
             ValidationFramework=Mock(),
             CloudResourceManager=Mock(),
             BlueGreenStrategy=Mock(),
@@ -367,7 +376,7 @@ class TestFailureScenarioAndRecovery:
         )
         
         with patch.multiple(
-            'services.auto_deployment.orchestrator',
+            'orchestrator',
             ValidationFramework=Mock(),
             CloudResourceManager=Mock(),
             BlueGreenStrategy=Mock(),
@@ -413,7 +422,7 @@ class TestPerformanceAndLoad:
         orchestrators = []
         for i in range(3):
             with patch.multiple(
-                'services.auto_deployment.orchestrator',
+                'orchestrator',
                 ValidationFramework=Mock(),
                 CloudResourceManager=Mock(),
                 BlueGreenStrategy=Mock(),
@@ -463,7 +472,7 @@ class TestPerformanceAndLoad:
         )
         
         with patch.multiple(
-            'services.auto_deployment.orchestrator',
+            'orchestrator',
             ValidationFramework=Mock(),
             CloudResourceManager=Mock(),
             BlueGreenStrategy=Mock(),
@@ -507,7 +516,7 @@ class TestPerformanceAndLoad:
         # Create and destroy multiple orchestrators
         for i in range(100):
             with patch.multiple(
-                'services.auto_deployment.orchestrator',
+                'orchestrator',
                 ValidationFramework=Mock(),
                 CloudResourceManager=Mock(),
                 BlueGreenStrategy=Mock(),
