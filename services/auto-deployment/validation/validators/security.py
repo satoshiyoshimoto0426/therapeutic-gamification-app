@@ -10,7 +10,16 @@ from pathlib import Path
 from typing import Dict, Any, Optional, List, Set
 import hashlib
 
-from ..base import BaseValidator, ValidationResult, ValidationSeverity
+import sys
+import os
+
+# Add validation directory to path for imports
+current_dir = os.path.dirname(os.path.abspath(__file__))
+validation_dir = os.path.dirname(current_dir)
+if validation_dir not in sys.path:
+    sys.path.insert(0, validation_dir)
+
+from base import BaseValidator, ValidationResult, ValidationSeverity
 
 
 logger = logging.getLogger(__name__)
