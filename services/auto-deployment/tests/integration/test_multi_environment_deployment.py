@@ -6,13 +6,22 @@ with environment-specific configurations and validations.
 """
 
 import pytest
+import sys
+import os
+
+# Add auto-deployment directory to path for imports
+current_dir = os.path.dirname(os.path.abspath(__file__))
+auto_deployment_dir = os.path.dirname(os.path.dirname(current_dir))
+if auto_deployment_dir not in sys.path:
+    sys.path.insert(0, auto_deployment_dir)
+
 import asyncio
 from unittest.mock import Mock, patch, AsyncMock
 from typing import Dict, Any, List
 
-from services.auto_deployment.orchestrator import DeploymentOrchestrator
-from services.auto_deployment.config import DeploymentConfig
-from services.auto_deployment.exceptions import DeploymentError, ValidationError
+from orchestrator import DeploymentOrchestrator
+from config import DeploymentConfig
+from exceptions import DeploymentError, ValidationError
 
 
 class TestMultiEnvironmentDeployment:
@@ -62,7 +71,7 @@ class TestMultiEnvironmentDeployment:
         )
         
         with patch.multiple(
-            'services.auto_deployment.orchestrator',
+            'orchestrator',
             ValidationFramework=Mock(),
             CloudResourceManager=Mock(),
             BlueGreenStrategy=Mock(),
@@ -106,7 +115,7 @@ class TestMultiEnvironmentDeployment:
         )
         
         with patch.multiple(
-            'services.auto_deployment.orchestrator',
+            'orchestrator',
             ValidationFramework=Mock(),
             CloudResourceManager=Mock(),
             BlueGreenStrategy=Mock(),
@@ -146,7 +155,7 @@ class TestMultiEnvironmentDeployment:
         )
         
         with patch.multiple(
-            'services.auto_deployment.orchestrator',
+            'orchestrator',
             ValidationFramework=Mock(),
             CloudResourceManager=Mock(),
             BlueGreenStrategy=Mock(),
@@ -194,7 +203,7 @@ class TestMultiEnvironmentDeployment:
         )
         
         with patch.multiple(
-            'services.auto_deployment.orchestrator',
+            'orchestrator',
             ValidationFramework=Mock(),
             CloudResourceManager=Mock(),
             BlueGreenStrategy=Mock(),
@@ -225,7 +234,7 @@ class TestMultiEnvironmentDeployment:
         )
         
         with patch.multiple(
-            'services.auto_deployment.orchestrator',
+            'orchestrator',
             ValidationFramework=Mock(),
             CloudResourceManager=Mock(),
             BlueGreenStrategy=Mock(),
@@ -256,7 +265,7 @@ class TestMultiEnvironmentDeployment:
         )
         
         with patch.multiple(
-            'services.auto_deployment.orchestrator',
+            'orchestrator',
             ValidationFramework=Mock(),
             CloudResourceManager=Mock(),
             BlueGreenStrategy=Mock(),
@@ -297,7 +306,7 @@ class TestMultiEnvironmentDeployment:
         )
         
         with patch.multiple(
-            'services.auto_deployment.orchestrator',
+            'orchestrator',
             ValidationFramework=Mock(),
             CloudResourceManager=Mock(),
             BlueGreenStrategy=Mock(),
@@ -337,7 +346,7 @@ class TestMultiEnvironmentDeployment:
             )
             
             with patch.multiple(
-                'services.auto_deployment.orchestrator',
+                'orchestrator',
                 ValidationFramework=Mock(),
                 CloudResourceManager=Mock(),
                 BlueGreenStrategy=Mock(),
@@ -392,7 +401,7 @@ class TestEnvironmentSpecificFeatures:
         )
         
         with patch.multiple(
-            'services.auto_deployment.orchestrator',
+            'orchestrator',
             ValidationFramework=Mock(),
             CloudResourceManager=Mock(),
             BlueGreenStrategy=Mock(),
@@ -432,7 +441,7 @@ class TestEnvironmentSpecificFeatures:
         )
         
         with patch.multiple(
-            'services.auto_deployment.orchestrator',
+            'orchestrator',
             ValidationFramework=Mock(),
             CloudResourceManager=Mock(),
             BlueGreenStrategy=Mock(),
@@ -476,7 +485,7 @@ class TestEnvironmentSpecificFeatures:
         )
         
         with patch.multiple(
-            'services.auto_deployment.orchestrator',
+            'orchestrator',
             ValidationFramework=Mock(),
             CloudResourceManager=Mock(),
             BlueGreenStrategy=Mock(),

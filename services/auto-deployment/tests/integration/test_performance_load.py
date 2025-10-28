@@ -6,6 +6,15 @@ including concurrent deployments, memory usage, and scalability.
 """
 
 import pytest
+import sys
+import os
+
+# Add auto-deployment directory to path for imports
+current_dir = os.path.dirname(os.path.abspath(__file__))
+auto_deployment_dir = os.path.dirname(os.path.dirname(current_dir))
+if auto_deployment_dir not in sys.path:
+    sys.path.insert(0, auto_deployment_dir)
+
 import asyncio
 import time
 import psutil
@@ -15,9 +24,9 @@ from typing import Dict, Any, List
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
-from services.auto_deployment.orchestrator import DeploymentOrchestrator
-from services.auto_deployment.config import DeploymentConfig
-from services.auto_deployment.exceptions import DeploymentError
+from orchestrator import DeploymentOrchestrator
+from config import DeploymentConfig
+from exceptions import DeploymentError
 
 
 class TestPerformanceScenarios:
@@ -49,7 +58,7 @@ class TestPerformanceScenarios:
             config.service_name = f"test-service-{i}"
             
             with patch.multiple(
-                'services.auto_deployment.orchestrator',
+                'orchestrator',
                 ValidationFramework=Mock(),
                 CloudResourceManager=Mock(),
                 BlueGreenStrategy=Mock(),
@@ -97,7 +106,7 @@ class TestPerformanceScenarios:
     async def test_deployment_timeout_handling(self, deployment_config):
         """Test handling of deployment timeouts under load."""
         with patch.multiple(
-            'services.auto_deployment.orchestrator',
+            'orchestrator',
             ValidationFramework=Mock(),
             CloudResourceManager=Mock(),
             BlueGreenStrategy=Mock(),
@@ -135,7 +144,7 @@ class TestPerformanceScenarios:
         # Create and destroy multiple orchestrators to test memory leaks
         for i in range(100):
             with patch.multiple(
-                'services.auto_deployment.orchestrator',
+                'orchestrator',
                 ValidationFramework=Mock(),
                 CloudResourceManager=Mock(),
                 BlueGreenStrategy=Mock(),
@@ -168,7 +177,7 @@ class TestPerformanceScenarios:
         deployment_interval = 0.02  # 50 deployments per second
         
         with patch.multiple(
-            'services.auto_deployment.orchestrator',
+            'orchestrator',
             ValidationFramework=Mock(),
             CloudResourceManager=Mock(),
             BlueGreenStrategy=Mock(),
@@ -231,7 +240,7 @@ class TestPerformanceScenarios:
             config.cpu = "2"       # High CPU requirement
             
             with patch.multiple(
-                'services.auto_deployment.orchestrator',
+                'orchestrator',
                 ValidationFramework=Mock(),
                 CloudResourceManager=Mock(),
                 BlueGreenStrategy=Mock(),
@@ -285,7 +294,7 @@ class TestPerformanceScenarios:
             config.service_name = f"scale-test-service-{i}"
             
             with patch.multiple(
-                'services.auto_deployment.orchestrator',
+                'orchestrator',
                 ValidationFramework=Mock(),
                 CloudResourceManager=Mock(),
                 BlueGreenStrategy=Mock(),
@@ -347,7 +356,7 @@ class TestLoadTestingScenarios:
         deployment_rate = 10  # 10 deployments per second
         
         with patch.multiple(
-            'services.auto_deployment.orchestrator',
+            'orchestrator',
             ValidationFramework=Mock(),
             CloudResourceManager=Mock(),
             BlueGreenStrategy=Mock(),
@@ -411,7 +420,7 @@ class TestLoadTestingScenarios:
         burst_size = 50
         
         with patch.multiple(
-            'services.auto_deployment.orchestrator',
+            'orchestrator',
             ValidationFramework=Mock(),
             CloudResourceManager=Mock(),
             BlueGreenStrategy=Mock(),
@@ -468,7 +477,7 @@ class TestLoadTestingScenarios:
         def deployment_worker(worker_id):
             """Worker function for thread-based deployment."""
             with patch.multiple(
-                'services.auto_deployment.orchestrator',
+                'orchestrator',
                 ValidationFramework=Mock(),
                 CloudResourceManager=Mock(),
                 BlueGreenStrategy=Mock(),
