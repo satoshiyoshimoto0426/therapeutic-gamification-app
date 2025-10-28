@@ -453,3 +453,6 @@ class ConfigurationManager:
                 results[env_name] = [f"Unexpected error: {e}"]
         
         return results
+
+# Alias for backward compatibility
+ConfigManager = ConfigurationManager

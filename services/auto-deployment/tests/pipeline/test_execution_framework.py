@@ -6,6 +6,15 @@ and continuous testing integration for the auto-deployment system.
 """
 
 import pytest
+import sys
+import os
+
+# Add auto-deployment directory to path for imports
+current_dir = os.path.dirname(os.path.abspath(__file__))
+auto_deployment_dir = os.path.dirname(os.path.dirname(current_dir))
+if auto_deployment_dir not in sys.path:
+    sys.path.insert(0, auto_deployment_dir)
+
 import asyncio
 import os
 import tempfile
@@ -17,9 +26,9 @@ from typing import Dict, Any, List, Optional
 from unittest.mock import Mock, patch, AsyncMock
 from datetime import datetime, timedelta
 
-from services.auto_deployment.orchestrator import DeploymentOrchestrator
-from services.auto_deployment.config import DeploymentConfig
-from services.auto_deployment.exceptions import DeploymentError, ValidationError
+from orchestrator import DeploymentOrchestrator
+from config import DeploymentConfig
+from exceptions import DeploymentError, ValidationError
 
 
 class TestEnvironmentManager:
@@ -214,7 +223,7 @@ class TestExecutionFramework:
     async def test_basic_deployment(self, config: DeploymentConfig, test_config: Dict[str, Any]) -> Dict[str, Any]:
         """Test basic deployment scenario."""
         with patch.multiple(
-            'services.auto_deployment.orchestrator',
+            'orchestrator',
             ValidationFramework=Mock(),
             CloudResourceManager=Mock(),
             BlueGreenStrategy=Mock(),
@@ -269,7 +278,7 @@ class TestExecutionFramework:
     async def test_failure_recovery(self, config: DeploymentConfig, test_config: Dict[str, Any]) -> Dict[str, Any]:
         """Test failure recovery scenario."""
         with patch.multiple(
-            'services.auto_deployment.orchestrator',
+            'orchestrator',
             ValidationFramework=Mock(),
             CloudResourceManager=Mock(),
             BlueGreenStrategy=Mock(),
@@ -322,7 +331,7 @@ class TestExecutionFramework:
             env_config.project_id = f"{config.project_id}-{env}"
             
             with patch.multiple(
-                'services.auto_deployment.orchestrator',
+                'orchestrator',
                 ValidationFramework=Mock(),
                 CloudResourceManager=Mock(),
                 BlueGreenStrategy=Mock(),
@@ -368,7 +377,7 @@ class TestExecutionFramework:
             task_config.service_name = f"{config.service_name}-{i}"
             
             with patch.multiple(
-                'services.auto_deployment.orchestrator',
+                'orchestrator',
                 ValidationFramework=Mock(),
                 CloudResourceManager=Mock(),
                 BlueGreenStrategy=Mock(),

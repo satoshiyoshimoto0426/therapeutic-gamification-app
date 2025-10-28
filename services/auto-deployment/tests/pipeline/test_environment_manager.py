@@ -6,6 +6,15 @@ for different testing scenarios.
 """
 
 import pytest
+import sys
+import os
+
+# Add auto-deployment directory to path for imports
+current_dir = os.path.dirname(os.path.abspath(__file__))
+auto_deployment_dir = os.path.dirname(os.path.dirname(current_dir))
+if auto_deployment_dir not in sys.path:
+    sys.path.insert(0, auto_deployment_dir)
+
 import asyncio
 import os
 import tempfile
@@ -17,10 +26,10 @@ from typing import Dict, Any, List, Optional
 from unittest.mock import Mock, patch, AsyncMock
 from datetime import datetime
 
-from services.auto_deployment.config import DeploymentConfig
-from services.auto_deployment.environment.cloud_resource_manager import CloudResourceManager
-from services.auto_deployment.environment.config_manager import ConfigManager
-from services.auto_deployment.environment.secret_manager import SecretManager
+from config import DeploymentConfig
+from environment.cloud_resource_manager import CloudResourceManager
+from environment.config_manager import ConfigManager
+from environment.secret_manager import SecretManager
 
 
 class TestEnvironmentManager:
@@ -84,7 +93,7 @@ class TestEnvironmentManager:
     
     async def _setup_cloud_resources(self, env_name: str, env_config: Dict[str, Any], config: Dict[str, Any]):
         """Set up cloud resources for test environment."""
-        with patch('services.auto_deployment.environment.cloud_resource_manager.CloudResourceManager') as MockManager:
+        with patch('environment.cloud_resource_manager.CloudResourceManager') as MockManager:
             mock_manager = MockManager.return_value
             
             # Mock resource creation
@@ -148,7 +157,7 @@ class TestEnvironmentManager:
         secrets_config = config.get('secrets', {})
         
         # Mock secret manager
-        with patch('services.auto_deployment.environment.secret_manager.SecretManager') as MockSecretManager:
+        with patch('environment.secret_manager.SecretManager') as MockSecretManager:
             mock_secret_manager = MockSecretManager.return_value
             
             # Create test secrets
