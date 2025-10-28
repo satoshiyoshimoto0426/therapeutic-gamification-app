@@ -7,8 +7,8 @@ from unittest.mock import patch, MagicMock, mock_open
 import tempfile
 from pathlib import Path
 
-from dependency import DependencyValidator
-from base import ValidationSeverity
+from ..dependency import DependencyValidator
+from ...base import ValidationSeverity
 
 
 class TestDependencyValidator:

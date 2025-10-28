@@ -8,11 +8,11 @@ import os
 import json
 from datetime import datetime
 
-from security_validator import SecurityValidator
-from credential_checker import CredentialChecker
-from compliance_verifier import ComplianceVerifier
-from security_config import SecurityConfig, EncryptionAlgorithm
-from models import SecurityLevel, ComplianceStandard
+from ..security_validator import SecurityValidator
+from ..credential_checker import CredentialChecker
+from ..compliance_verifier import ComplianceVerifier
+from ..security_config import SecurityConfig, EncryptionAlgorithm
+from ..models import SecurityLevel, ComplianceStandard
 
 
 class TestTask91Completion(unittest.TestCase):

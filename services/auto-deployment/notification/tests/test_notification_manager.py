@@ -8,10 +8,10 @@ import pytest
 from unittest.mock import Mock, AsyncMock, patch
 from datetime import datetime
 
-from notification_manager import NotificationManager
-from base import NotificationMessage, NotificationResult, NotificationSeverity
-from slack_channel import SlackChannel
-from email_channel import EmailChannel
+from ..notification_manager import NotificationManager
+from ..base import NotificationMessage, NotificationResult, NotificationSeverity
+from ..slack_channel import SlackChannel
+from ..email_channel import EmailChannel
 
 
 class MockChannel:

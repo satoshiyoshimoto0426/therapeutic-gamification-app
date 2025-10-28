@@ -7,8 +7,8 @@ import os
 from unittest.mock import Mock, patch, mock_open
 from pathlib import Path
 
-from environment import EnvironmentValidator
-from base import ValidationSeverity
+from ..environment import EnvironmentValidator
+from ...base import ValidationSeverity
 
 
 class TestEnvironmentValidator:

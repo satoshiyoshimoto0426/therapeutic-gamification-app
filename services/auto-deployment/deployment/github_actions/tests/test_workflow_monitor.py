@@ -8,10 +8,10 @@ import time
 from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime, timezone
 
-from workflow_monitor import (
+from ..workflow_monitor import (
     WorkflowMonitor, MonitoringSession, MonitoringEvent, MonitoringStatus
 )
-from github_client import GitHubClient, WorkflowRun, WorkflowJob
+from ..github_client import GitHubClient, WorkflowRun, WorkflowJob
 try:
     from ....config import DeploymentConfig, Environment
     from ....exceptions import DeploymentError

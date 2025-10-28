@@ -9,8 +9,8 @@ from unittest.mock import Mock, AsyncMock, patch
 from datetime import datetime
 import json
 
-from slack_channel import SlackChannel
-from base import NotificationMessage, NotificationSeverity
+from ..slack_channel import SlackChannel
+from ..base import NotificationMessage, NotificationSeverity
 
 
 class TestSlackChannel:

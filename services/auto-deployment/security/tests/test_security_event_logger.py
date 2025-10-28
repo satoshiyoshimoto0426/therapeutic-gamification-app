@@ -9,9 +9,9 @@ import json
 from datetime import datetime, timezone, timedelta
 from unittest.mock import patch, MagicMock
 
-from security_event_logger import SecurityEventLogger, SecurityEventSeverity, SecurityEventCategory
-from audit_logger import AuditLogger, AuditContext
-from security_config import SecurityConfig
+from ..security_event_logger import SecurityEventLogger, SecurityEventSeverity, SecurityEventCategory
+from ..audit_logger import AuditLogger, AuditContext
+from ..security_config import SecurityConfig
 
 
 class TestSecurityEventLogger(unittest.TestCase):

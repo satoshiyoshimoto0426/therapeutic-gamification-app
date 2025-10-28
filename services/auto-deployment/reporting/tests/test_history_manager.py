@@ -8,8 +8,8 @@ import os
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from models import DeploymentRecord, DeploymentStatus, DeploymentMetrics, DeploymentSummary
-from history_manager import DeploymentHistoryManager
+from ..models import DeploymentRecord, DeploymentStatus, DeploymentMetrics, DeploymentSummary
+from ..history_manager import DeploymentHistoryManager
 
 
 class TestDeploymentHistoryManager:

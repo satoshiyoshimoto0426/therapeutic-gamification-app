@@ -6,8 +6,8 @@ import pytest
 from datetime import datetime
 from unittest.mock import Mock, patch
 
-from rolling_update import RollingUpdateDeploymentStrategy
-from base import DeploymentConfig, DeploymentStatus, DeploymentResult
+from ..rolling_update import RollingUpdateDeploymentStrategy
+from ..base import DeploymentConfig, DeploymentStatus, DeploymentResult
 
 
 class TestRollingUpdateDeploymentStrategy:

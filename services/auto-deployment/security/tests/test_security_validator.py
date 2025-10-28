@@ -8,9 +8,9 @@ import os
 from datetime import datetime
 from unittest.mock import patch, MagicMock
 
-from security_validator import SecurityValidator
-from security_config import SecurityConfig, EncryptionAlgorithm
-from models import SecurityLevel
+from ..security_validator import SecurityValidator
+from ..security_config import SecurityConfig, EncryptionAlgorithm
+from ..models import SecurityLevel
 
 
 class TestSecurityValidator(unittest.TestCase):

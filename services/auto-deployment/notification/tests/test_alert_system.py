@@ -11,11 +11,11 @@ from datetime import datetime, timedelta
 from unittest.mock import Mock, AsyncMock, patch
 from typing import Dict, Any
 
-from alert_system import (
+from ..alert_system import (
     AlertSystem, AlertSeverity, EscalationLevel, AlertRule, Alert, ThrottleState
 )
-from notification_manager import NotificationManager
-from base import NotificationSeverity
+from ..notification_manager import NotificationManager
+from ..base import NotificationSeverity
 
 
 class TestAlertSystem:

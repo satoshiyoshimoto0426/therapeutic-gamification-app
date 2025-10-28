@@ -10,9 +10,9 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from models import DeploymentRecord, DeploymentStatus, DeploymentPhase, ReportConfig
-from deployment_reporter import DeploymentReporter
-from progress_tracker import ProgressTracker
+from ..models import DeploymentRecord, DeploymentStatus, DeploymentPhase, ReportConfig
+from ..deployment_reporter import DeploymentReporter
+from ..progress_tracker import ProgressTracker
 try:
     from ...notification.notification_manager import NotificationManager
 except ImportError:

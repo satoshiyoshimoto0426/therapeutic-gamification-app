@@ -6,13 +6,13 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime, timedelta
 
-from revision_manager import (
+from ..revision_manager import (
     RevisionManager,
     RevisionInfo,
     RevisionStatus,
     RevisionCleanupResult
 )
-from cloud_run_client import CloudRunClient
+from ..cloud_run_client import CloudRunClient
 
 
 class TestRevisionManager:

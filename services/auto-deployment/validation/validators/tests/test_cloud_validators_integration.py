@@ -9,10 +9,10 @@ import json
 from unittest.mock import Mock, patch, AsyncMock
 from pathlib import Path
 
-from cloud_resource import CloudResourceValidator
-from authentication import AuthenticationValidator
-from environment import EnvironmentValidator
-from base import ValidationSeverity
+from ..cloud_resource import CloudResourceValidator
+from ..authentication import AuthenticationValidator
+from ..environment import EnvironmentValidator
+from ...base import ValidationSeverity
 
 
 class TestCloudResourceValidatorIntegration:

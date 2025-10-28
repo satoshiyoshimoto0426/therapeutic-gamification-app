@@ -6,7 +6,7 @@ import pytest
 from datetime import datetime
 from unittest.mock import Mock
 
-from base import (
+from ..base import (
     DeploymentStrategy, 
     DeploymentResult, 
     DeploymentStatus, 

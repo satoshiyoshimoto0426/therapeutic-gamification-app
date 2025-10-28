@@ -10,10 +10,10 @@ import asyncio
 from datetime import datetime
 from unittest.mock import Mock, AsyncMock, patch
 
-from base import NotificationChannel, NotificationMessage, NotificationSeverity, NotificationResult
-from slack_channel import SlackChannel
-from email_channel import EmailChannel
-from notification_manager import NotificationManager
+from ..base import NotificationChannel, NotificationMessage, NotificationSeverity, NotificationResult
+from ..slack_channel import SlackChannel
+from ..email_channel import EmailChannel
+from ..notification_manager import NotificationManager
 
 
 class TestTask61Completion:

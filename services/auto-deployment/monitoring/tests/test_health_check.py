@@ -8,7 +8,7 @@ from datetime import datetime
 from unittest.mock import Mock, patch, AsyncMock
 import aiohttp
 
-from health_check import (
+from ..health_check import (
     HealthCheckFramework,
     HealthCheckResult,
     HealthCheckConfig,

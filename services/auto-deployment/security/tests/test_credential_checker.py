@@ -9,8 +9,8 @@ import json
 from datetime import datetime, timedelta
 from unittest.mock import patch, MagicMock
 
-from credential_checker import CredentialChecker
-from security_config import SecurityConfig
+from ..credential_checker import CredentialChecker
+from ..security_config import SecurityConfig
 
 
 class TestCredentialChecker(unittest.TestCase):

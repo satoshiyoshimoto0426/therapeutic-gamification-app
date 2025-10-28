@@ -7,8 +7,8 @@ from unittest.mock import patch, MagicMock, mock_open
 import tempfile
 from pathlib import Path
 
-from security import SecurityValidator
-from base import ValidationSeverity
+from ..security import SecurityValidator
+from ...base import ValidationSeverity
 
 
 class TestSecurityValidator:

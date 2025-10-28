@@ -6,9 +6,9 @@ import pytest
 from datetime import datetime
 from unittest.mock import patch
 
-from base import DeploymentConfig, DeploymentStatus
-from blue_green import BlueGreenDeploymentStrategy
-from rolling_update import RollingUpdateDeploymentStrategy
+from ..base import DeploymentConfig, DeploymentStatus
+from ..blue_green import BlueGreenDeploymentStrategy
+from ..rolling_update import RollingUpdateDeploymentStrategy
 
 
 class TestDeploymentStrategiesIntegration:
