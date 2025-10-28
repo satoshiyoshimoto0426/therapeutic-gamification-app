@@ -8,6 +8,8 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 from dataclasses import dataclass
 from typing import Dict, Any
+import sys
+import os
 
 
 # Mock the Google Cloud imports at module level
@@ -25,9 +27,6 @@ mock_modules = {
 
 for module_name, mock_module in mock_modules.items():
     sys.modules[module_name] = mock_module
-
-import sys
-import os
 
 # Add the parent directories to the path to enable imports
 current_dir = os.path.dirname(os.path.abspath(__file__))
