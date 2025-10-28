@@ -6,13 +6,13 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime
 
-from ..traffic_manager import (
+from traffic_manager import (
     TrafficManager,
     TrafficStrategy,
     TrafficSplit,
     TrafficUpdateResult
 )
-from ..cloud_run_client import CloudRunClient
+from cloud_run_client import CloudRunClient
 
 
 class TestTrafficManager:

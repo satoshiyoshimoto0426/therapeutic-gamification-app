@@ -9,10 +9,10 @@ import time
 from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime, timezone
 
-from ..github_client import GitHubClient, WorkflowRun
-from ..workflow_trigger import WorkflowTrigger, TriggerRequest, TriggerType
-from ..workflow_monitor import WorkflowMonitor, MonitoringStatus
-from ..parameter_manager import ParameterManager
+from github_client import GitHubClient, WorkflowRun
+from workflow_trigger import WorkflowTrigger, TriggerRequest, TriggerType
+from workflow_monitor import WorkflowMonitor, MonitoringStatus
+from parameter_manager import ParameterManager
 try:
     from ....config import DeploymentConfig, Environment, DeploymentStrategy
     from ....exceptions import DeploymentError, GitHubAPIError

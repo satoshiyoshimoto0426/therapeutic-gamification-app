@@ -7,9 +7,9 @@ import asyncio
 from unittest.mock import AsyncMock, patch
 from datetime import datetime
 
-from ..framework import ValidationFramework
-from ..config import ValidationConfig
-from ..base import BaseValidator, ValidationResult, ValidationSeverity
+from framework import ValidationFramework
+from config import ValidationConfig
+from base import BaseValidator, ValidationResult, ValidationSeverity
 
 
 class MockSuccessValidator(BaseValidator):

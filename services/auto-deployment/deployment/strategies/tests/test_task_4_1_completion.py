@@ -13,9 +13,9 @@ import pytest
 from datetime import datetime
 from unittest.mock import patch
 
-from ..base import DeploymentStrategy, DeploymentResult, DeploymentStatus, DeploymentConfig
-from ..blue_green import BlueGreenDeploymentStrategy
-from ..rolling_update import RollingUpdateDeploymentStrategy
+from base import DeploymentStrategy, DeploymentResult, DeploymentStatus, DeploymentConfig
+from blue_green import BlueGreenDeploymentStrategy
+from rolling_update import RollingUpdateDeploymentStrategy
 
 
 class TestTask41Completion:

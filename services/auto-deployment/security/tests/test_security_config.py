@@ -6,7 +6,7 @@ import unittest
 import os
 from unittest.mock import patch
 
-from ..security_config import SecurityConfig, EncryptionAlgorithm
+from security_config import SecurityConfig, EncryptionAlgorithm
 
 
 class TestSecurityConfig(unittest.TestCase):

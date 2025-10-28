@@ -9,9 +9,9 @@ import json
 from datetime import datetime, timezone, timedelta
 from unittest.mock import patch, MagicMock
 
-from ..deployment_tracker import DeploymentTracker, DeploymentStatus, DeploymentStage
-from ..audit_logger import AuditLogger, AuditContext
-from ..security_config import SecurityConfig
+from deployment_tracker import DeploymentTracker, DeploymentStatus, DeploymentStage
+from audit_logger import AuditLogger, AuditContext
+from security_config import SecurityConfig
 
 
 class TestDeploymentTracker(unittest.TestCase):

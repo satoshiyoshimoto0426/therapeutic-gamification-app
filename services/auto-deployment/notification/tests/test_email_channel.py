@@ -9,8 +9,8 @@ from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime
 import smtplib
 
-from ..email_channel import EmailChannel
-from ..base import NotificationMessage, NotificationSeverity
+from email_channel import EmailChannel
+from base import NotificationMessage, NotificationSeverity
 
 
 class TestEmailChannel:

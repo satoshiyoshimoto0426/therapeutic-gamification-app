@@ -5,10 +5,10 @@ Simple tests for validators to verify basic functionality.
 import pytest
 from unittest.mock import patch, MagicMock
 
-from ..code_quality import CodeQualityValidator
-from ..security import SecurityValidator
-from ..dependency import DependencyValidator
-from ...base import ValidationSeverity
+from code_quality import CodeQualityValidator
+from security import SecurityValidator
+from dependency import DependencyValidator
+from base import ValidationSeverity
 
 
 class TestValidatorsBasic:

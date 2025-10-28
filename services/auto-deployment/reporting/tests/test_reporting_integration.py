@@ -17,8 +17,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
-from ..models import DeploymentRecord, DeploymentStatus, DeploymentPhase, ReportConfig
-from ..deployment_reporter import DeploymentReporter
+from models import DeploymentRecord, DeploymentStatus, DeploymentPhase, ReportConfig
+from deployment_reporter import DeploymentReporter
 try:
     from ...notification.notification_manager import NotificationManager
 except ImportError:

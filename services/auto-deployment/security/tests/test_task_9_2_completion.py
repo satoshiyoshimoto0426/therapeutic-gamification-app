@@ -8,10 +8,10 @@ import os
 import json
 from datetime import datetime, timezone, timedelta
 
-from ..audit_logger import AuditLogger, AuditContext, AuditEventType, AuditResult
-from ..deployment_tracker import DeploymentTracker, DeploymentStatus, DeploymentStage
-from ..security_event_logger import SecurityEventLogger, SecurityEventSeverity, SecurityEventCategory
-from ..security_config import SecurityConfig
+from audit_logger import AuditLogger, AuditContext, AuditEventType, AuditResult
+from deployment_tracker import DeploymentTracker, DeploymentStatus, DeploymentStage
+from security_event_logger import SecurityEventLogger, SecurityEventSeverity, SecurityEventCategory
+from security_config import SecurityConfig
 
 
 class TestTask92Completion(unittest.TestCase):

@@ -7,7 +7,7 @@ import pytest
 from datetime import datetime, timedelta
 from unittest.mock import Mock, patch, MagicMock
 
-from ..performance_monitor import (
+from performance_monitor import (
     PerformanceMonitor,
     PerformanceMetric,
     ErrorMetric,

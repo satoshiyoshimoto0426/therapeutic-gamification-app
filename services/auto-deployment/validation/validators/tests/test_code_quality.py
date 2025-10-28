@@ -8,8 +8,8 @@ import tempfile
 from pathlib import Path
 import subprocess
 
-from ..code_quality import CodeQualityValidator
-from ...base import ValidationSeverity
+from code_quality import CodeQualityValidator
+from base import ValidationSeverity
 
 
 class TestCodeQualityValidator:

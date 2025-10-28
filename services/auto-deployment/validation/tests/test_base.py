@@ -6,7 +6,7 @@ import pytest
 from datetime import datetime
 from unittest.mock import AsyncMock
 
-from ..base import BaseValidator, ValidationResult, ValidationSeverity
+from base import BaseValidator, ValidationResult, ValidationSeverity
 
 
 class MockValidator(BaseValidator):

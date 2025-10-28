@@ -6,10 +6,10 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime, timezone
 
-from ..workflow_trigger import (
+from workflow_trigger import (
     WorkflowTrigger, TriggerRequest, TriggerResult, TriggerType
 )
-from ..github_client import GitHubClient, WorkflowRun
+from github_client import GitHubClient, WorkflowRun
 try:
     from ....config import DeploymentConfig, Environment, DeploymentStrategy
     from ....exceptions import DeploymentError

@@ -8,7 +8,7 @@ import tempfile
 import os
 from unittest.mock import Mock, patch
 
-from ..parameter_manager import (
+from parameter_manager import (
     ParameterManager, ParameterDefinition, ParameterType, WorkflowParameterSet
 )
 try:

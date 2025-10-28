@@ -9,12 +9,12 @@ import os
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from ..models import (
+from models import (
     DeploymentRecord, DeploymentStatus, DeploymentPhase, ProgressStatus,
     DeploymentMetrics, PhaseProgress, ReportConfig
 )
-from ..report_generator import ReportGenerator
-from ..history_manager import DeploymentHistoryManager
+from report_generator import ReportGenerator
+from history_manager import DeploymentHistoryManager
 
 
 class TestReportGenerator:

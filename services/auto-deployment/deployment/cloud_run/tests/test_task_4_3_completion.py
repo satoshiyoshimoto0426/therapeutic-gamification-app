@@ -11,10 +11,10 @@ import logging
 from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime, timedelta
 
-from ..cloud_run_client import CloudRunClient, CloudRunService, DeploymentResult
-from ..traffic_manager import TrafficManager, TrafficSplit, TrafficUpdateResult
-from ..revision_manager import RevisionManager, RevisionInfo, RevisionStatus, RevisionCleanupResult
-from ..cloud_run_deployer import CloudRunDeployer, DeploymentConfig, DeploymentStrategy, DeploymentStatus
+from cloud_run_client import CloudRunClient, CloudRunService, DeploymentResult
+from traffic_manager import TrafficManager, TrafficSplit, TrafficUpdateResult
+from revision_manager import RevisionManager, RevisionInfo, RevisionStatus, RevisionCleanupResult
+from cloud_run_deployer import CloudRunDeployer, DeploymentConfig, DeploymentStrategy, DeploymentStatus
 
 logger = logging.getLogger(__name__)
 

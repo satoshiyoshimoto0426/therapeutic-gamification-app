@@ -8,9 +8,9 @@ import os
 from datetime import datetime
 from unittest.mock import patch, MagicMock
 
-from ..compliance_verifier import ComplianceVerifier
-from ..security_config import SecurityConfig
-from ..models import ComplianceStandard
+from compliance_verifier import ComplianceVerifier
+from security_config import SecurityConfig
+from models import ComplianceStandard
 
 
 class TestComplianceVerifier(unittest.TestCase):

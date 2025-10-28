@@ -8,8 +8,8 @@ from unittest.mock import Mock, patch, AsyncMock
 import json
 import os
 
-from ..authentication import AuthenticationValidator
-from ...base import ValidationSeverity
+from authentication import AuthenticationValidator
+from base import ValidationSeverity
 
 
 class TestAuthenticationValidator:

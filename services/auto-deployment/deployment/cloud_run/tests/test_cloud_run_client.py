@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime
 from google.api_core import exceptions as gcp_exceptions
 
-from ..cloud_run_client import (
+from cloud_run_client import (
     CloudRunClient, 
     CloudRunService, 
     DeploymentResult

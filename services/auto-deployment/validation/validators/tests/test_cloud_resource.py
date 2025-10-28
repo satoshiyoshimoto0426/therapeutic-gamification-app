@@ -7,8 +7,8 @@ import asyncio
 from unittest.mock import Mock, patch, AsyncMock
 import json
 
-from ..cloud_resource import CloudResourceValidator
-from ...base import ValidationSeverity
+from cloud_resource import CloudResourceValidator
+from base import ValidationSeverity
 
 
 class TestCloudResourceValidator:

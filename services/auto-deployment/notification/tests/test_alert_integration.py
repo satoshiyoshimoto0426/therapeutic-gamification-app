@@ -12,10 +12,10 @@ from datetime import datetime, timedelta
 from unittest.mock import Mock, AsyncMock, patch
 from typing import Dict, Any, List
 
-from ..alert_system import AlertSystem, AlertSeverity, EscalationLevel
-from ..notification_manager import NotificationManager
-from ..base import NotificationSeverity, NotificationResult
-from ..alert_config_example import ALERT_SYSTEM_CONFIG, NOTIFICATION_CONFIG_WITH_ALERTS
+from alert_system import AlertSystem, AlertSeverity, EscalationLevel
+from notification_manager import NotificationManager
+from base import NotificationSeverity, NotificationResult
+from alert_config_example import ALERT_SYSTEM_CONFIG, NOTIFICATION_CONFIG_WITH_ALERTS
 
 
 class MockNotificationChannel:

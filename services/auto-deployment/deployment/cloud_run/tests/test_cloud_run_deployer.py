@@ -6,15 +6,15 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime
 
-from ..cloud_run_deployer import (
+from cloud_run_deployer import (
     CloudRunDeployer,
     DeploymentConfig,
     DeploymentStatus,
     DeploymentStrategy
 )
-from ..cloud_run_client import CloudRunService, DeploymentResult
-from ..traffic_manager import TrafficUpdateResult
-from ..revision_manager import RevisionInfo, RevisionStatus, RevisionCleanupResult
+from cloud_run_client import CloudRunService, DeploymentResult
+from traffic_manager import TrafficUpdateResult
+from revision_manager import RevisionInfo, RevisionStatus, RevisionCleanupResult
 
 
 class TestCloudRunDeployer:

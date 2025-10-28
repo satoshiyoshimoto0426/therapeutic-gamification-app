@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime, timezone
 import requests
 
-from ..github_client import GitHubClient, WorkflowRun, WorkflowJob
+from github_client import GitHubClient, WorkflowRun, WorkflowJob
 try:
     from ....exceptions import GitHubAPIError, AuthenticationError
 except ImportError:

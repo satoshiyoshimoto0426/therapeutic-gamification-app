@@ -8,7 +8,7 @@ import json
 import yaml
 from pathlib import Path
 
-from ..config import ValidationConfig, DEFAULT_CONFIG
+from config import ValidationConfig, DEFAULT_CONFIG
 
 
 class TestValidationConfig:

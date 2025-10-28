@@ -7,8 +7,8 @@ import pytest
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
-from ..models import DeploymentRecord, DeploymentPhase, ProgressStatus, DeploymentStatus
-from ..progress_tracker import ProgressTracker
+from models import DeploymentRecord, DeploymentPhase, ProgressStatus, DeploymentStatus
+from progress_tracker import ProgressTracker
 
 
 class TestProgressTracker:
