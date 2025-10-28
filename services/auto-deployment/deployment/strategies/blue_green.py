@@ -234,3 +234,6 @@ class BlueGreenDeploymentStrategy(DeploymentStrategy):
             message="Failed green revision cleaned up",
             timestamp=datetime.now()
         )
+
+
+BlueGreenStrategy = BlueGreenDeploymentStrategy

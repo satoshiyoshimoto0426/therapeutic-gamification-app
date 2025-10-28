@@ -327,3 +327,6 @@ class HealthCheckFramework:
         """Stop continuous health monitoring."""
         self.is_running = False
         logger.info("Stopped continuous health monitoring")
+
+
+HealthCheckSystem = HealthCheckFramework
