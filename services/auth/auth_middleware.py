@@ -265,3 +265,34 @@ def require_chat_send_access(
         "permissions": permissions,
         "token": token
     }
+
+
+def get_current_guardian(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+) -> Dict[str, Any]:
+    """現在のガーディアン情報取得（必須）"""
+    try:
+        token = auth_service.verify_token(credentials.credentials)
+        permissions = rbac_system.get_permission_summary(token.guardian_id, token.user_id)
+        
+        return {
+            "guardian_id": token.guardian_id,
+            "user_id": token.user_id,
+            "permission_level": token.permission_level,
+            "permissions": permissions,
+            "token": token
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"認証に失敗しました: {str(e)}"
+        )
+
+
+class JWTAuthMiddleware:
+    """JWT認証ミドルウェア（互換性のため）"""
+    def __init__(self):
+        self.auth_service = auth_service
+    
+    async def __call__(self, credentials: HTTPAuthorizationCredentials = Depends(security)):
+        return get_current_guardian(credentials)
