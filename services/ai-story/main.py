@@ -304,9 +304,6 @@ class GPT4oStoryClient:
             "model": "deepseek-r1-mock"
         }
 
-# Initialize DeepSeek R1 client
-deepseek_client = DeepSeekR1Client()
-
 # Therapeutic Prompt Templates
 class TherapeuticPromptManager:
     def __init__(self):
