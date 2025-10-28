@@ -9,12 +9,12 @@ import asyncio
 from unittest.mock import Mock, patch, AsyncMock
 from datetime import datetime, timedelta
 
-from .orchestrator import (
+from orchestrator import (
     DeploymentOrchestrator, DeploymentResult, DeploymentStatus,
     DeploymentStep, DeploymentPhase
 )
-from .config import Environment, DeploymentStrategy, DeploymentConfig, CloudConfig
-from .exceptions import (
+from config import Environment, DeploymentStrategy, DeploymentConfig, CloudConfig
+from exceptions import (
     DeploymentError, PreDeploymentError, DeploymentExecutionError,
     ErrorSeverity, ErrorCategory
 )
@@ -348,7 +348,7 @@ class TestDeploymentSteps:
         )
         
         # ロガーを初期化
-        from .logging_config import initialize_logging
+        from logging_config import initialize_logging
         log_manager = initialize_logging(orchestrator.config)
         orchestrator.logger = log_manager.get_deployment_logger("test")
         
@@ -378,7 +378,7 @@ class TestDeploymentSteps:
         )
         
         # ロガーを初期化
-        from .logging_config import initialize_logging
+        from logging_config import initialize_logging
         log_manager = initialize_logging(orchestrator.config)
         orchestrator.logger = log_manager.get_deployment_logger("test")
         
