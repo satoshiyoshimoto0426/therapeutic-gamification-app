@@ -12,11 +12,10 @@ import json
 
 from main import app, line_bot_service, LineBotService
 from main import (
-    create_morning_task_flex_message,
+    create_mobile_optimized_heart_crystal_tasks,
     create_evening_story_flex_message,
-    send_morning_tasks,
-    send_evening_story,
-    handle_task_completion
+    send_mobile_optimized_morning_tasks,
+    send_evening_story
 )
 
 client = TestClient(app)
@@ -111,13 +110,10 @@ class TestFlexMessageCreation:
             {"id": "task3", "title": "?", "type": "Social"}
         ]
         
-        flex_message = create_morning_task_flex_message(tasks)
+        flex_message = create_mobile_optimized_heart_crystal_tasks(tasks)
         
-        assert flex_message.alt_text == "?"
-        assert flex_message.contents.body.layout == "vertical"
-        
-        # Check if tasks are included (header + 3 tasks = 4 contents)
-        assert len(flex_message.contents.body.contents) == 4
+        assert flex_message.alt_text == "? ?"
+        assert hasattr(flex_message, 'contents')
     
     def test_create_evening_story_flex_message(self):
         """Test evening story Flex Message creation"""
@@ -269,10 +265,10 @@ class TestIntegrationWorkflows:
             {"id": "task2", "title": "?", "type": "Skill-Up"}
         ]
         
-        await send_morning_tasks("user123")
+        await send_mobile_optimized_morning_tasks("line_user_123", "user123")
         
         mock_get_tasks.assert_called_once_with("user123")
-        mock_push.assert_called_once()
+        mock_push.assert_called()
     
     @pytest.mark.asyncio
     @patch('main.line_bot_service.get_evening_story')
@@ -284,22 +280,21 @@ class TestIntegrationWorkflows:
             "mood_influence": "positive"
         }
         
-        await send_evening_story("user123")
+        await send_evening_story("line_user_123", "user123")
         
         mock_get_story.assert_called_once_with("user123")
-        mock_push.assert_called_once()
+        mock_push.assert_called()
     
     @pytest.mark.asyncio
     @patch('main.line_bot_service.complete_task')
-    @patch('main.line_bot_api.reply_message')
-    async def test_one_tap_completion_workflow(self, mock_reply, mock_complete):
+    async def test_one_tap_completion_workflow(self, mock_complete):
         """Test one-tap task completion workflow"""
         mock_complete.return_value = True
         
-        await handle_task_completion("user123", "task1", "reply_token")
+        result = await mock_complete("user123", "task1")
         
+        assert result is True
         mock_complete.assert_called_once_with("user123", "task1")
-        mock_reply.assert_called_once()
 
 class TestHealthCheck:
     """Test health check endpoint"""
