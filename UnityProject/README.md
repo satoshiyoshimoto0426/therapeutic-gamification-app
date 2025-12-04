@@ -35,15 +35,18 @@ UnityProject/
 │   │   ├── Items/             # アイテム・装備
 │   │   │   ├── Item.cs                # アイテム基底
 │   │   │   ├── Equipment.cs           # 装備
-│   │   │   └── Inventory.cs           # インベントリ
+│   │   │   ├── Inventory.cs           # インベントリ
+│   │   │   └── EquipmentManager.cs    # 装備管理
 │   │   ├── UI/                # ユーザーインターフェース
 │   │   │   ├── HUDManager.cs          # HUD管理
-│   │   │   ├── MenuManager.cs         # メニュー
-│   │   │   └── DialogueSystem.cs      # ダイアログ
+│   │   │   ├── InventoryUI.cs         # インベントリUI
+│   │   │   └── GachaUI.cs             # ガチャUI
 │   │   ├── API/               # バックエンド連携
 │   │   │   ├── APIClient.cs           # API通信
 │   │   │   ├── AuthManager.cs         # 認証
-│   │   │   └── TaskManager.cs         # タスク管理
+│   │   │   ├── TaskManager.cs         # タスク管理
+│   │   │   ├── StoryManager.cs        # AIストーリー
+│   │   │   └── GachaManager.cs        # ガチャシステム
 │   │   └── Utilities/         # ユーティリティ
 │   │       ├── GridHelper.cs          # グリッド計算
 │   │       └── Pathfinding.cs         # 経路探索
@@ -82,7 +85,15 @@ UnityProject/
 - **装備品**: 武器、防具、盾、アクセサリー
 - **レアリティ**: N、R、SR、レジェンド
 
-### 5. 現実連動システム
+### 5. ガチャシステム
+
+- **3種類のガチャ**: ノーマル、プレミアム、スーパー
+- **レアリティシステム**: N、R、SR、レジェンド
+- **天井保証**: 50連でレジェンド確定
+- **装備獲得**: ランダムな武器・防具を入手
+- **ガチャ履歴**: 過去の結果を確認可能
+
+### 6. 現実連動システム
 
 - **タスク管理**: 現実のタスクをゲーム内に反映
 - **報酬システム**: タスク達成で経験値・ゴールド獲得
