@@ -111,6 +111,99 @@ UnityProject/
 - **報酬システム**: タスク達成で経験値・ゴールド獲得
 - **AIストーリー**: 行動に基づいて物語が生成される
 
+## 🛠️ セットアップ手順
+
+### クイックスタート（5分）
+
+```bash
+# 1. クローン
+git clone https://github.com/satoshiyoshimoto0426/therapeutic-gamification-app.git
+cd therapeutic-gamification-app/UnityProject
+
+# 2. Unity 2022.3 LTS で開く
+
+# 3. プレースホルダー生成（テスト用）
+Unity Editor: Tools > Kokoro no Boukensha > Generate All Placeholders
+
+# 4. Play ボタンでテスト
+```
+
+### 本番アセット配置（オプション・60分）
+
+1. **3Dモデル**: `ASSET_IMPORT_GUIDE.md` 参照
+   - Mixamoからキャラクターモデル
+   - Unity Asset Storeからダンジョンタイル
+
+2. **オーディオ**: `FREE_AUDIO_ASSETS.md` 参照
+   - 魔王魂、DOVA-SYNDROMEからBGM
+   - 効果音ラボからSFX
+
+3. **バランス調整**: `Tools > Kokoro no Boukensha > Game Balance Tuner`
+
+4. **WebGLビルド**: `Tools > Kokoro no Boukensha > WebGL Build Helper`
+
+詳細は `WEBGL_BUILD_INSTRUCTIONS.md` 参照
+
+## 📚 ドキュメント
+
+### ゲーム設計
+- `UNITY_ROGUELIKE_DESIGN.md` - 完全なゲーム設計書
+- `CHANGELOG.md` - プロジェクト履歴（v0.1.0〜v0.9.0）
+
+### セットアップガイド
+- `ASSET_IMPORT_GUIDE.md` - 3Dモデル・アセット導入手順
+- `3D_MODEL_SETUP_GUIDE.md` - 3Dモデルセットアップ詳細
+- `FREE_AUDIO_ASSETS.md` - 無料オーディオアセット推奨リスト（11サイト）
+- `AUDIO_ASSET_GUIDE.md` - AudioManager設定手順
+
+### 統合ガイド
+- `TUTORIAL_INTEGRATION_GUIDE.md` - チュートリアルシステム統合
+- `WEBGL_BUILD_INSTRUCTIONS.md` - WebGLビルド完全手順
+
+### 最適化・調整
+- `WEBGL_OPTIMIZATION_GUIDE.md` - WebGL最適化詳細
+- `FINAL_OPTIMIZATION_GUIDE.md` - 最終調整・バランス・テスト
+- `TEST_PLAN.md` - 包括的テスト計画書
+
+## 🎮 エディタツール
+
+Unity Editor で `Tools > Kokoro no Boukensha` メニューから以下のツールにアクセス:
+
+1. **Generate All Placeholders** - テスト用プレースホルダー自動生成（20種類以上）
+2. **Audio Setup Tool** - オーディオアセット自動セットアップ
+3. **Asset Setup Tool** - 3Dモデル自動セットアップ
+4. **Game Balance Tuner** - リアルタイムバランス調整（5タブ: Player, Enemies, Items, Gacha, Floors）
+5. **WebGL Build Helper** - ワンクリックWebGLビルド（最適化設定自動適用）
+
+## 📊 プロジェクト進捗
+
+### コア機能（11システム）
+- ✅ ゲーム設計（志禄系ローグライク）
+- ✅ Unityプロジェクト構造
+- ✅ プロシージャルダンジョン（BSPアルゴリズム）
+- ✅ 3D移動・アニメーション（8方向、装備表示）
+- ✅ ターン制戦闘システム
+- ✅ インベントリ・装備UI
+- ✅ ガチャシステム（3種類、天井システム）
+- ✅ 3Dモデル・アニメーション管理
+- ✅ チュートリアルシステム（17ステップ）
+- ✅ オーディオシステム（BGM 7種類 + SFX 30種類以上）
+- ✅ 最適化・バランス調整ツール
+
+### 実装進捗
+- **コア実装**: 🟢 100% 完了
+- **最適化**: 🟢 100% 完了（オブジェクトプーリング、WebGL最適化）
+- **ドキュメント**: 🟢 100% 完了（10ドキュメント）
+- **エディタツール**: 🟢 100% 完了（5ツール）
+- **リリース準備**: 🟡 80% （アセット配置とビルドテスト残り）
+
+### 統計
+- **スクリプト**: 50ファイル以上
+- **ドキュメント**: 10ファイル（約100KB）
+- **コード量**: 約150KB
+- **エディタツール**: 5種類
+- **プレースホルダー**: 20種類以上の3Dモデル + 29種類のオーディオ
+
 ## バックエンドAPI連携
 
 ### 認証サービス（Port 8000）
