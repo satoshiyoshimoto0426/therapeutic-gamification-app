@@ -52,6 +52,12 @@ UnityProject/
 │   │   │   ├── EnemyAnimationController.cs   # 敵アニメ
 │   │   │   ├── ModelManager.cs               # 3Dモデル管理
 │   │   │   └── DungeonVisualizer.cs          # ダンジョン視覚化
+│   │   ├── Tutorial/          # チュートリアルシステム
+│   │   │   ├── TutorialManager.cs            # チュートリアル管理
+│   │   │   ├── TutorialUI.cs                 # チュートリアルUI
+│   │   │   ├── TutorialHighlight.cs          # ハイライト表示
+│   │   │   ├── TutorialPointer.cs            # ポインター表示
+│   │   │   └── TutorialTrigger.cs            # アクション検知
 │   │   └── Utilities/         # ユーティリティ
 │   │       ├── GridHelper.cs          # グリッド計算
 │   │       ├── Pathfinding.cs         # 経路探索
@@ -329,6 +335,7 @@ MIT License
 - **ドキュメント**: [UNITY_ROGUELIKE_DESIGN.md](../UNITY_ROGUELIKE_DESIGN.md)
 - **3Dモデルガイド**: [3D_MODEL_SETUP_GUIDE.md](./3D_MODEL_SETUP_GUIDE.md)
 - **アセットインポートガイド**: [ASSET_IMPORT_GUIDE.md](./ASSET_IMPORT_GUIDE.md)
+- **チュートリアル統合ガイド**: [TUTORIAL_INTEGRATION_GUIDE.md](./TUTORIAL_INTEGRATION_GUIDE.md)
 - **元のプロジェクト**: [README.md](../README.md)
 - **ビジネスプラン**: [kokoro_no_boukensha_business_presentation.pdf]
 
@@ -406,6 +413,19 @@ MIT License
    - ⏳ オブジェクトプーリング
    - ⏳ テクスチャ圧縮
    - ⏳ ロード時間短縮
+
+---
+
+**心の冒険者で、すべての子供たちが自分の人生の主人公になれる社会を目指します！**
+
+   - ⏳ オブジェクトプーリング
+   - ⏳ テクスチャ圧縮
+   - ⏳ ロード時間短縮
+
+3. **最終調整** (0%)
+   - ⏳ バランス調整
+   - ⏳ バグ修正
+   - ⏳ パフォーマンステスト
 
 ---
 
