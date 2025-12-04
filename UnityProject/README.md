@@ -187,11 +187,29 @@ cd ..
 python start_mvp_services.py
 ```
 
+### アセットのセットアップ
+
+#### オプション1: プレースホルダーを使用（すぐにテスト可能）
+
+1. Unity エディタを開く
+2. メニュー → **Tools > Kokoro no Boukensha > Generate All Placeholders**
+3. 自動的にテスト用プレースホルダーPrefabが生成されます
+4. すぐにゲームをテストできます
+
+#### オプション2: 実際のアセットを使用（推奨）
+
+1. **[ASSET_IMPORT_GUIDE.md](./ASSET_IMPORT_GUIDE.md)** を参照
+2. Mixamoから無料キャラクターモデルをダウンロード
+3. Unity Asset Storeから無料ダンジョン・エフェクトアセットをインポート
+4. メニュー → **Tools > Kokoro no Boukensha > Asset Setup Tool** を使用
+5. 各セクションのボタンをクリックして自動セットアップ
+
 ### 初回起動
 
 1. Unityエディタでプロジェクトを開く
-2. `Scenes/MainMenu.unity` を開く
-3. Playボタンを押してゲーム開始
+2. プレースホルダーを生成（上記参照）
+3. `Scenes/MainMenu.unity` を開く
+4. Playボタンを押してゲーム開始
 
 ## ビルド方法
 
@@ -310,6 +328,7 @@ MIT License
 
 - **ドキュメント**: [UNITY_ROGUELIKE_DESIGN.md](../UNITY_ROGUELIKE_DESIGN.md)
 - **3Dモデルガイド**: [3D_MODEL_SETUP_GUIDE.md](./3D_MODEL_SETUP_GUIDE.md)
+- **アセットインポートガイド**: [ASSET_IMPORT_GUIDE.md](./ASSET_IMPORT_GUIDE.md)
 - **元のプロジェクト**: [README.md](../README.md)
 - **ビジネスプラン**: [kokoro_no_boukensha_business_presentation.pdf]
 
