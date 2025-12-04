@@ -47,9 +47,15 @@ UnityProject/
 │   │   │   ├── TaskManager.cs         # タスク管理
 │   │   │   ├── StoryManager.cs        # AIストーリー
 │   │   │   └── GachaManager.cs        # ガチャシステム
+│   │   ├── Animation/         # アニメーションシステム
+│   │   │   ├── PlayerAnimationController.cs  # プレイヤーアニメ
+│   │   │   ├── EnemyAnimationController.cs   # 敵アニメ
+│   │   │   ├── ModelManager.cs               # 3Dモデル管理
+│   │   │   └── DungeonVisualizer.cs          # ダンジョン視覚化
 │   │   └── Utilities/         # ユーティリティ
 │   │       ├── GridHelper.cs          # グリッド計算
-│   │       └── Pathfinding.cs         # 経路探索
+│   │       ├── Pathfinding.cs         # 経路探索
+│   │       └── AnimationHelper.cs     # アニメーション補助
 │   ├── Prefabs/               # プレハブ
 │   ├── Scenes/                # シーン
 │   ├── Materials/             # マテリアル
@@ -303,8 +309,84 @@ MIT License
 ## リンク
 
 - **ドキュメント**: [UNITY_ROGUELIKE_DESIGN.md](../UNITY_ROGUELIKE_DESIGN.md)
+- **3Dモデルガイド**: [3D_MODEL_SETUP_GUIDE.md](./3D_MODEL_SETUP_GUIDE.md)
 - **元のプロジェクト**: [README.md](../README.md)
 - **ビジネスプラン**: [kokoro_no_boukensha_business_presentation.pdf]
+
+## 実装状況
+
+### ✅ 完成したシステム (進捗: 90%)
+
+1. **コアシステム** (100%)
+   - ✅ GameManager - ゲーム全体管理
+   - ✅ TurnManager - ターン制バトル
+   - ✅ SaveManager - セーブ/ロード
+
+2. **ダンジョンシステム** (100%)
+   - ✅ DungeonGenerator - BSPプロシージャル生成
+   - ✅ DungeonVisualizer - 3D環境構築
+   - ✅ Room/Tile システム
+
+3. **キャラクターシステム** (100%)
+   - ✅ Player - プレイヤー制御・ステータス
+   - ✅ Enemy - 敵AI・戦闘
+   - ✅ 経験値・レベルアップ
+
+4. **戦闘システム** (100%)
+   - ✅ ターン制バトル
+   - ✅ ダメージ計算
+   - ✅ 状態異常
+
+5. **アイテム・装備システム** (100%)
+   - ✅ Inventory - インベントリ管理
+   - ✅ Equipment - 装備システム
+   - ✅ Item - 消費・投擲アイテム
+   - ✅ レアリティシステム (N/R/SR/レジェンド)
+
+6. **UIシステム** (100%)
+   - ✅ HUDManager - ステータス表示
+   - ✅ InventoryUI - インベントリ画面
+   - ✅ GachaUI - ガチャ演出
+
+7. **ガチャシステム** (100%)
+   - ✅ GachaManager - 3種類のガチャ
+   - ✅ 天井保証システム
+   - ✅ ガチャ履歴・統計
+
+8. **3Dモデル・アニメーション** (100%)
+   - ✅ PlayerAnimationController - プレイヤーアニメーション
+   - ✅ EnemyAnimationController - 敵アニメーション
+   - ✅ ModelManager - 3Dモデル管理
+   - ✅ AnimationHelper - 8方向移動補助
+   - ✅ CameraController - カメラ制御
+   - ✅ EffectManager - エフェクト管理
+
+9. **バックエンド連携** (100%)
+   - ✅ APIClient - HTTP通信
+   - ✅ AuthManager - JWT認証
+   - ✅ TaskManager - タスク管理連携
+   - ✅ StoryManager - AIストーリー生成
+
+### ⏳ 残タスク (進捗: 90%)
+
+1. **3Dアセット配置** (0%)
+   - ⏳ プレイヤーモデル（Mixamo等）
+   - ⏳ 敵モデル（Mixamo等）
+   - ⏳ ダンジョンタイルセット
+   - ⏳ エフェクトプレハブ
+
+2. **サウンド** (0%)
+   - ⏳ BGM（メニュー、ダンジョン、ボス戦）
+   - ⏳ SE（攻撃、移動、アイテム取得）
+
+3. **チュートリアル** (0%)
+   - ⏳ 操作説明
+   - ⏳ システム説明
+
+4. **WebGLビルド最適化** (0%)
+   - ⏳ オブジェクトプーリング
+   - ⏳ テクスチャ圧縮
+   - ⏳ ロード時間短縮
 
 ---
 
